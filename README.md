@@ -8,6 +8,8 @@ NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some
 - .iv: "Inventor" format; only for internal NASA use, not released to public
 - **.vst: Used by ViSTa commercial software; widely documented in https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf , the document used to write source in this repository.**
 
+# VST format
+
 - A .vst file contains multiple "Levels Of Depth" (LODs), i.e. multiple "3d files", each one with different resolution.
 - Each LOD contains 1 ore more "patches".
 - Each patch contains a number of "arrays"
