@@ -10,6 +10,9 @@ NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some
 
 ## VST format
 
+![immagine](https://user-images.githubusercontent.com/1620953/174308474-c7169af2-da40-4133-8a7d-8a3d718c817e.png)
+
+
 - A .vst file contains multiple "Levels Of Depth" (LODs), i.e. multiple "3d files", each one with different resolution.
 - Each LOD contains 1 ore more "patches".
 - Each patch contains a number of "arrays"
