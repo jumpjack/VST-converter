@@ -30,7 +30,9 @@ There were 4 cameras onboard:
  - 1 Navcam
  - 2 Hazcams (front and rear)
  
- Data are grouped by "site", i.e. reference points fixed along rover course; at each site 1 ore more "observations" may be associated.
+ ![image](https://user-images.githubusercontent.com/1620953/174552618-f5ddbe78-a179-49e9-8f00-672e9ca8a38e.png)
+
+Products/images are grouped by "site", i.e. reference points fixed along rover course; at each site 1 ore more "observations" may be associated.
  
 Explanation of 2N292280938XYLB100P0703L0M1 name:
 
