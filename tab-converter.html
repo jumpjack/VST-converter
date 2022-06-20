@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Read/Write local files in javascript - template</title>
+</head>
+<body>
+	<script>
+
+	var myName;
+	var fileContentsUInt8;
+
+	function loadFile(fileHandler) {
+		// The file is read as ArrayBuffer to keep contents raw, without interpretations from Javascript engine
+		// The raw array can then be converted to array of bytes (8 bit) (signed or unsigned) or of integers (16 bit).
+		// If interpreted as a string of characters, the raw array will be automatically converted by javascript using UTF16 encoder.
+		// If you need UTF-8 encoding, you must	use TextDecoder("utf8").
+		// Supported encodings: https://developer.mozilla.org/en-US/docs/Web/API/Encoding_API/Encodings
+
+		console.log("File to open:" ,fileHandler);
+		myName = fileHandler.name;
+		const reader = new FileReader();
+		reader.addEventListener('load', (event) => {
+				rawFileContents = event.target.result;
+				console.log("Loaded: ", event, rawFileContents.length);
+				fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+				console.log(fileContentsUInt8);
+				document.getElementById("status").innerHTML = "File loaded. Click to save:";
+		});
+		reader.readAsArrayBuffer(fileHandler); // Read as arrayBuffer as "readAsBinaryString" is deprecated but we don't want Javascript to interpret the file at its own wish...
+		console.log("Reading process initiated...");
+	}
+
+
+	function saveFile(fileContent, filename) {
+		myBlob = new Blob([fileContent]/*, {type: "application/octet-stream"}*/);
+		var url = window.URL.createObjectURL(myBlob);
+		var anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+		anchor.click();
+		window.URL.revokeObjectURL(url);
+	}
+
+	function processFile() {
+		parametersLength = 6 * 79;
+		chunkStart = 0;
+		chunkEnd = parametersLength;
+		sliceUInt8 = fileContentsUInt8.slice(chunkStart, chunkEnd); // Slice will contain data from index chunkStart to index chunkEnd-1
+		console.log(typeof sliceUInt8, sliceUInt8);
+		UTF8decoder = new TextDecoder();
+		UTF8string = UTF8decoder.decode(sliceUInt8); // For char codes <=255, UTF8 and UTF16 decoding is the same
+		console.log(typeof UTF8string, UTF8string);
+		parametersLines = UTF8string.substr(0,UTF8string.length-2).split("\r\n");
+		parameters = [];
+		parametersLines.forEach((dataLine) => {
+			parameter = dataLine.split("=");
+			par = parameter[0].trim();
+			v = parameter[1].trim();
+			console.log(par,v);
+			//parameters.push({});
+			parameters[par] = v;
+		});
+		console.log(parameters);
+		
+		dataLinesCount = parameters["FILE_RECORDS"] - parameters["LABEL_RECORDS"];
+		dataLength = dataLinesCount * parameters["RECORD_BYTES"];
+		chunkStart = parameters["LABEL_RECORDS"] * parameters["RECORD_BYTES"];
+		chunkEnd = fileContentsUInt8.length;
+		sliceUInt8 = fileContentsUInt8.slice(chunkStart, chunkEnd); // Slice will contain data from index chunkStart to index chunkEnd-1
+		console.log(typeof sliceUInt8, sliceUInt8);
+		UTF8decoder = new TextDecoder();
+		UTF8string = UTF8decoder.decode(sliceUInt8); // For char codes <=255, UTF8 and UTF16 decoding is the same
+		dataLines = UTF8string.split("\r\n");
+		console.log(typeof dataLines, dataLines);
+
+		XYZlines = [];
+		XYZfile = "";
+        dataLines.forEach((dataLine) => {
+			if (dataLine) {
+				lineArr = dataLine.split(",");
+				xVal = lineArr[2].trim();
+				yVal = lineArr[3].trim();
+				zVal = lineArr[4].trim();
+				grayVal = lineArr[5].trim()*1/16;
+				XYZline = xVal+ " " + yVal + " " + zVal + " " +  grayVal + " " +  grayVal + " " +  grayVal;
+	            XYZlines.push(xVal+ " " + yVal + " " + zVal + " " +  grayVal + " " +  grayVal + " " +  grayVal);
+                XYZfile += XYZline + "\r\n";
+			}
+		});
+		console.log(XYZlines);
+        saveFile(XYZfile,"test.txt");
+
+	}
+
+const convertArrayToObject = (array, key) => {
+  const initialValue = {};
+  return array.reduce((obj, item) => {
+    return {
+      ...obj,
+      [item[key]]: item,
+    };
+  }, initialValue);
+};
+
+	</script>
+Load and Save text file locally.<br>
+<br>
+	<input type="file" id="inpFile" width="100"><br>
+	Status: <span id="status" name="status">-</span>
+	<button id="btnSave" name="btnSave" onclick="saveFile(rawFileContents, myName)")>Save...</button><br>
+	<button id="btnProcess" name="btnProcess" onclick="processFile()">Process file</button><br>
+	<br>
+	See console for output.
+
+</body>
+<script>
+		const fileSelector = document.getElementById('inpFile');
+		fileSelector.addEventListener('change', (event) => loadFile(event.target.files[0]));
+		console.log("Ready.");
+		document.getElementById("status").innerHTML = "READY.";
+</script>
+</html>
