@@ -78,3 +78,30 @@ end_header                 { delimits the end of the header }
 3 2 6 7 
 3 3 7 4 
 ```
+
+# Files repositories
+
+## Naming convention
+
+### Visible images
+- [Navcam - mer2no_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/) 
+- [Hazcam - mer2ho_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/)
+- [Pancam - mer2po_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/) 
+
+### Mesh/3d
+- [Navcam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) 
+- [Hazcam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
+- [Pancam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
+
+### Mosaics
+- [Navcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/)
+- [Hazcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/) (as above)
+- [Pancam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/) (as above)
+
+## Folders
+
+All links refer to navcam images for sol 1869 and site 137, the last site before Spirit got trapped in the "sand trap" of Troy, where its mission ended.
+
+- raw image products: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/edr/  (eff = Full Frame, eth = Thumbnails)
+- JPG versions of IMG products: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/edr/
+- 3d products (VIL, in VST format; .HT (height map), .pfb (Silicon Graphics _OpenGL Performer_, or _Iris Performer_):  [https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/sol1869/edr/](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/)
