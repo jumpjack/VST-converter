@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: monospace;
+    }
+
+    #xmlToJSON {
+      margin-top: 20px;
+      line-height: 25px;
+    }
+  </style>
+<script type='text/javascript' src='https://code.jquery.com/jquery-3.5.1.min.js'></script>
+<script type='text/javascript' src="https://cdn.rawgit.com/abdmob/x2js/master/xml2json.js"></script>  </head>
+</head>
+  <body>
+
+<script>
+/////////////////////////
+// Extract data from PDS4 XML labels of MER2 products, to show on a map where each image was taken and were the camera was pointed
+/////////////////////////
+//
+// v. 0.1.0 - only reading and storing data is implemented; to do: show data on canvas
+
+	const START_MARKER = '<A HREF="';
+	const END_MARKER = '">';
+	const PROXY = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+	const SERVER_URL = "https://pds-geosciences.wustl.edu";
+	var PAGE_URL = "/mer/mer2-m-pancam-3-radcal-sci-v2/mer2pc_1002/data/sol1867";
+
+  const MAXDEBUG = 10; // max number of files processed
+
+	var toolsList = [];
+	var toolsListTable = [];
+
+  httpRequest = (PROXY, rawurl, method = 'GET', type="XML") => {
+	// XML = process single file
+	// files = retrieve list of files
+		var filesList2 = [];
+		url = PROXY + rawurl;
+console.log(">>>FILE:",url);
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+					if (type === "XML") {
+						decodeXML(xhr.responseText, rawurl);
+					}
+					if (type === "list") {
+						filesList = xhr.responseText.split("<br>"); // Split files list line by line
+						filesList.forEach( (element) => { // Process each element of files list to extract full url of the file to retrieve it
+							stringStart = element.indexOf(START_MARKER) + START_MARKER.length;
+							stringEnd = element.indexOf( END_MARKER, stringStart + 1 ) - 1;
+							stringLength = stringEnd - stringStart + 1;
+							finalString = element.substr(stringStart,stringLength);
+							if (finalString.toUpperCase().indexOf("XML")>0) {
+								filesList2.push(SERVER_URL + finalString); // Add url to urls list
+							}
+						}
+						);
+						pippo = filesList2;
+						debugStop = 0;
+						filesList2.forEach( (element) => { // Download and process each file
+							debugStop++;
+							if (debugStop < MAXDEBUG ) {
+              	httpRequest(PROXY, element,"GET","XML")
+							}
+						}
+						);
+					}
+				}
+        else {
+				console.log("ERROR!");
+
+				reject(new Error(xhr.responseText));
+				}
+      };
+      xhr.send();
+    });
+  }
+
+
+
+function resolve(a) {
+console.log("OK",a);
+}
+
+
+function reject(a) {
+console.log("ERROR",a);
+}
+
+
+function decodeXML(data, parentUrl) {
+  var xmlData = "";
+  if (data !== null && data.trim().length !== 0) {
+    try { // Test if actually XML file
+      xmlData = $.parseXML(data);
+    } catch (e) {
+      throw e;
+    }
+    var x2js = new X2JS();
+    XML = x2js.xml2json(xmlData);
+		tools = XML.Product_Observational.Observation_Area.Discipline_Area.Geometry.Geometry_Lander.Articulation_Device_Parameters;
+    for (toolIndex=0;toolIndex < tools.length; toolIndex++) {
+			toolId = tools[toolIndex].device_id.__text;
+			toolName = tools[toolIndex].device_name.__text;
+			if (tools[toolIndex].Device_Angle) {
+				toolAngles = [];
+        toolAnglesRow = "";
+				anglesNames = "";
+				toolAnglesList = tools[toolIndex].Device_Angle.Device_Angle_Index;
+				for (angleIndex = 0; angleIndex < toolAnglesList.length; angleIndex++) {
+          toolAngleName = tools[toolIndex].Device_Angle.Device_Angle_Index[angleIndex].index_name.__text
+					toolAngleVal = tools[toolIndex].Device_Angle.Device_Angle_Index[angleIndex].index_value_angle.__text
+          toolAngles.push({
+            name : toolAngleName,
+						val : toolAngleVal
+					});
+          toolAnglesRow += toolAngleVal + "\t";
+          anglesNames += toolAngleName + "\t";
+				}
+			} else {
+        toolAngles = "n/a"
+        toolAnglesRow = "";
+        anglesNames = "";
+			}
+			toolsList.push(
+				{
+					parentImage : parentUrl,
+					id : toolId,
+					name : toolName,
+					angles : toolAngles,
+				}
+			);
+      toolsListTableprev = toolsListTable;
+      toolsListTable += parentUrl.replace(SERVER_URL + PAGE_URL,"") + "\t" + toolId + "\t" + toolName + "\t" + toolAnglesRow + "\t" + anglesNames + "\n\l";
+		}
+		//if (toolsListTable === toolsListTableprev) {
+			console.log("FINALE=",toolsList);
+			//console.log("FINALE=",toolsListTable);
+	//	}
+  }
+}
+
+  $(document).ready(function () {
+    $("#xmlToJSON").click(function () {
+			var MY_URL_1=SERVER_URL + PAGE_URL;
+			var url_1 = PROXY + encodeURIComponent(MY_URL_1);
+			httpRequest(PROXY, MY_URL_1,"GET","list");
+			//httpRequest(PROXY, MY_URL_2,"GET","XML");
+    });
+  });
+
+</script>
+
+
+  </body>
+</html>
+
+
+
+
+<body>
+  <h2>Extract data from PDS4 labels in XML format from https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-3-radcal-sci-v2/mer2pc_1002/data</h2>
+  <div>
+Click button and check console.<br>
+  </div>
+  <button id="xmlToJSON">Convert XML to JSON</button>
+</body>
+
+</html>
