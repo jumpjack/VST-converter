@@ -34,19 +34,7 @@ There were 4 cameras onboard:
 
 Products/images are grouped by "site", i.e. reference points fixed along rover course; at each site 1 ore more "observations" may be associated.
  
-Explanation of 2N292280938XYLB100P0703L0M1 name:
 
--  2 = MER2
--  N = NAVCAM
--  292280938 = Timestamp
--  XYL = Product type
--  B1 = Site 137
--  00 = Position 0
--  P0703 = Navcam Observation n.0703
--  L = Left camera
--  0 = no filter
--  M = Creator of the file
--  1 = version of the file
 
 -------
 # PLY format for reference
@@ -108,3 +96,30 @@ All links refer to navcam images for sol 1869 and site 137, the last site before
     - https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/edr/
 - 3d products (VIL, in VST format; .HT (height map), .pfb (Silicon Graphics _OpenGL Performer_, or _Iris Performer_):  
     - https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/
+
+## Focusing on specific product: 2n292280938xxxxxxxxxx
+
+Explanation of generic 2N292280938...B100P0703L0M1 name:
+
+-  2 = MER2
+-  N = NAVCAM
+-  292280938 = Sol 1869
+-  ... = Product type (XYZ, VIL, FFL,...)
+-  B1 = Site 137
+-  00 = Position 0
+-  P = Navcam/Pancam observation
+-  0703 = Observation n.0703
+-  L = Left camera
+-  0 = no filter
+-  M = Creator of the file
+-  1 = version of the file
+
+### Available 3d products:
+
+- Point cloud - [XYL (XYZ linearized)](https://an.rsl.wustl.edu/mera/merxbrowser/downloadFile.aspx?cc=PR&ct=PR&ici=2N292280938XYLB100P0703L0M1)
+- Multi-resolution textured mesh [VIL (ViSTa format, .vst extension)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2n292280938vilb100p0703l0m1.vst)
+- [Height Map(.ht)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.ht) ([label](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.lbl))
+- ??? - [Silicon Graphics OpenGL Perfomer Fast Binary format (.pfb)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.pfb)  ([label](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.lbl)) (**No readers/conveters available**)
+- ??? - Silicon Graphics IRIS Inventor (.iv)  (**Where?!?**) ([Inventors tool for Windows](https://sourceforge.net/p/inventor-tools/wiki/Home/),  [Coin3d](https://en.wikipedia.org/wiki/Coin3D),  [python iv2dae.py converter](https://github.com/li-zhiqi/iv2dae),  [ivconv C source](http://web.archive.org/web/20120104203132/http://people.sc.fsu.edu/~jburkardt/cpp_src/ivcon/ivcon.cpp) )
+
+
