@@ -122,3 +122,14 @@ Explanation of generic 2N292280938...B100P0703L0M1 name:
 - ??? - Silicon Graphics IRIS Inventor (.iv)  (**Where?!?**) ([Inventors tool for Windows](https://sourceforge.net/p/inventor-tools/wiki/Home/),  [Coin3d](https://en.wikipedia.org/wiki/Coin3D),  [python iv2dae.py converter](https://github.com/li-zhiqi/iv2dae),  [ivconv C source](http://web.archive.org/web/20120104203132/http://people.sc.fsu.edu/~jburkardt/cpp_src/ivcon/ivcon.cpp) )
 
 
+Visual representation of XYZ product; not technically useful because it mixes X, Y and Z data, but useful for a visual overview:
+
+![image](https://user-images.githubusercontent.com/1620953/175101311-26246539-8c68-4e4b-9f4b-6f2252266d4a.png)  ([Download it from notebook](https://an.rsl.wustl.edu/mera/merxbrowser/an3.aspx?))
+
+Visible image:
+
+![image](https://user-images.githubusercontent.com/1620953/175101558-0c6372cc-2980-463f-b07d-e4e8c83b3cba.png)
+
+
+
+
