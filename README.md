@@ -6,12 +6,11 @@ NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some
 - .ht : Heightmap: The file contains 1 to 3 bands, each band representing a depth map; first band contains raw values; second band contains also interpolated values; 3rd band, if present, contains estimated errors
 - .pfb: "Performer Fast Binary", used by ["IRIS Performer" or "OpenGL Performer" from Silicon Graphics ](https://en.wikipedia.org/wiki/OpenGL_Performer)(www.sgi.com), now dead; format details unknwon
 - .iv: Silicon Graphics "Iris Inventor" format;  not officially documented, but [here](https://github.com/rich-hart/3D_Graphics_File_Conversions/blob/master/ivcon.c) there is C source of **ivconv**, a program able to convert it to other formats, and here there is the python script  [iv2dae.py](https://github.com/li-zhiqi/iv2dae) (requires python collada package); modern software [OpenInventor](https://en.wikipedia.org/wiki/Open_Inventor) should be able to open them
-- **.vst: Used by ViSTa commercial software; widely documented in this [PDF](https://trs.jpl.nasa.gov/bitstream/handle/2014/12074/02-0907.pdf?sequence=1), also [sotred in this repository](https://github.com/jumpjack/VST-converter/blob/main/VST-format.pdf) for reference**
+- **.vst: Used by ViSTa commercial software; widely documented in this [PDF](https://trs.jpl.nasa.gov/bitstream/handle/2014/12074/02-0907.pdf?sequence=1), also [stored in this repository](https://github.com/jumpjack/VST-converter/blob/main/VST-format.pdf) for reference**
 
 ## VST format
 
 ![immagine](https://user-images.githubusercontent.com/1620953/174308474-c7169af2-da40-4133-8a7d-8a3d718c817e.png)
-
 
 - A .vst file contains multiple "Levels Of Depth" (LODs), i.e. multiple "3d files", each one with different resolution.
 - Each LOD contains 1 ore more "patches".
@@ -116,8 +115,8 @@ Explanation of generic 2N292280938...B100P0703L0M1 name:
 
 ### Available 3d products:
 
-- Point cloud - [XYL (XYZ linearized)](https://an.rsl.wustl.edu/mera/merxbrowser/downloadFile.aspx?cc=PR&ct=PR&ici=2N292280938XYLB100P0703L0M1)
-- Multi-resolution textured mesh [VIL (ViSTa format, .vst extension)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2n292280938vilb100p0703l0m1.vst)
+- Point cloud - [XYL (XYZ linearized), .img extension, multispectral BSQ image](https://an.rsl.wustl.edu/mera/merxbrowser/downloadFile.aspx?cc=PR&ct=PR&ici=2N292280938XYLB100P0703L0M1)
+- Multi-resolution textured mesh - [VIL (ViSTa format, .vst extension)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2n292280938vilb100p0703l0m1.vst)
 - [Height Map(.ht)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.ht) ([label](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.lbl))
 - ??? - [Silicon Graphics OpenGL Perfomer Fast Binary format (.pfb)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.pfb)  ([label](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/2mesh_1869_n_137_ffl_0_v1.lbl)) (**No readers/conveters available**)
 - ??? - Silicon Graphics IRIS Inventor (.iv)  (**Where?!?**) ([Inventors tool for Windows](https://sourceforge.net/p/inventor-tools/wiki/Home/),  [Coin3d](https://en.wikipedia.org/wiki/Coin3D),  [python iv2dae.py converter](https://github.com/li-zhiqi/iv2dae),  [ivconv C source](http://web.archive.org/web/20120104203132/http://people.sc.fsu.edu/~jburkardt/cpp_src/ivcon/ivcon.cpp) )
