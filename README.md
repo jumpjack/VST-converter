@@ -95,6 +95,7 @@ All links refer to navcam images for sol 1869 and site 137, the last site before
     - https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/edr/
 - 3d products (VIL, in VST format; .HT (height map), .pfb (Silicon Graphics _OpenGL Performer_, or _Iris Performer_):  
     - https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/
+    - https://pdsimage2.wr.usgs.gov/archive/mer2mw/mer2mw_0xxx/data/navcam/site0137/ (mirror)
 
 ## Focusing on specific product: 2n292280938xxxxxxxxxx
 
