@@ -6,7 +6,7 @@ NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some
 - .ht : Heightmap: The file contains 1 to 3 bands, each band representing a depth map; first band contains raw values; second band contains also interpolated values; 3rd band, if present, contains estimated errors
 - .pfb: "Performer Fast Binary", used by "IRIS Performer" or "OpenGL Performer" from Silicon Grpahics (www.sgi.com), now dead; format details unknwon
 - .iv: "Inventor" format; only for internal NASA use, not released to public
-- **.vst: Used by ViSTa commercial software; widely documented in https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf , the document used to write source in this repository.**
+- **.vst: Used by ViSTa commercial software; widely documented in this [PDF](https://trs.jpl.nasa.gov/bitstream/handle/2014/12074/02-0907.pdf?sequence=1), also sotred in this repository for reference**
 
 ## VST format
 
