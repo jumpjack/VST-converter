@@ -4,6 +4,11 @@ Author: user "Indian3000"
 
 Several versions of this SW exist. Instructions differ from one version to another.
 
+![image](https://user-images.githubusercontent.com/1620953/175532470-ffb547b6-7702-4bb0-8591-294a31362fea.png)
+
+![image](https://user-images.githubusercontent.com/1620953/175532505-a73f1de6-efdb-467d-aefd-88ed3848deda.png)
+
+
 # Instructions
 
 ## MarsRoverCenter3DSiteViewer_ALPHA_1_base (Forum post [#195](http://www.unmannedspaceflight.com/index.php?showtopic=2735&view=findpost&p=85129)):
