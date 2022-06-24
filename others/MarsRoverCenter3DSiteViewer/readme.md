@@ -39,7 +39,7 @@ you can not mix Differentes sites, ou can load only same site files.
 add only EFF and [RSD](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) left-eye product.
 
 **In 3D terrain TAB**
-Add only  https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ file ( and you need the corresponding RSL left-eye product in the same directory )
+Add only  [XYL](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) file ( and you need the corresponding [RSL](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) left-eye product in the same directory )
 
 **In VST TAB**
 add Only [.vst](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/) file.
@@ -47,7 +47,29 @@ add Only [.vst](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/dat
 For vst texture  try to find in the same directory the corresponding RSL file or in a pds local structure (config file)
 example : 1n136278048vil1600p1980l0m1.vst texture is 1n136278048rsl1600p1980l0m1.img
 
+### Control Keys
+Arrows -> Navigation
+Enter -> Rover Mode
 
+in Rover Mode.
+N : Next Frame.
+V : Left rotation
+B : Right rotation
+
+in all mode
+Q : FOV++
+S : FOV--
+
+Mouse Control :
+Left click for pan.
+Middle click for rotation.
+Wheel for zoom.
+
+--------
+
+Example of needed folder structure on local hard disk:
+
+![image](https://user-images.githubusercontent.com/1620953/175525936-4364d299-26e5-43fe-969e-3988ecd14f7c.png)
 
 -----------------
 
