@@ -6,7 +6,7 @@ A couple of programs to convert .VST files in ViSTa format to other formats, by 
 - source code: 
     - post: http://www.unmannedspaceflight.com/index.php?showtopic=2735&view=findpost&p=55673
     - .zip: http://www.unmannedspaceflight.com/index.php?act=attach&type=post&id=5859
-    - in this repo: link
+    - in this repo: [link](https://github.com/jumpjack/VST-converter/blob/main/others/VST2something/vst2x3d.cpp)
 
 # VST2OBJ
 
