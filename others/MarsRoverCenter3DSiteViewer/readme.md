@@ -51,6 +51,12 @@ example : 1n136278048vil1600p1980l0m1.vst texture is 1n136278048rsl1600p1980l0m1
 
 Note: You can use \*RSL*\.IMG.jpg file in /browse rather than /data directory, but _only RSL_, not XYL in browse directory.
 
+For the path (white line) and reference possitions (Red-Green-Blue line)  use Rover Motion Counter Data on:
+- http://pds-geosciences.wustl.edu/geodata/mer1-m-eng-6-rmc-ops-v1/ (dead link, try https://pds-geosciences.wustl.edu/mer/mer1-m-eng-6-rmc-ops-v1/mer1rm_0xxx/data/, but these files have been ported to PDS4 format)
+ - http://pds-geosciences.wustl.edu/geodata/mer2-m-eng-6-rmc-ops-v2/ (dead link, try https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/, but these files have been ported to PDS4 format)
+
+*Warning*: some datas are bad in this file, they need to be filter
+
 ### Control Keys
 - Arrows -> Navigation
 - Enter -> Rover Mode
