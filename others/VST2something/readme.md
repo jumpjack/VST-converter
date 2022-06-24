@@ -8,6 +8,12 @@ A couple of programs to convert .VST files in ViSTa format to other formats, by 
     - .zip: http://www.unmannedspaceflight.com/index.php?act=attach&type=post&id=5859
     - in this repo: [link](https://github.com/jumpjack/VST-converter/blob/main/others/VST2something/vst2x3d.cpp)
 
+Syntax:
+
+vst2x3d filename.vst
+
+The output .x3d files will get the name from the input; one .obj file per each LOD (Level Of Detail) will be generated.
+
 # VST2OBJ
 
 - post: http://www.unmannedspaceflight.com/index.php?showtopic=2456&view=findpost&p=47156
@@ -24,16 +30,35 @@ Example output while processing:
 ![image](https://user-images.githubusercontent.com/1620953/175543027-276a8750-5ada-4747-b340-4f2c958eb1e5.png)
 
 
-# Files
+    
+ ## Example files
+- VST (mesh):    https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/
+- IMG (texture): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
+- JPG (texture): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/ 
+- (RGB (texture): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/)
+
+
+
+Resulting mesh viewed in meshmixer (LOD0, LOD1, LOD2):
+
+![image](https://user-images.githubusercontent.com/1620953/175543720-6eab9735-9ad5-425f-8af8-78336f2a6f42.png)
+
+
+----
+# XYZtoVRML
+
+
+## Files
 - Donwload 3d data (XYL products) here:  https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
 - For texture you must download FFL products from here:
     - [Raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/)
     - [Browse (jpg)](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/)
-    
- ## Example files
+
+## Browse version of texture
  - XYL (point cloud): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/2n292280938xylb100p0703l0m1.img
  - FFL (texure) raw: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/2n292280938fflb100p0703l0m1.img
  - FFL (texture jpg): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/2n292280938fflb100p0703l0m1.img.jpg
+
 
 
 Browse version of texture:
@@ -44,8 +69,3 @@ Browse version of texture:
 Browse version of XYZ data (x, Y, Z bands mized together):
 
 ![image](https://user-images.githubusercontent.com/1620953/175541431-d24d22bd-f845-4ce9-b37c-499b92e01b22.png)
-
-Resulting mesh viewed in meshmixer (LOD0, LOD1, LOD2):
-
-![image](https://user-images.githubusercontent.com/1620953/175543720-6eab9735-9ad5-425f-8af8-78336f2a6f42.png)
-
