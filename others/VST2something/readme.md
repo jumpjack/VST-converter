@@ -3,6 +3,10 @@ A couple of programs to convert .VST files in ViSTa format to other formats, by 
 # VST2X3D
 - post: http://www.unmannedspaceflight.com/index.php?showtopic=2456&view=findpost&p=46824
 - direct .zip download: http://www.unmannedspaceflight.com/index.php?act=attach&type=post&id=4656
+- source code: 
+    - post: http://www.unmannedspaceflight.com/index.php?showtopic=2735&view=findpost&p=55673
+    - .zip: http://www.unmannedspaceflight.com/index.php?act=attach&type=post&id=5859
+    - in this repo: link
 
 # VST2OBJ
 
