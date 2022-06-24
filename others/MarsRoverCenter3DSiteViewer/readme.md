@@ -10,6 +10,8 @@ Several versions of this SW exist. Instructions differ from one version to anoth
 
 ### Requirements
 
+- MarsRoverCenter3DSiteViewer_ALPHA_1_base.zip 
+- MarsRoverCenter3DSiteViewer_ALPHA_1_data.zip
 - .NET Framework 2.0.
 - sql server 2005 express ( or full version work too )
 - DirectX 9.0c
@@ -48,22 +50,22 @@ For vst texture  try to find in the same directory the corresponding RSL file or
 example : 1n136278048vil1600p1980l0m1.vst texture is 1n136278048rsl1600p1980l0m1.img
 
 ### Control Keys
-Arrows -> Navigation
-Enter -> Rover Mode
+- Arrows -> Navigation
+- Enter -> Rover Mode
 
 in Rover Mode.
-N : Next Frame.
-V : Left rotation
-B : Right rotation
+- N : Next Frame.
+- V : Left rotation
+- B : Right rotation
 
 in all mode
-Q : FOV++
-S : FOV--
+- Q : FOV++
+- S : FOV--
 
 Mouse Control :
-Left click for pan.
-Middle click for rotation.
-Wheel for zoom.
+- Left click for pan.
+- Middle click for rotation.
+- Wheel for zoom.
 
 --------
 
