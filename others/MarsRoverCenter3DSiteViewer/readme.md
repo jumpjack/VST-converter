@@ -43,7 +43,7 @@ BUT
 you can not mix Differentes sites, ou can load only same site files. 
 
 **In Panarama TAB**
-add only EFF and [RSD](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) left-eye product.
+add only [EFF](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/edr/) and [RSD](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) left-eye product.
 
 **In 3D terrain TAB**
 Add only  [XYL](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) file ( and you need the corresponding [RSL](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) left-eye product in the same directory )
