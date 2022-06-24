@@ -49,6 +49,8 @@ add Only [.vst](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/dat
 For vst texture  try to find in the same directory the corresponding RSL file or in a pds local structure (config file)
 example : 1n136278048vil1600p1980l0m1.vst texture is 1n136278048rsl1600p1980l0m1.img
 
+Note: You can use \*RSL*\.IMG.jpg file in /browse rather than /data directory, but _only RSL_, not XYL in browse directory.
+
 ### Control Keys
 - Arrows -> Navigation
 - Enter -> Rover Mode
@@ -76,7 +78,7 @@ Example of needed folder structure on local hard disk:
 -----------------
 
 Files:
- - \*RSD\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ -  ([.JPG](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/))
- - \*RSL\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ - ([.JPG](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/))
- - \*XYL\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ - ([.JPG](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/))
+ - \*RSD\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ -  ([.JPG, browse version](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/))
+ - \*RSL\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/ - ([.JPG, browse version](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/))
+ - \*XYL\*.img: https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
  - .VST (VIL products), .RGB (XYL products): https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/
