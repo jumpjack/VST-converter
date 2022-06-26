@@ -94,6 +94,40 @@ quaternion is the **orientation of the rover with respect to North/Nadir**.
 
  Source: https://stackoverflow.com/a/37560411/1635670
  
+ - Heading/yaw/azimuth
+ - Attitude/pitch/elevation
+ - Bank/roll
+ 
+Navcam example:
+
+  ORIGIN_ROTATION_QUATERNION     = (0.317432, 0.21062, -0.0725336, 0.921746)
+
+
+
+- Heading/yaw/azimuth = 2.47455 <rad>
+- Attitude/pitch/elevation = -0.503045 <rad>,
+- Bank/roll = 0
+ 
+ HGA:
+ 
+ ARTICULATION_DEVICE_ANGLE       = (2.87999 <rad>,0.0198351 <rad>)
+ 
+ -------
+ 
+ Download sites offsets in webgeocalc:
+ 
+ ![image](https://user-images.githubusercontent.com/1620953/175817835-cad1e5b1-6ff5-4405-82db-caa5c4604cce.png)
+
+ 
+ Site 1: 0.00027372 -0.00013544 1.82981479E-05
+ Site 2: 0 0 0
+ Site 3: 0.00108620 0.00215135 0.00157696
+ Site 4:-0.00810873 -0.01363858 0.00211876
+ Site 5: -0.01995905 -0.03136190 0.01249671
+ Site 137: -0.88704783 -2.89441062 -1.97389476
+
+
  ----
+ 
 https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/
 
