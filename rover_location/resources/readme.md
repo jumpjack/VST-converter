@@ -1,5 +1,10 @@
 Troy resources
 
+[Simulated image:](https://www.planetary.org/articles/04-30-mer-update-5)
+
+![Uploading image.png…]()
+
+
 [Navcam sol 1869:](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/browse/sol1869/rdr/2p292281357fflb100p2359l2m1.img.jpg)
 
 ![image](https://user-images.githubusercontent.com/1620953/175824482-d3603b7f-cf52-4484-b939-23e9900a466d.png)
