@@ -1,6 +1,6 @@
 Troy resources
 
-[Navcam sol1870:](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/browse/sol1870/rdr/2r292377818fflb126p1395l0m1.img.jpg)
+[Navcam sol1870:]([https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/browse/sol1870/rdr/2r292377818fflb126p1395l0m1.img.jpg](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1870/rdr/2n292380548fflb159p0691l0m1.img.jpg))
 
 ![image](https://user-images.githubusercontent.com/1620953/175823559-54c77150-fa5e-4302-a94f-158597a84e6e.png)
 
