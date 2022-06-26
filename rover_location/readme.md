@@ -78,7 +78,18 @@ assumed to be parallel**.
 When a Rover frame is defined with a Site as its reference (the normal case), then the orientation
 quaternion is the **orientation of the rover with respect to North/Nadir**.
  
+--------------
  
+ # Quaternion to Euler angles
+
+ Yaw, pitch, roll may be referred to as heading, attitude and bank respectively in some literature.
+ 
+
+- float roll  = atan2(2 * (v3 * v2 + s * v1) , 1 - 2 * (v1 * v1 + v2 * v2));
+- float pitch = asin(2 * (v2 * s - v3 * v1));
+- float yaw   = atan2(2 * (v3 * s + v1 * v2) , - 1 + 2 * (s * s + v1 * v1));
+
+ Source: https://stackoverflow.com/a/37560411/1635670
  
  ----
 https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/
