@@ -50,6 +50,36 @@ END_GROUP                         = PMA_ARTICULATION_STATE
  
  **How to do it?**  (I don't know as of now...)
  
-
+---------
+ Notes
+ ````
+ <solution solution_id="rmc_master_000" name="ROVER_FRAME" add_date="2004-01-04T07:30:56Z" index1="0" index2="0" index3="1" index4="14" index5="0">
+        <reference_frame name="SITE_FRAME" index1="0"/>
+        <offset x="-0.06" y="0.0" z="0.3"/>
+        <orientation s="0.114944" v1="0.0183351" v2="-0.0117768" v3="0.993133"/>
+        <derivation solution_id="mipl_hbm_pre-sunfind-quat-fix_1"/>
+    </solution>
+ ````
+ 
+Each coordinate frame instance is specified by an **orientation** and an **offset**:
+ 
+**Offset**: 3-space vector between the origin of the reference frame and the origin of the frame being defined (current = reference + origin).
+ 
+**Orientation**: quaternion representing the rotation of the current frame with respect
+to the reference frame (reference = current * orientation). The scalar part of the quaternion is listed first.
+ - s = scalar
+ - v = vector 1
+ - v2 = vector 2
+ - v3 = vector 3
+ 
+For MER, a Site frame will always have an orientation of identity (1,0,0,0); thus **all Site frames are
+assumed to be parallel**.
+ 
+When a Rover frame is defined with a Site as its reference (the normal case), then the orientation
+quaternion is the **orientation of the rover with respect to North/Nadir**.
+ 
+ 
+ 
+ ----
 https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/
 
