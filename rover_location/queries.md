@@ -1,8 +1,8 @@
 layers:
 
-- 0: SitePnts (137 sites)
+- 0: SitePnts (137 sites, only 132 returned)
 - 1: antPnts (?)
-- 2: 1stSolPnts (660 drives?)
+- 2: 1stSolPnts (660 drives? all 137 sites returned)
 - 3: merbTraverse (segments)
 
 Common url (Use "0" for sites, "2" for drives):
