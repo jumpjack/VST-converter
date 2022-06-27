@@ -1,10 +1,11 @@
-# Landing site position
+# Spirit
+
+## Landing site position
 
 There are various valuse for latitude and longitude of landing site, depending on source.
 
 From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm) 
 
-## Spirit
 - In MOLA IAU 2000 frame (1): 
      - Latitude:  -14.571892 N  
      - Longitude: 175.478480 E 
@@ -13,12 +14,35 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
      - Latitude:   -14.5690 N  
      - Longitude:  175.4729 E     
      
+     
+## Traverse map
+
 ### Resources in KML format for Google Earth  
  - [MOLA basemap](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/Abasemap/MapServer/generateKml)
  - [Route map v.1](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/generateKml)
  - [Route map v.2](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merATraverse4/MapServer/generateKml)
 
-#### MOLA basemap url
+https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/generateKml?docName=MER2_traverse_map&l:0=on&l:1=on&l:2=on&l:3=on&layers=0,1,2,3&layerOptions=nonComposite
+
+Parameters:
+- docName=MER2_traverse_map
+- l:0=on
+- l:1=on
+- l:2=on
+- l:3=on
+- layers=0,1,2,3
+- layerOptions=nonComposite
+
+Layers names:
+Layer 0: **SitePnts**       (sites points)
+Layer 1: **antPnts**        (???)
+Layer 2: **1stSolPnts**     (sol points)
+Layer 3: **merbTraverse**   (path lines)
+
+### MOLA basemap url to download of PNG image
+
+![immagine](https://user-images.githubusercontent.com/1620953/175939644-d2edaeb7-3282-419c-9a4f-a7b29c021f2a.png)
+
 
  - [Raw](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/Abasemap/MapServer/export?bbox=-1610.4237837504002%2C-865671.4374110398%2C1880.4909298295997%2C-862774.9735818899&bboxSR=&layers=all&layerDefs=&size=12288%2C9216&imageSR=&historicMoment=&format=png&transparent=false&dpi=&time=&layerTimeOptions=&dynamicLayers=&gdbVersion=&mapScale=&rotation=&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&f=html)
  - Exploded/cleaned:
@@ -32,11 +56,11 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
      - bbox= [bboxWest],[bboxSouth],[bboxEast],[bboxNorth]   or  [XMin],[YMin],[XMax],[YMax]
      - layers=all
      - size= Width, Height (in pixel)
-     - format=png    // Use format = json to see some metadata ,reported here below
+     - format=png  
      - transparent=false
-     - f=html
+     - f=html // (html, json, image, kmz; json to see some metadata, reported here below; kmz contains only link to image, not image data)
 
-#### JSON metatdata
+### JSON metatdata for basemap
 
 ````
 PROJCS["Equirectangular_MARS",
@@ -59,20 +83,20 @@ PROJCS["Equirectangular_MARS",
 ]
 ````
 
-#### Image corners (in meters?)
+### Image corners (in meters)
 
 - Xmin : -1610.4237837504002
 - Ymin : -865671.4374110398
 - Xmax : 1880.4909298295997
 - Ymax : -862774.9735818899
 
-#### Image size (in meters?)
-- Width : -2896.4638291499
-- Height: -3490.9147135799999
+### Image size (in meters)
+- Width : -3490.9147135799999
+- Height: -2896.4638291499000 
  
    
 
-## Opportunity:
+# Opportunity:
 
 - In MOLA IAU 2000 frame (1): 
   - Latitude:   -1.948282 N  
