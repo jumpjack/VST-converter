@@ -21,10 +21,8 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
  - [MOLA basemap](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/Abasemap/MapServer/generateKml)
  - [Route map v.1](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/generateKml)
  - [Route map v.2](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merATraverse4/MapServer/generateKml)
-
-https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/generateKml?docName=MER2_traverse_map&l:0=on&l:1=on&l:2=on&l:3=on&layers=0,1,2,3&layerOptions=nonComposite
-
-Parameters:
+ 
+ Parameters:
 - docName=MER2_traverse_map
 - l:0=on
 - l:1=on
@@ -34,10 +32,21 @@ Parameters:
 - layerOptions=nonComposite
 
 Layers names:
-Layer 0: **SitePnts**       (sites points)
-Layer 1: **antPnts**        (???)
-Layer 2: **1stSolPnts**     (sol points)
-Layer 3: **merbTraverse**   (path lines)
+- Layer 0: **SitePnts**       (sites points; not working? (no data in KML))
+- Layer 1: **antPnts**        (???; not working? (no data in KML))
+- Layer 2: **1stSolPnts**     (sol points)
+- Layer 3: **merbTraverse**   (path lines)
+
+My reverse-engineered urls:
+ 
+ - [Route map to json](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/2/query?where=&text=&objectIds=&time=&geometry=%5B-1610.4237837504002%2C-865671.4374110398%2C1880.4909298295997%2C-862774.9735818899%5D&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=rmcSite%2CrmcDrive%2CrmcPose%2CfirstSol%2ClastSol%2CxCorrected%2CyCorrected&returnGeometry=true&returnTrueCurves=true&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&featureEncoding=esriDefault&f=pjson)
+ - [Route map to geojson](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/2/query?where=&text=&objectIds=&time=&geometry=%5B-1610.4237837504002%2C-865671.4374110398%2C1880.4909298295997%2C-862774.9735818899%5D&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=rmcSite%2CrmcDrive%2CrmcPose%2CfirstSol%2ClastSol%2CxCorrected%2CyCorrected&returnGeometry=true&returnTrueCurves=true&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&featureEncoding=esriDefault&f=geojson
+)
+
+Beware of location/feature 545, probably it contains wrong data:
+
+![immagine](https://user-images.githubusercontent.com/1620953/175960221-5cab14a5-9d28-4c16-b106-b01e266b985d.png)
+
 
 ### MOLA basemap url to download of PNG image
 
