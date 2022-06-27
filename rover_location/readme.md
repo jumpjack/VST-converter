@@ -1,3 +1,88 @@
+# Landing site position
+
+There are various valuse for latitude and longitude of landing site, depending on source.
+
+From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm) 
+
+## Spirit
+- In MOLA IAU 2000 frame (1): 
+     - Latitude:  -14.571892 N  
+     - Longitude: 175.478480 E 
+     
+- With respect to surface features in maps produced in the MOLA IAU 2000 cartographic reference frame:
+     - Latitude:   -14.5690 N  
+     - Longitude:  175.4729 E     
+     
+### Resources in KML format for Google Earth  
+ - [MOLA basemap](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/Abasemap/MapServer/generateKml)
+ - [Route map v.1](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merApub2/MapServer/generateKml)
+ - [Route map v.2](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/merATraverse4/MapServer/generateKml)
+
+#### MOLA basemap url
+
+ - [Raw](https://anmap.rsl.wustl.edu/arcgis/rest/services/MER/Abasemap/MapServer/export?bbox=-1610.4237837504002%2C-865671.4374110398%2C1880.4909298295997%2C-862774.9735818899&bboxSR=&layers=all&layerDefs=&size=12288%2C9216&imageSR=&historicMoment=&format=png&transparent=false&dpi=&time=&layerTimeOptions=&dynamicLayers=&gdbVersion=&mapScale=&rotation=&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&f=html)
+ - Exploded/cleaned:
+     - bbox=-1610.4237837504002,-865671.4374110398,1880.4909298295997,-862774.9735818899
+     - layers=all
+     - size=12288,9216
+     - format=png
+     - transparent=false
+     - f=html
+ - Explained:
+     - bbox= [bboxWest],[bboxSouth],[bboxEast],[bboxNorth]   or  [XMin],[YMin],[XMax],[YMax]
+     - layers=all
+     - size= Width, Height (in pixel)
+     - format=png    // Use format = json to see some metadata ,reported here below
+     - transparent=false
+     - f=html
+
+#### JSON metatdata
+
+````
+PROJCS["Equirectangular_MARS",
+	GEOGCS["GCS_MARS",
+		DATUM["D_Mars_2000",
+			SPHEROID[
+				"Mars_2000_IAU_IAG",
+				3396190.0, 169.8944472236118
+			]
+		],
+		PRIMEM["Reference_Meridian",0.0],
+		UNIT["Degree",0.0174532925199433]
+	],
+	PROJECTION["Plate_Carree"],
+	PARAMETER["false_easting",0.0],
+	PARAMETER["false_northing",0.0],
+	PARAMETER["central_meridian",175.5],
+	PARAMETER["scale_factor",1.0],
+	UNIT["Meter",1.0]
+]
+````
+
+#### Image corners (in meters?)
+
+- Xmin : -1610.4237837504002
+- Ymin : -865671.4374110398
+- Xmax : 1880.4909298295997
+- Ymax : -862774.9735818899
+
+#### Image size (in meters?)
+- Width : -2896.4638291499
+- Height: -3490.9147135799999
+ 
+   
+
+## Opportunity:
+
+- In MOLA IAU 2000 frame (1): 
+  - Latitude:   -1.948282 N  
+  - Longitude: 354.474170 E 
+- With respect to surface features in maps produced in the MOLA IAU 2000 cartographic reference frame:
+     - Latitude:     1.946200 N   
+     - Longitude:  354.473400 E 
+  
+--------
+
 To locate each image in its correction position on Mars, it is needed to know where the rover was located while taking the image: this is defined in field "ROVER_MOTION_COUNTER" of PDS label of each image.
 ROVER_MOTION_COUNTER is made of 5 values (see [documentation](https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/document/rmc_sis.pdf)):
  - Site
@@ -131,3 +216,22 @@ Navcam example:
  
 https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/
 
+
+
+# References
+ -  (1)
+**Report of the IAU/IAG working group on cartographic coordinates and rotational elements of the planets and satellites**
+    - Year: [2000](https://link.springer.com/article/10.1023/A:1013939327465) (Updated every 3 years)
+    - Cel. Mech. Dyn. Astron., 82, 83- 110, 2002.
+    - Authors: 
+        - Seidelmann, P.K.
+        - V.K. Abalakin
+        - M. Bursa
+        - M.E. Davies
+        - C. de Bergh
+        - J.H. Lieske
+        - J. Oberst
+        - J.L. Simon
+        - E.M. Standish
+        - P. Stooke
+        - P.C. Thomas
