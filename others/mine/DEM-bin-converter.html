@@ -12,6 +12,7 @@
 		// v.0.0.1 - Fist working version; model dimensions hardcoded manually
 		XYZstring = "";
 		XYZstringArr = [];
+		const MIN_VALID_VAL = 0;
 		var LINES;// = 588; //2700;
 		var  COLUMNS;// = 558; //2700;
 		const SAMPLES_SIZE = 1; // 4;
@@ -58,7 +59,11 @@ console.log(readChunks);
 						lineContents = [];
 						for (var currCol = 0; currCol < COLUMNS;  currCol++) {
 							floatVal = parseFloat(arrFileContents[fileOffset]);
-							XYZstring += currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
+							if (floatVal > MIN_VALID_VAL) {
+								XYZstring += currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
+							} else {
+                                XYZstring = "";
+							}
 		                    fileOffset++;
 						}
 					}
