@@ -3,7 +3,7 @@
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
-		Vertical factor: <input id="vert" name="vert" value = 100><br>
+		Vertical factor_: <input id="vert" name="vert" value = 100><br>
 		</body>
 
 		<script src="..\..\VST-utils.js"></script>
@@ -16,6 +16,10 @@
 		const SAMPLES_SIZE = 1; // 4;
 		const CHUNK_LEN = COLUMNS * SAMPLES_SIZE;
 		var vert = document.getElementById("vert").value*1;
+		var modelWidth = 167.07;
+		var modelHwight = 176.2;
+
+// columns : width = col : x
 		var startPos = 0;
 		const increment = CHUNK_LEN;
 
@@ -48,7 +52,7 @@
 						lineContents = [];
 						for (var currCol = 0; currCol < COLUMNS;  currCol++) {
 							floatVal = parseFloat(arrFileContents[fileOffset]);
-							XYZstring += currCol + " " + currLine + " " + floatVal*vert + "\n";
+							XYZstring += currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
 		                    fileOffset++;
 						}
 					}
