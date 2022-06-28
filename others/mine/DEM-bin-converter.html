@@ -1,0 +1,78 @@
+<html>
+    <body>
+		<input type="file" id="file-input" /><br>
+		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
+		<span id="status" name="status">-</span><br>
+		</body>
+
+		<script src="..\..\VST-utils.js"></script>
+
+		<script>
+		XYZstring = "";
+		XYZstringArr = [];
+		const LINES = 588; //2700;
+		const COLUMNS = 558; //2700;
+		const SAMPLES_SIZE = 1; // 4;
+		const CHUNK_LEN = COLUMNS * SAMPLES_SIZE;
+		var startPos = 0;
+		const increment = CHUNK_LEN;
+
+		function readSingleFile(e) {
+			var file = e.target.files[0];
+			if (!file) {
+					return;
+			}
+			parseFile(file,CHUNK_LEN,0);
+		}
+
+		function parseFile(file, chunk_size, offset) {
+			var myFile = file;
+			var totalFileSize = myFile.size; //getting the file size so that we can use it for loop statement
+			var readBytes=0;
+			var readChunks = 0;
+		//		var blob = myFile.slice(offset, offset + chunk_size); //slice the file by specifying the index(chunk size)
+				var reader = new FileReader();
+				reader.addEventListener('load', function (event) {
+					rawFileContents = event.target.result;
+		console.log("Contenuto raw:",rawFileContents);
+		//	        fileContentsUInt8 = new Uint8Array(rawFileContents);
+		//console.log("Contenuto Uint8:",fileContentsUInt8);
+					arrFileContents = rawFileContents.split(" ");
+		console.log("Contenuto arr:",arrFileContents);
+		//			while(readBytes <	COLUMNS * SAMPLES_SIZE * 5 ){  // debug totalFileSize
+		console.log(readChunks);
+					fileOffset = 0;
+					for (var currLine = 0; currLine < LINES; currLine++) {
+						lineContents = [];
+						for (var currCol = 0; currCol < COLUMNS;  currCol++) {
+							floatVal = parseFloat(arrFileContents[fileOffset]);
+							XYZstring += currCol + " " + currLine + " " + floatVal + "\n";
+		                    fileOffset++;
+						}
+					}
+					saveFile(XYZstring,"test.txt","status");
+
+
+			//			for (sampleIndex = 0; sampleIndex < COLUMNS * SAMPLES_SIZE; sampleIndex += SAMPLES_SIZE) {
+			//				floatVal = sliceToFloat32(rawFileContents, sampleIndex);
+			//				XYZline = sampleIndex/SAMPLES_SIZE + " " + readChunks + " " + floatVal;
+			//				XYZstringArr.push(XYZline);
+			//			}
+			//			output.value += XYZline + "\n";
+
+
+						readChunks++;
+		//			}
+
+				});
+		//		reader.readAsArrayBuffer(file);
+				reader.readAsText(file);
+		//		offset += chunk_size; // Increment the index position(chunk)
+		//		readBytes += chunk_size; // Keeping track of when to exit, by incrementing till we reach file size(end of file).
+		}
+
+
+
+			document.getElementById('file-input').addEventListener('change', readSingleFile, false);
+		</script>
+</html>
