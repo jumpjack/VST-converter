@@ -3,7 +3,7 @@
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
-		Vertical factor: <input id="vert" name="vert" value = 1><br>
+		Vertical factor_: <input id="vert" name="vert" value = 1><br>
 		</body>
 
 		<script src="..\..\VST-utils.js"></script>
@@ -53,7 +53,7 @@ console.log("Contenuto raw:",rawFileContents);
 					console.log(COLUMNS, LINES, minX, maxX, minY, maxY, modelWidth, modelHeight);
 console.log("Contenuto arr:",arrFileContents);
 console.log(readChunks);
-					fileOffset = 10;
+					fileOffset = 9;
 					for (var currLine = 0; currLine < LINES; currLine++) {
 						lineContents = [];
 						for (var currCol = 0; currCol < COLUMNS;  currCol++) {
