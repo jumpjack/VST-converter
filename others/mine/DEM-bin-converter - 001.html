@@ -12,13 +12,13 @@
 		// v.0.0.1 - Fist working version; model dimensions hardcoded manually
 		XYZstring = "";
 		XYZstringArr = [];
-		var LINES;// = 588; //2700;
-		var  COLUMNS;// = 558; //2700;
+		const LINES = 588; //2700;
+		const COLUMNS = 558; //2700;
 		const SAMPLES_SIZE = 1; // 4;
 		const CHUNK_LEN = COLUMNS * SAMPLES_SIZE;
 		var vert = document.getElementById("vert").value*1;
-		var modelWidth;// = 167.07;
-		var modelHeight;// = 176.2;
+		var modelWidth = 167.07;
+		var modelHeight = 176.2;
 
 		var startPos = 0;
 		const increment = CHUNK_LEN;
@@ -38,19 +38,9 @@
 			var readChunks = 0;
 				var reader = new FileReader();
 				reader.addEventListener('load', function (event) {
-					rawFileContents = event.target.result.replace("DSAA","");
+					rawFileContents = event.target.result;
 console.log("Contenuto raw:",rawFileContents);
-					temp = rawFileContents.split("\n").join(" ");
-					arrFileContents = temp.split(" ");
-                    COLUMNS =  arrFileContents[1];
-                    LINES =  arrFileContents[2];
-					minX = arrFileContents[3];
-					maxX = arrFileContents[4];
-					minY = arrFileContents[5];
-					maxY = arrFileContents[6];
-                    modelWidth  = maxX - minX;
-                    modelHeight = maxY - minY;
-					console.log(COLUMNS, LINES, minX, maxX, minY, maxY, modelWidth, modelHeight);
+					arrFileContents = rawFileContents.split(" ");
 console.log("Contenuto arr:",arrFileContents);
 console.log(readChunks);
 					fileOffset = 0;
