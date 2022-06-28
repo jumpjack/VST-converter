@@ -3,7 +3,7 @@
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
-		Vertical factor_: <input id="vert" name="vert" value = 1><br>
+		Vertical factor__: <input id="vert" name="vert" value = 1><br>
 		</body>
 
 		<script src="..\..\VST-utils.js"></script>
@@ -40,7 +40,7 @@
 				var reader = new FileReader();
 				reader.addEventListener('load', function (event) {
 					rawFileContents = event.target.result.replace("DSAA","");
-console.log("Contenuto raw:",rawFileContents);
+//console.log("Contenuto raw:",rawFileContents);
 					temp = rawFileContents.split("\n").join(" ");
 					arrFileContents = temp.split(" ");
 					COLUMNS =  arrFileContents[1];
@@ -52,8 +52,8 @@ console.log("Contenuto raw:",rawFileContents);
 					modelWidth  = maxX - minX;
 					modelHeight = maxY - minY;
 					console.log(COLUMNS, LINES, minX, maxX, minY, maxY, modelWidth, modelHeight);
-console.log("Contenuto arr:",arrFileContents);
-console.log(readChunks);
+//console.log("Contenuto arr:",arrFileContents);
+//console.log(readChunks);
 					fileOffset = 9;
 					for (var currLine = 0; currLine < LINES; currLine++) {
 						lineContents = [];
