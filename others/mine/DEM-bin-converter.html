@@ -3,7 +3,8 @@
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
-		Vertical factor__: <input id="vert" name="vert" value = 1><br>
+		Vertical factor: <input id="vert" name="vert" value = 1><br>
+		Min valid value: <input id="min" name="min" value = 0><br>
 		</body>
 
 		<script src="..\..\VST-utils.js"></script>
@@ -12,7 +13,7 @@
 		// v.0.0.1 - Fist working version; model dimensions hardcoded manually
 		XYZstring = "";
 		XYZstringArr = [];
-		const MIN_VALID_VAL = 0;
+		var MIN_VALID_VAL = document.getElementById("min").value*1;
 		var LINES;// = 588; //2700;
 		var  COLUMNS;// = 558; //2700;
 		const SAMPLES_SIZE = 1; // 4;
@@ -60,11 +61,12 @@
 						for (var currCol = 0; currCol < COLUMNS;  currCol++) {
 							floatVal = parseFloat(arrFileContents[fileOffset]);
 							if (floatVal > MIN_VALID_VAL) {
-								XYZstring += currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
+								XYZline = currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
 							} else {
-								XYZstring = "";
+								XYZline = "";
 								console.log("negative");
 							}
+							XYZstring += XYZline;
 							fileOffset++;
 						}
 					}
