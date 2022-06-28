@@ -1,5 +1,5 @@
 <html>
-    <body>
+	<body>
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
@@ -43,14 +43,14 @@
 console.log("Contenuto raw:",rawFileContents);
 					temp = rawFileContents.split("\n").join(" ");
 					arrFileContents = temp.split(" ");
-                    COLUMNS =  arrFileContents[1];
-                    LINES =  arrFileContents[2];
+					COLUMNS =  arrFileContents[1];
+					LINES =  arrFileContents[2];
 					minX = arrFileContents[3];
 					maxX = arrFileContents[4];
 					minY = arrFileContents[5];
 					maxY = arrFileContents[6];
-                    modelWidth  = maxX - minX;
-                    modelHeight = maxY - minY;
+					modelWidth  = maxX - minX;
+					modelHeight = maxY - minY;
 					console.log(COLUMNS, LINES, minX, maxX, minY, maxY, modelWidth, modelHeight);
 console.log("Contenuto arr:",arrFileContents);
 console.log(readChunks);
@@ -62,10 +62,10 @@ console.log(readChunks);
 							if (floatVal > MIN_VALID_VAL) {
 								XYZstring += currCol * modelWidth / COLUMNS + " " + currLine * modelHeight / LINES + " " + floatVal*vert + "\n";
 							} else {
-                                XYZstring = "";
+								XYZstring = "";
 								console.log("negative");
 							}
-		                    fileOffset++;
+							fileOffset++;
 						}
 					}
 					saveFile(XYZstring,"test.txt","status");
