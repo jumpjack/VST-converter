@@ -3,7 +3,7 @@
 		<input type="file" id="file-input" /><br>
 		<textarea style="width:500px;height: 400px" id="output"></textarea><br>
 		<span id="status" name="status">-</span><br>
-		Vertical factor_: <input id="vert" name="vert" value = 100><br>
+		Vertical factor: <input id="vert" name="vert" value = 100><br>
 		</body>
 
 		<script src="..\..\VST-utils.js"></script>
@@ -17,7 +17,7 @@
 		const CHUNK_LEN = COLUMNS * SAMPLES_SIZE;
 		var vert = document.getElementById("vert").value*1;
 		var modelWidth = 167.07;
-		var modelHwight = 176.2;
+		var modelHeight = 176.2;
 
 // columns : width = col : x
 		var startPos = 0;
