@@ -1,6 +1,16 @@
 # VST-converter
 Converter for 3d mesh "VST" (ViSTa) files into modern 3d mesh files.
 
+2 versions available:
+
+- VST-converter.html: raw javascript; developed stopped at "patch" level and continued on VST-converter-kaitai.html
+- **VST-converter-kaitai.html**: based on VST parsing library created with kaitai-struct; please use this one; requires VST.js in same folder.
+- [others](https://github.com/jumpjack/VST-converter/tree/main/others/VST2something): other tools found around on forum or repositories
+    - VST2OBJ: converts to Wavefront .obj format; DOS executable
+    - VST2X3D: converts to X3D format; DOS execxutable; source code available
+    
+------------------
+
 NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some peculiar file formats to store 3d reconstructions of terrain:
 
 - .ht : Heightmap: The file contains 1 to 3 bands, each band representing a depth map; first band contains raw values; second band contains also interpolated values; 3rd band, if present, contains estimated errors
