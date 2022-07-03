@@ -23,16 +23,22 @@ NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some
 ![immagine](https://user-images.githubusercontent.com/1620953/174308474-c7169af2-da40-4133-8a7d-8a3d718c817e.png)
 
 - A .vst file contains multiple "Levels Of Depth" (LODs), i.e. multiple "3d files", each one with different resolution.
-- Each LOD contains 1 ore more "patches".
-- Each patch contains a number of "arrays"
-- An array can be a "face" (triangle) or a "point cloud", depending on a patch flag at offset 0x04 in patch header (0 = face, 1 = point cloud)
+- The higher the index of the LOD in the file, the higher is its resolution (= number of triangles)
+- Each LOD can contain 1 ore more "patches".
+- Each patch can contain a number of "arrays"
+- An array can be interpreted as a "group of faces" (triangles strip) or a "point cloud", depending on a patch flag at offset 0x04 in patch header (0 = face, 1 = point cloud)
 
-The higher the index of the LOD in the file, the higher is its resolution.
+In  case the array represents a triangle strip, its values must be read stright or in reverse depending  on position of triplet in the array:
+
+![image](https://user-images.githubusercontent.com/1620953/177045484-c5c8bfa2-60d9-46bf-855e-f239104a5eab.png)
+
 
 All of this means that each .VST file can be converted to a number of 3d files (one per each LOD) with different resolutions. 
 
 Archive of .vst files for MER Spirit:
 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/
+
+-----------
 
 There were 4 cameras onboard:
  - 1 Pancam
@@ -49,18 +55,18 @@ Products/images are grouped by "site", i.e. reference points fixed along rover c
 # PLY format for reference
 
 ```
-ply
-format ascii 1.0           { ascii/binary, format version number }
-comment made by anonymous  { comments keyword specified, like all lines }
-element vertex VVVV        { number of vertex in the LOD }
-property float32 x         { ok }
-property float32 y         { ok  }
-property float32 z         { ok  }
-element face FFFF          { number of faces in the LOD }
-property list uint8 int32 vertex_index    { each face is a list of int32 pointers to vertex; how many pointers is 
-                                           given by an uint8 value before the values}
-end_header                 { delimits the end of the header }
-0 0 0                      { start of vertex list }
+ply                         magic string
+format ascii 1.0            ascii/binary, format version number 
+comment made by anonymous   a comment starts by "comment" keyword 
+element vertex VVVV         number of vertex in the file 
+property float32 x          ok 
+property float32 y          ok  
+property float32 z          ok  
+element face FFFF           number of faces in the file 
+property list uint8 int32 vertex_index     each face is a list of int32 pointers to vertex; how many pointers is 
+                                           given by an uint8 value before the values
+end_header                  delimits the end of the header 
+0 0 0                       start of vertex list 
 0 0 1
 0 1 1
 0 1 0
@@ -68,7 +74,7 @@ end_header                 { delimits the end of the header }
 1 0 1
 1 1 1
 1 1 0
-3 0 1 2                   { start of face list; in VST all faces are triangles }
+3 0 1 2                   start of face list; in VST format all faces are triangles.
 3 7 6 5 
 3 0 4 5 
 3 1 5 6 
