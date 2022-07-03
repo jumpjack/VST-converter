@@ -4,7 +4,7 @@ Converter for 3d mesh "VST" (ViSTa) files into modern 3d mesh files.
 2 versions available:
 
 - VST-converter.html: raw javascript; developed stopped at "patch" level and continued on VST-converter-kaitai.html
-- **VST-converter-kaitai.html**: based on VST parsing library created with kaitai-struct; please use this one; requires VST.js in same folder.
+- **VST-converter-kaitai.html**: based on VST parsing library created with kaitai-struct; **please use this one**; requires VST.js in same folder; this file was  automatically created by [kaitai-struct](https://kaitai.io/) using my [VST.ksy](https://github.com/jumpjack/VST-converter/blob/main/VST.ksy) file. Such file can also be used to automatically create a VST library for other languages (java, c, c++. Perl, PHP, Python...)
 - [others](https://github.com/jumpjack/VST-converter/tree/main/others/VST2something): other tools found around on forum or repositories
     - VST2OBJ: converts to Wavefront .obj format; DOS executable
     - VST2X3D: converts to X3D format; DOS execxutable; source code available
