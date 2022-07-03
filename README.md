@@ -13,10 +13,10 @@ Converter for 3d mesh "VST" (ViSTa) files into modern 3d mesh files.
 
 NASA used for Spirit and Opportunity rovers (MER - Mars Exploration Rovers) some peculiar file formats to store 3d reconstructions of terrain:
 
-- .ht : Heightmap: The file contains 1 to 3 bands, each band representing a depth map; first band contains raw values; second band contains also interpolated values; 3rd band, if present, contains estimated errors
-- .pfb: "Performer Fast Binary", used by ["IRIS Performer" or "OpenGL Performer" from Silicon Graphics ](https://en.wikipedia.org/wiki/OpenGL_Performer)(www.sgi.com), now dead; format details unknwon
+- .ht : Heightmap: The file contains 1 to 3 bands, each band representing a depth map; first band contains raw values; second band contains also interpolated values; 3rd band, if present, contains estimated errors. [Example folder](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/).
+- .pfb: "Performer Fast Binary", used by ["IRIS Performer" or "OpenGL Performer" from Silicon Graphics ](https://en.wikipedia.org/wiki/OpenGL_Performer)(www.sgi.com), now dead; format details unknwon [Example folder](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/)
 - .iv: Silicon Graphics "Iris Inventor" format;  not officially documented, but [here](https://github.com/rich-hart/3D_Graphics_File_Conversions/blob/master/ivcon.c) there is C source of **ivconv**, a program able to convert it to other formats, and here there is the python script  [iv2dae.py](https://github.com/li-zhiqi/iv2dae) (requires python collada package); modern software [OpenInventor](https://en.wikipedia.org/wiki/Open_Inventor) should be able to open them
-- **.vst: Used by ViSTa commercial software; widely documented in this [PDF](https://trs.jpl.nasa.gov/bitstream/handle/2014/12074/02-0907.pdf?sequence=1), also [stored in this repository](https://github.com/jumpjack/VST-converter/blob/main/VST-format.pdf) for reference**
+- **.vst: Used by ViSTa commercial software; widely documented in this [PDF](https://trs.jpl.nasa.gov/bitstream/handle/2014/12074/02-0907.pdf?sequence=1), also [stored in this repository](https://github.com/jumpjack/VST-converter/blob/main/VST-format.pdf) for reference** - [Example folder](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/) (also contains greyscale textures in [uncompressed SGI RGB format](http://paulbourke.net/dataformats/sgirgb/) - source code for conversion: [readrgb.c](http://paulbourke.net/dataformats/sgirgb/readrgb.c), [readrgb.h](http://paulbourke.net/dataformats/sgirgb/readrgb.h))
 
 ## VST format
 
