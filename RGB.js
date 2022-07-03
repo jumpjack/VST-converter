@@ -19,6 +19,7 @@ var Rgb = (function() {
   }
   Rgb.prototype._read = function() {
     this.hdr = new Header(this._io, this, this._root);
+    this.image = new ImageData(this._io, this, this._root);
   }
 
   var Header = Rgb.Header = (function() {
@@ -43,13 +44,27 @@ var Rgb = (function() {
       this.name = this._io.readBytes(80);
       this.colorMapId = this._io.readBytes(4);
       this.filler = this._io.readBytes(404);
+    }
+
+    return Header;
+  })();
+
+  var ImageData = Rgb.ImageData = (function() {
+    function ImageData(_io, _parent, _root) {
+      this._io = _io;
+      this._parent = _parent;
+      this._root = _root || this;
+
+      this._read();
+    }
+    ImageData.prototype._read = function() {
       this.imageLines = new Array(1024);
       for (var i = 0; i < 1024; i++) {
         this.imageLines[i] = this._io.readBytes(1024);
       }
     }
 
-    return Header;
+    return ImageData;
   })();
 
   return Rgb;

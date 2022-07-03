@@ -7,7 +7,8 @@ meta:
 seq:
   - id: hdr
     type: header
-
+  - id : image
+    type: image_data
 types:
   header:
     seq:
@@ -37,7 +38,10 @@ types:
         size : 4
       - id : filler
         size : 404 # image data start at offset 512
+  image_data:
+    seq:
       - id :  image_lines
         size: 1024
         repeat: expr
         repeat-expr: 1024
+
