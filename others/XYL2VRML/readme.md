@@ -31,4 +31,15 @@ XYZ data:
 Texture:
 - [Raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/2n292280989fflb100p0703l0m1.img)
 - [Browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/2n292280989fflb100p0703l0m1.img.jpg)
-- [png]()
+- [png](https://github.com/jumpjack/VST-converter/blob/main/others/XYL2VRML/2n292280989fflb100p0703l0m1.png)
+
+
+Resulting point cloud viewed in Meshlab:
+
+![image](https://user-images.githubusercontent.com/1620953/177049187-107b4c38-a312-4062-9b20-a68650eb2f33.png)
+
+Context in texture image:
+
+![image](https://user-images.githubusercontent.com/1620953/177049405-9ef4f25f-e483-4eaa-ac1c-f75e37fc00ed.png)
+
+Note: the hole visible in the model is the low gain antenna, visible only in right-eye image of this navcam stereo pair.
