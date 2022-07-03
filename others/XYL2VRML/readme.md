@@ -9,21 +9,21 @@ If you have corresponding .png file in the same folder (with the label FFL), the
 
 ## XYZ data
 ### Navcam
- - [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/)
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/)
  - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/)
 
 ### Hazcam
- - [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/data/sol1869/rdr/)
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/data/sol1869/rdr/)
  - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/browse/sol1869/rdr/)
 
 
-## FFL images (textures)
+## FFL images (textures)  (Don't foget to convert to .png!)
 ### Navcam
- - [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/)
- -  [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/) 
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/)
+ - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/) 
 
 ### Hazcam
- - [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/data/sol1869/rdr/)
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/data/sol1869/rdr/)
  - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/browse/sol1869/rdr/)
 
 -----------
@@ -39,5 +39,5 @@ XYZ data:
 
 Texture:
 - [Raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/2n292280989fflb100p0703l0m1.img)
-- [Browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/2n292280989fflb100p0703l0m1.img.jpg)
+- [Browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/2n292280989fflb100p0703l0m1.img.jpg) (Don't foget to convert to .png!)
 
