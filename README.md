@@ -95,7 +95,7 @@ end_header                  delimits the end of the header
 - [Hazcam - mer2ho_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/)
 - [Pancam - mer2po_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/) 
 
-### Mesh/3d
+### Mesh/3d (.ht, **.vst**, .pfb)
 - [Navcam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) 
 - [Hazcam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
 - [Pancam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
@@ -104,6 +104,16 @@ end_header                  delimits the end of the header
 - [Navcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/)
 - [Hazcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/) (as above)
 - [Pancam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/) (as above)
+
+## Textures (FFL) for VST files:
+
+### Navcam
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/)
+ - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/rdr/)
+
+### Hazcam
+ -    [raw](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/data/sol1869/rdr/)
+ - [browse](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2ho_0xxx/browse/sol1869/rdr/)
 
 ## Folders
 
