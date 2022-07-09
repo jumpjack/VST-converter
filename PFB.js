@@ -8,7 +8,7 @@
   } else {
     root.Pfb = factory(root.KaitaiStream);
   }
-}(this, function (KaitaiStream) {
+}(typeof self !== 'undefined' ? self : this, function (KaitaiStream) {
 var Pfb = (function() {
   function Pfb(_io, _parent, _root) {
     this._io = _io;
@@ -22,9 +22,9 @@ var Pfb = (function() {
     this.unknown1 = this._io.readU4le();
     this.unknown2 = this._io.readU4le();
     this.unknown3 = this._io.readU4le();
-    this.nodes = new Array(8);
+    this.nodes = [];
     for (var i = 0; i < 8; i++) {
-      this.nodes[i] = new Node(this._io, this, this._root);
+      this.nodes.push(new Node(this._io, this, this._root));
     }
   }
 
@@ -40,9 +40,9 @@ var Pfb = (function() {
       this.size = this._io.readU4le();
       this.unk1 = this._io.readU4le();
       this.unk2 = this._io.readU4le();
-      this.list = new Array(this.size);
+      this.list = [];
       for (var i = 0; i < this.size; i++) {
-        this.list[i] = new CoordinatePair(this._io, this, this._root);
+        this.list.push(new CoordinatePair(this._io, this, this._root));
       }
     }
 
@@ -61,9 +61,9 @@ var Pfb = (function() {
       this.size = this._io.readU4le();
       this.unk1 = this._io.readU4le();
       this.unk2 = this._io.readU4le();
-      this.elements = new Array(this.size);
+      this.elements = [];
       for (var i = 0; i < this.size; i++) {
-        this.elements[i] = new Normal(this._io, this, this._root);
+        this.elements.push(new Normal(this._io, this, this._root));
       }
     }
 
@@ -99,9 +99,9 @@ var Pfb = (function() {
       this.size = this._io.readU4le();
       this.unk1 = this._io.readU4le();
       this.unk2 = this._io.readU4le();
-      this.elements = new Array(this.size);
+      this.elements = [];
       for (var i = 0; i < this.size; i++) {
-        this.elements[i] = this._io.readU4le();
+        this.elements.push(this._io.readU4le());
       }
     }
 
@@ -117,8 +117,12 @@ var Pfb = (function() {
       this._read();
     }
     Geosets.prototype._read = function() {
-      this.num = this._io.readU4le();
+      this.count = this._io.readU4le();
       this.size = this._io.readU4le();
+      this.geosets = [];
+      for (var i = 0; i < this.count; i++) {
+        this.geosets.push(new Geoset(this._io, this, this._root));
+      }
     }
 
     return Geosets;
@@ -133,9 +137,9 @@ var Pfb = (function() {
       this._read();
     }
     Materials.prototype._read = function() {
-      this.num = this._io.readU4le();
+      this.count = this._io.readU4le();
       this.size = this._io.readU4le();
-      this.body = this._io.readBytes((this.size * 4));
+      this.materials = this._io.readBytes((this.count * 4));
     }
 
     return Materials;
@@ -150,28 +154,12 @@ var Pfb = (function() {
       this._read();
     }
     Normal.prototype._read = function() {
-      this.x = this._io.readF4le();
-      this.y = this._io.readF4le();
-      this.z = this._io.readF4le();
+      this.nx = this._io.readF4le();
+      this.ny = this._io.readF4le();
+      this.nz = this._io.readF4le();
     }
 
     return Normal;
-  })();
-
-  var Unknown = Pfb.Unknown = (function() {
-    function Unknown(_io, _parent, _root) {
-      this._io = _io;
-      this._parent = _parent;
-      this._root = _root || this;
-
-      this._read();
-    }
-    Unknown.prototype._read = function() {
-      this.num = this._io.readU4le();
-      this.size = this._io.readU4le();
-    }
-
-    return Unknown;
   })();
 
   var Color = Pfb.Color = (function() {
@@ -183,10 +171,10 @@ var Pfb = (function() {
       this._read();
     }
     Color.prototype._read = function() {
-      this.r = this._io.readU4le();
-      this.g = this._io.readU4le();
-      this.b = this._io.readU4le();
-      this.a = this._io.readU4le();
+      this.r = this._io.readF4le();
+      this.g = this._io.readF4le();
+      this.b = this._io.readF4le();
+      this.a = this._io.readF4le();
     }
 
     return Color;
@@ -203,33 +191,13 @@ var Pfb = (function() {
     VertexLists.prototype._read = function() {
       this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
-      this.lists = new Array(this.count);
+      this.lists = [];
       for (var i = 0; i < this.count; i++) {
-        this.lists[i] = new VertexList(this._io, this, this._root);
+        this.lists.push(new VertexList(this._io, this, this._root));
       }
     }
 
     return VertexLists;
-  })();
-
-  var TexturesList = Pfb.TexturesList = (function() {
-    function TexturesList(_io, _parent, _root) {
-      this._io = _io;
-      this._parent = _parent;
-      this._root = _root || this;
-
-      this._read();
-    }
-    TexturesList.prototype._read = function() {
-      this.numTextures = this._io.readU4le();
-      this.totalSize = this._io.readU4le();
-      this.textures = new Array(this.numTextures);
-      for (var i = 0; i < this.numTextures; i++) {
-        this.textures[i] = new Texture(this._io, this, this._root);
-      }
-    }
-
-    return TexturesList;
   })();
 
   var TextcoordLists = Pfb.TextcoordLists = (function() {
@@ -241,11 +209,11 @@ var Pfb = (function() {
       this._read();
     }
     TextcoordLists.prototype._read = function() {
-      this.numLists = this._io.readU4le();
+      this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
-      this.lists = new Array(this.numLists);
-      for (var i = 0; i < this.numLists; i++) {
-        this.lists[i] = new CoordsList(this._io, this, this._root);
+      this.lists = [];
+      for (var i = 0; i < this.count; i++) {
+        this.lists.push(new CoordsList(this._io, this, this._root));
       }
     }
 
@@ -280,29 +248,13 @@ var Pfb = (function() {
       this.size = this._io.readU4le();
       this.unk1 = this._io.readU4le();
       this.unk2 = this._io.readU4le();
-      this.elements = new Array(this.size);
+      this.elements = [];
       for (var i = 0; i < this.size; i++) {
-        this.elements[i] = new Vertex(this._io, this, this._root);
+        this.elements.push(new Vertex(this._io, this, this._root));
       }
     }
 
     return VertexList;
-  })();
-
-  var Nodes = Pfb.Nodes = (function() {
-    function Nodes(_io, _parent, _root) {
-      this._io = _io;
-      this._parent = _parent;
-      this._root = _root || this;
-
-      this._read();
-    }
-    Nodes.prototype._read = function() {
-      this.num = this._io.readU4le();
-      this.size = this._io.readU4le();
-    }
-
-    return Nodes;
   })();
 
   var ColorsLists = Pfb.ColorsLists = (function() {
@@ -316,9 +268,9 @@ var Pfb = (function() {
     ColorsLists.prototype._read = function() {
       this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
-      this.lists = new Array(this.count);
+      this.lists = [];
       for (var i = 0; i < this.count; i++) {
-        this.lists[i] = new ColorsList(this._io, this, this._root);
+        this.lists.push(new ColorsList(this._io, this, this._root));
       }
     }
 
@@ -337,13 +289,48 @@ var Pfb = (function() {
       this.size = this._io.readU4le();
       this.unk1 = this._io.readU4le();
       this.unk2 = this._io.readU4le();
-      this.elements = new Array(this.size);
+      this.elements = [];
       for (var i = 0; i < this.size; i++) {
-        this.elements[i] = new Color(this._io, this, this._root);
+        this.elements.push(new Color(this._io, this, this._root));
       }
     }
 
     return ColorsList;
+  })();
+
+  var Geoset = Pfb.Geoset = (function() {
+    function Geoset(_io, _parent, _root) {
+      this._io = _io;
+      this._parent = _parent;
+      this._root = _root || this;
+
+      this._read();
+    }
+    Geoset.prototype._read = function() {
+      this.stripType = this._io.readU4le();
+      this.numStrip = this._io.readU4le();
+      this.lengthListId = this._io.readS4le();
+      this.unk1 = this._io.readU4le();
+      this.unk2 = this._io.readU4le();
+      this.unk3 = this._io.readU4le();
+      this.unk4 = this._io.readU4le();
+      this.unk5 = this._io.readU4le();
+      this.geostateId = this._io.readU4le();
+      this.data6b = this._io.readU4le();
+      this.data7 = this._io.readU4le();
+      this.data8 = this._io.readU4le();
+      this.mask = this._io.readU4le();
+      this.data9 = this._io.readU4le();
+      this.num = this._io.readU4le();
+      this.vec0 = this._io.readF4le();
+      this.vec1 = this._io.readF4le();
+      this.vec2 = this._io.readF4le();
+      this.vec3 = this._io.readF4le();
+      this.vec4 = this._io.readF4le();
+      this.vec5 = this._io.readF4le();
+    }
+
+    return Geoset;
   })();
 
   var Node = Pfb.Node = (function() {
@@ -357,11 +344,8 @@ var Pfb = (function() {
     Node.prototype._read = function() {
       this.type = this._io.readU4le();
       switch (this.type) {
-      case 14:
-        this.contents = new TUnknown(this._io, this, this._root);
-        break;
       case 10:
-        this.contents = new TUnknown(this._io, this, this._root);
+        this.contents = new Geosets(this._io, this, this._root);
         break;
       case 17:
         this.contents = new TUnknown(this._io, this, this._root);
@@ -379,12 +363,9 @@ var Pfb = (function() {
         this.contents = new NormalsLists(this._io, this, this._root);
         break;
       case 1:
-        this.contents = new TexturesList(this._io, this, this._root);
+        this.contents = new Textures(this._io, this, this._root);
         break;
-      case 13:
-        this.contents = new TUnknown(this._io, this, this._root);
-        break;
-      case 11:
+      case 27:
         this.contents = new TUnknown(this._io, this, this._root);
         break;
       case 12:
@@ -396,16 +377,10 @@ var Pfb = (function() {
       case 5:
         this.contents = new VertexLists(this._io, this, this._root);
         break;
-      case 15:
-        this.contents = new TUnknown(this._io, this, this._root);
-        break;
       case 8:
         this.contents = new TextcoordLists(this._io, this, this._root);
         break;
       case 9:
-        this.contents = new TUnknown(this._io, this, this._root);
-        break;
-      case 16:
         this.contents = new TUnknown(this._io, this, this._root);
         break;
       case 18:
@@ -420,6 +395,26 @@ var Pfb = (function() {
     return Node;
   })();
 
+  var Textures = Pfb.Textures = (function() {
+    function Textures(_io, _parent, _root) {
+      this._io = _io;
+      this._parent = _parent;
+      this._root = _root || this;
+
+      this._read();
+    }
+    Textures.prototype._read = function() {
+      this.count = this._io.readU4le();
+      this.totalSize = this._io.readU4le();
+      this.textures = [];
+      for (var i = 0; i < this.count; i++) {
+        this.textures.push(new Texture(this._io, this, this._root));
+      }
+    }
+
+    return Textures;
+  })();
+
   var Geostates = Pfb.Geostates = (function() {
     function Geostates(_io, _parent, _root) {
       this._io = _io;
@@ -429,8 +424,9 @@ var Pfb = (function() {
       this._read();
     }
     Geostates.prototype._read = function() {
-      this.num = this._io.readU4le();
-      this.size = this._io.readU4le();
+      this.count = this._io.readU4le();
+      this.totalSize = this._io.readU4le();
+      this.geostates = this._io.readBytes(this.totalSize);
     }
 
     return Geostates;
@@ -446,7 +442,7 @@ var Pfb = (function() {
     }
     Texture.prototype._read = function() {
       this.filename = new PfbString(this._io, this, this._root);
-      this.contents = this._io.readBytes(((Math.floor(this._parent.totalSize / this._parent.numTextures) - this.filename.len) - 4));
+      this.contents = this._io.readBytes(((Math.floor(this._parent.totalSize / this._parent.count) - this.filename.len) - 4));
     }
 
     return Texture;
@@ -463,9 +459,9 @@ var Pfb = (function() {
     LenghtsLists.prototype._read = function() {
       this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
-      this.lists = new Array(this.count);
+      this.lists = [];
       for (var i = 0; i < this.count; i++) {
-        this.lists[i] = new LengthsList(this._io, this, this._root);
+        this.lists.push(new LengthsList(this._io, this, this._root));
       }
     }
 
@@ -499,30 +495,13 @@ var Pfb = (function() {
     NormalsLists.prototype._read = function() {
       this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
-      this.lists = new Array(this.count);
+      this.lists = [];
       for (var i = 0; i < this.count; i++) {
-        this.lists[i] = new NormalsList(this._io, this, this._root);
+        this.lists.push(new NormalsList(this._io, this, this._root));
       }
     }
 
     return NormalsLists;
-  })();
-
-  var TGeostates = Pfb.TGeostates = (function() {
-    function TGeostates(_io, _parent, _root) {
-      this._io = _io;
-      this._parent = _parent;
-      this._root = _root || this;
-
-      this._read();
-    }
-    TGeostates.prototype._read = function() {
-      this.num = this._io.readU4le();
-      this.totalSize = this._io.readU4le();
-      this.body = this._io.readBytes(this.totalSize);
-    }
-
-    return TGeostates;
   })();
 
   var TUnknown = Pfb.TUnknown = (function() {
@@ -534,7 +513,7 @@ var Pfb = (function() {
       this._read();
     }
     TUnknown.prototype._read = function() {
-      this.num = this._io.readU4le();
+      this.count = this._io.readU4le();
       this.totalSize = this._io.readU4le();
       this.body = this._io.readBytes(this.totalSize);
     }

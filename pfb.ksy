@@ -18,55 +18,56 @@ seq:
     repeat-expr : 8
 
 types:
-  node:
+
+
+  t_unknown:   # Type 2, 17, 18, 27
+      seq:
+      - id: count
+        type : u4
+      - id: total_size
+        type: u4
+      - id : body
+        size : total_size
+
+
+###### lists of lists #####
+
+  materials:             # Type 0 - to do: define body (type "material")
     seq:
-    - id : type
-      type : u4
-    - id : contents
-      type :
-        switch-on: type
-        cases:
-          0: t_unknown
-          1: textures_list
-          2: t_unknown
-          3: t_unknown
-          4: lenghts_lists
-          5: vertex_lists
-          6: colors_lists
-          7: normals_lists
-          8: textcoord_lists
-          9: t_unknown
-          10: t_unknown
-          11: t_unknown
-          12: t_unknown
-          13: t_unknown
-          14: t_unknown
-          15: t_unknown
-          16: t_unknown
-          17: t_unknown
-          18: t_unknown
+      - id: count
+        type : u4
+      - id: size
+        type: u4
+      - id : materials
+        size : count * 4
 
-  t_unknown:
+
+
+  textures:              # Type 1 - readTextures
+    seq:
+      - id : count
+        type : u4
+      - id : total_size
+        type : u4
+      - id : textures
+        type : texture
+        repeat : expr
+        repeat-expr : count
+
+
+
+  geostates:             # Type 3 - to do: define body
       seq:
-      - id: num
+      - id: count
         type : u4
       - id: total_size
         type: u4
-      - id : body
-        size : total_size
-
-  t_geostates: # type 3
-      seq:
-      - id: num
-        type : u4
-      - id: total_size
-        type: u4
-      - id : body
+      - id : geostates
         size : total_size
 
 
 
-  lenghts_lists:  # Type 4   - readLengthLists()
+  lenghts_lists:         # Type 4   - readLengthLists()
     seq:
       - id : count
         type : u4
@@ -77,7 +78,9 @@ types:
         repeat : expr
         repeat-expr : count  # for (unsigned i=0; i<info.numLists; ++i) {   readLengthList(tree->getLengthList(i))   }
 
-  vertex_lists: # Type 5 - readVertexLists()
+
+
+  vertex_lists:          # Type 5 - readVertexLists()
     seq:
       - id : count
         type : u4
@@ -89,7 +92,8 @@ types:
         repeat-expr : count    #  for (unsigned i=0; i<info.numLists; ++i) {   readVertexList(tree->getVertexList(i))   )
 
 
-  colors_lists: # Type 6 #  readColorLists()
+
+  colors_lists:          # Type 6 #  readColorLists()
     seq:
       - id : count
         type : u4
@@ -102,7 +106,7 @@ types:
 
 
 
-  normals_lists: # Type 7 - readNormalLists()
+  normals_lists:         # Type 7 - readNormalLists()
     seq:
       - id : count
         type : u4
@@ -115,7 +119,60 @@ types:
 
 
 
-  lengths_list:  # readLengthList()
+  textcoord_lists:       # Type 8 - readTexcoordLists()
+    seq:
+      - id : count
+        type : u4
+      - id : total_size
+        type : u4
+      - id : lists
+        type : coords_list
+        repeat : expr
+        repeat-expr : count    #  for (unsigned i=0; i<info.numLists; ++i) {   readTexcoordList(tree->getTexcoordList(i))    )
+
+
+
+  geosets:               # Type 10 - to do
+    seq:
+    - id: count
+      type : u4
+    - id: size
+      type: u4
+    - id : geosets
+      type : geoset
+      repeat : expr
+      repeat-expr : count
+
+
+  node:                  # Type 12
+    seq:
+    - id : type
+      type : u4
+    - id : contents
+      type :
+        switch-on: type
+        cases:
+          0: t_unknown
+          1: textures
+          2: t_unknown    # TexEnv?
+          3: t_unknown    # GeoStates
+          4: lenghts_lists
+          5: vertex_lists
+          6: colors_lists
+          7: normals_lists
+          8: textcoord_lists
+          9: t_unknown
+          10: geosets
+          12: t_unknown   # node
+          17: t_unknown   # TexGens
+          18: t_unknown   # Light models
+          27: t_unknown   # Images
+
+
+#######  lists  ###########
+
+
+  lengths_list:  # readLengthList()  (type 4)
     seq:
       - id: size
         type: u4
@@ -129,7 +186,7 @@ types:
         repeat-expr : size # fread(list.get(0), 4, info.size, f); //  read "size" times a "4" group
 
 
-  vertex_list:  # readVertexList()
+  vertex_list:  # readVertexList()  (type 5)
     seq:
       - id: size
         type: u4
@@ -143,7 +200,7 @@ types:
         repeat-expr : size  # fread(list.get(0), 4*3, info.size, f); // Read "size" times a "4*3" group
 
 
-  colors_list:  # readColorList()
+  colors_list:  # readColorList()  (type 6)
     seq:
       - id: size
         type: u4
@@ -158,7 +215,7 @@ types:
 
 
 
-  normals_list:  # readNormalList()
+  normals_list:  # readNormalList()  (type 7)
     seq:
       - id: size
         type: u4
@@ -173,70 +230,7 @@ types:
 
 
 
-  vertex:
-    seq:
-      - id : x
-        type : f4
-      - id : y
-        type : f4
-      - id : z
-        type : f4
-
-  normal:
-    seq:
-      - id : x
-        type : f4
-      - id : y
-        type : f4
-      - id : z
-        type : f4
-
-
-  color: # debug: unknown format
-    seq:
-      - id : r
-        type : u4
-      - id : g
-        type : u4
-      - id : b
-        type : u4
-      - id : a
-        type : u4
-
-
-  textures_list:
-    seq:
-      - id : num_textures
-        type : u4
-      - id : total_size
-        type : u4
-      - id : textures
-        type : texture
-        repeat : expr
-        repeat-expr : num_textures
-
-
-  texture:
-    seq:
-      - id : filename
-        type : pfb_string
-      - id : contents
-        size :  _parent.total_size/_parent.num_textures - filename.len - 4  #232
-
-
-  textcoord_lists: # Type 8 - readTexcoordLists()
-    seq:
-      - id : num_lists
-        type : u4
-      - id : total_size
-        type : u4
-      - id : lists
-        type : coords_list
-        repeat : expr
-        repeat-expr : num_lists    #  for (unsigned i=0; i<info.numLists; ++i) {   readTexcoordList(tree->getTexcoordList(i))    )
-
-
-  coords_list:  # readTexcoordList()
+  coords_list:  # readTexcoordList() (type 8)
     seq:
       - id: size
         type: u4
@@ -249,12 +243,115 @@ types:
         repeat : expr
         repeat-expr : size  #  fread(list.get(0), 4*2, info.size, f);  // Read "size" times a "4*2" group
 
+
+
+###### elements ########
+
+  vertex:
+   # class PfbVertexList : public PfbList<float,3> {};
+    seq:
+      - id : x
+        type : f4
+      - id : y
+        type : f4
+      - id : z
+        type : f4
+
+
+  normal:
+    # class PfbNormalList : public PfbList<float,3> {};
+    seq:
+      - id : nx
+        type : f4
+      - id : ny
+        type : f4
+      - id : nz
+        type : f4
+
+
+  color: # debug: unknown format; rgba?
+    #class PfbColorList  : public PfbList<float,4> {};
+    seq:
+      - id : r
+        type : f4
+      - id : g
+        type : f4
+      - id : b
+        type : f4
+      - id : a
+        type : f4
+
+
+  texture:
+    seq:
+      - id : filename
+        type : pfb_string
+      - id : contents
+        size :  _parent.total_size/_parent.count - filename.len - 4  #232
+
+
+
   coordinate_pair: # of which texture file?!? To Do
+   # class PfbTexcoordList : public PfbList<float,2> {};
     seq:
       - id : s
         type : f4
       - id : t
         type : f4
+
+
+
+
+  geoset:
+    seq:
+      - id : strip_type
+        type : u4
+      - id : num_strip
+        type : u4
+      - id : length_list_id
+        type : s4
+
+     # Ignore:
+      - id : unk1
+        type : u4
+      - id : unk2
+        type : u4
+      - id : unk3
+        type : u4
+      - id : unk4
+        type : u4
+      - id : unk5
+        type : u4
+
+      # Id of the geostate:
+      - id : geostate_id
+        type : u4
+      - id : data6b
+        type : u4
+      - id : data7 # [2]
+        type : u4
+      - id : data8
+        type : u4
+      - id : mask
+        type : u4
+      - id : data9
+        type : u4
+      - id : num
+        type : u4
+
+      - id : vec0
+        type : f4
+      - id : vec1
+        type : f4
+      - id : vec2
+        type : f4
+      - id : vec3
+        type : f4
+      - id : vec4
+        type : f4
+      - id : vec5
+        type : f4
+
 
   pfb_string:
     seq:
@@ -321,48 +418,4 @@ types:
 
 
 # fread(destination, element size, number of elements, source file);
-
-  materials: # Type 0
-    seq:
-    - id: num
-      type : u4
-    - id: size
-      type: u4
-    - id : body
-      size : size * 4
-
-
-  geostates: # Type 3
-    seq:
-    - id: num
-      type : u4
-    - id: size
-      type: u4
-
-
-
-
-
-  geosets:  # Type 10
-    seq:
-    - id: num
-      type : u4
-    - id: size
-      type: u4
-
-  nodes:  # Type 12
-    seq:
-    - id: num
-      type : u4
-    - id: size
-      type: u4
-
-  unknown:  # Type 2, 17, 18, 27
-    seq:
-    - id: num
-      type : u4
-    - id: size
-      type: u4
-
-
 
