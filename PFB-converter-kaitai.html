@@ -1,0 +1,576 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+PFB files folder: <a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/">link</a><br>
+PFB converter sources: <a href="https://github.com/jumpjack/VST-converter">link</a><br>
+<br>
+Get texture references from PFB file: <input type="file" id="inpHeaderFile" name = "inpHeaderFile" width="100" accept=".PFB" ><br>
+Texture references: <span id = "spnTextureRef" name = "spnTextureRef">-</span><br>
+Load PFB+texture : <input type="file" id="inpPFB_TXTfile" name = "inpPFB_TXTfile" width="100" accept= ".PFB,.img" multiple><br>
+Load PFB file only: <input type="file" id="inpPFBfile" name = "inpPFBfile" width="100" accept=".PFB"><br>
+<span id="file_status" name="file_status" >waiting</span><br>
+<span id="file_length" name="file_length" >-</span><br>
+<button id="PLY" name="PLY" onclick = "savePLY()">Save as .PLY</button><br>
+<br>
+<button id="XYZ" name="XYZ" onclick = "saveXYZ()">Save as .XYZ</button><br>
+<br>
+-----<br>
+<canvas id="texture" name="texture" width="1024" height="1024"></canvas><br>
+-----<br>
+
+<script src="KaitaiStream.js"></script>
+<script src="PFB.js"></script>
+<script src="img_gray16.js"></script>
+
+<script>
+
+// 0.2.0 - XYZ export working; experimenting with faces and PLY export (faces not working, format unknown)
+
+
+/* Nodes types (https://irix7.com/techpubs/007-2783-001.pdf) :
+pfNode 				General node (base class)
+	pfScene 			Top level node.
+	pfGroup 			Node with multiple children.
+		pfSCS 				Static coordinate system.
+		pfDCS 				Dynamic coordinate system.
+		pfLOD 				Level of detail node.
+		pfSequence 		Sequential animation node.
+		pfSwitch 			Switch node.
+	pfLayer 			Layer or decal node.
+	pfGeode 			Fundamental geometry node.
+    pfGeoStates [graphic state]
+    pfGeoSets   [geometry]
+	pfBillboard 	Special tracking leaf node.
+	pfLightPoint 	One or more emissive light points.
+	pfLightSource Definition of a graphics hardware light.
+	pfPartition 	Special culling acceleration node.
+	pfText 				2D and 3D text geometry.
+     list of pfStrings
+	pfMorph 			Geometry morphing node.
+  pfMaterial
+    pfMtlSide
+    pfMtlAlpha
+    pfMtlShininess
+    pfMtlColor
+    pfMtlColorMode
+  pfTexture
+    pfTexName
+    pfTexImage
+			pfGetTexImage(const pfTexture* tex, uint** image, int* comp, int* sx, int* sy, int* sz);
+      image is an array of 4-byte words containing the texel data
+      The texture image is loaded from left to right, bottom to top
+      comp: number of 8-bit components per image pixel; 1, 2, 3, and 4 component textures are supported
+      ns, nt, nr:  number of texels in the s, t, and r dimensions of image
+
+    pfTexBorderColor
+    pfTexBorderType
+    pfTexFormat
+    pfTexFilter
+    pfTexRepeat
+    pfTexSpline
+    pfTexDetail
+    pfDetailTexTile
+    pfTexList
+    pfTexFrame
+    pfTexLoadMode
+    pfTexLevel
+
+*/
+
+
+/*
+// ????????:
+// https://github.com/NPSNET-IV/NPSNET-IV/blob/09ad5905964b1eb3463b8500b0a6c541707fa13f/src/database/tsg/tsgROpen.c
+  pfTexEnv *tenv;
+  ieee32 red,green,blue,alpha;
+  int8 bval;
+  int mode_val;
+
+  pfTexGen *tgen;
+  int8 bval;
+  ieee32 x,y,z,d; // texture plane equation
+  int mode_val,type;
+  int i;
+
+
+  pfTexture *tex;
+  char *name;
+  int8 clamp;
+  int i;
+  int pfflags;
+  int32 flags;
+
+
+  pfGeoState *gst;
+  void *arena = pfGetSharedArena();
+  int8 bval;
+  int32 ival;
+  ieee32 fval;
+  int mode_val;
+  pfMaterial *mtl;
+  int i,j,k;
+  int8 fieldid;
+
+
+  pfMaterial *mtl;
+  int8 bval;
+  ieee32 fval;
+  ieee32 color[3];
+  int mode_val,side,colormode_side;
+
+  pfColortable *table;
+  int32 numcolors;
+  ieee32 red,green,blue,alpha;
+  pfVec4 color;
+  int i;
+
+  pfFog *fog;
+  int8 bval;
+  ieee32 red,green,blue;
+  ieee32 near,far;
+  ieee32 bias;
+  ieee32 *range,*density;
+  int32 numpoints;
+  int mode_val;
+  void *arena = pfGetSharedArena();
+  int i;
+
+  pfLightModel *lmodel;
+  int8 bval;
+  ieee32 atten0,atten1,atten2;
+  int mode;
+  ieee32 red,green,blue;
+
+
+
+*/
+	canvas = document.getElementById('texture');
+	ctx = canvas.getContext('2d');
+	canvasWidth = 1024;
+	canvasHeight = 1024;
+	ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+
+	myPFB = null;
+	myImg = null;
+  TEXTURE_WIDTH = 1024; // to do: implement KSY reader for just PDS label, extract texture metadata and use  them to implement generic texture reader
+  TEXTURE_HEIGHT = 1024;
+
+	PLY_HEADER_BASE = "" +
+		"ply\n" +
+		"format ascii 1.0\n" +
+		"comment Created by PFB JS convereter\n" +
+		"element vertex VVVV\n" +
+		"property float x\n" +
+		"property float y\n" +
+		"property float z\n" +
+/*		"TTTT" +*/
+		"element face FFFF\n" +
+		"property list uchar int vertex_index\n" +
+		"end_header\n";
+
+	PLY_TEXTURE_HEADER = "" +
+		"property uchar red\n" +
+		"property uchar green\n" +
+		"property uchar blue\n";
+
+  PLYfiles = [];
+  XYZfiles = [];
+
+	PFB_HEADER_LENGTH =  1+1+1+1 + 1+1+1+1 + 4 + 4 + 1+1+1+1 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4; // 40
+	BOUNDING_BOX_LENGTH = 6*4; // 24
+	TEXTURE_REF_LENGTH = 2048;
+	COORDINATE_SYSTEM_LENGTH = 4096;
+	LOD_HEADER_LENGTH = 4 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4 + 4; //28
+	PATCH_HEADER_LENGTH = 8 + 4 + 4 + 4 + 4; // 24
+
+
+	const headerSelector = document.getElementById('inpHeaderFile');
+	headerSelector.addEventListener('change', (event) => {
+		loadPFBheader(event.target.files[0])
+	});
+
+	const PFB_TXT_Selector = document.getElementById('inpPFB_TXTfile');
+	PFB_TXT_Selector.addEventListener('change', (event) => {
+	if (event.target.files.length !== 2) {
+		alert("You must select one .PFB file and one .img file");
+		return;
+	} else {
+		loadPFB_TXT(event.target.files[0], event.target.files[1])
+	}
+	});
+
+	const PFB_Selector = document.getElementById('inpPFBfile');
+	PFB_Selector.addEventListener('change', (event) => {
+		loadPFB(event.target.files[0])
+	});
+
+
+	function saveFile(fileContent, filename,status_id) {
+		myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+		var url = window.URL.createObjectURL(myBlob);
+		var anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+//	a(anchor);
+        anchor.addEventListener('load', (event) => {
+			console.log("LOAD");
+		});
+
+        anchor.addEventListener('ended', (event) => {
+			console.log("ENDED");
+		});
+
+        anchor.addEventListener('loadeddata', (event) => {
+			console.log("loadeddata");
+		});
+
+        anchor.addEventListener('loadstart', (event) => {
+			console.log("loadstart");
+		});
+        anchor.addEventListener('mousedown', (event) => {
+			console.log("mousedown");
+		});
+
+
+		anchor.click();
+		window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+	}
+/*
+function loadPFBheader(fileHandler) {
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents);
+		console.log("Loaded: ", event, rawFileContents.length);
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myPFBHeader = new PFBh(st);
+		console.log("This file contains:");
+		console.log(myPFBHeader.vistaHeader.lodsCount, " LODs");
+    sliceUInt8 = myPFBHeader.textureRef;
+		textureRefRaw = String.fromCharCode(...sliceUInt8)
+		textureRef = textureRefRaw.split("\x00");
+		textureName = textureRef[2];
+    spnTextureRef.innerHTML = textureName;
+//console.log(textureName);
+	});
+	reader.readAsArrayBuffer(fileHandler);
+	console.log("Header reading process initiated...");
+}
+
+*/
+
+
+
+/*
+function loadPFB_TXT(handler1, handler2) {
+//console.log(handler1, handler2)
+	if (handler1.name.toUpperCase().indexOf("IMG") >= 0) {
+		textureHandler = handler1;
+		PFBHandler = handler2;
+	} else {
+		textureHandler = handler2;
+		PFBHandler = handler1;
+	}
+//console.log("TEXTURE:", textureHandler)
+//console.log("PFB:", PFBHandler)
+
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents);
+		console.log("Loaded: ", event, rawFileContents.length);
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myImg = new ImgGray16(st);
+
+		console.log("myImg=",myImg);
+		for (x=0; x< 1023; x++) {
+			for(y=0; y<1023; y++) {
+        rgb = (myImg.lines[y].samples[x])/10;
+				r = rgb;
+				g = rgb;
+				b = rgb;
+				writeCanvas(x,y,r,g,b);
+			}
+		}
+
+    loadPFB(PFBHandler);
+
+	});
+	reader.readAsArrayBuffer(textureHandler);
+	console.log("Texture+PFB reading process initiated...");
+}
+*/
+
+
+nodeTypes = [
+	"Materials", 			//0
+	"Textures list", 	//1
+	"Texenv?",        //2
+	"GeoStates",      //3
+	"Lenghts lists",  //4
+	"Vertex lists",   //5
+	"Colors lists",   //6
+	"Normals lists",  //7
+	"Texcoords lists",//8
+	"UNKNOWN", 				//9
+	"GeoSets", 				//10
+	"UNKNOWN", 				//11
+	"Nodes",					//12
+	"UNKNOWN", 				//13
+	"UNKNOWN", 				//14
+	"UNKNOWN", 				//15
+	"UNKNOWN", 				//16
+	"TexGens", 				//17
+	"Light models", 	//18
+	"UNKNOWN", 				//19
+	"UNKNOWN", 				//20
+	"UNKNOWN", 				//21
+	"UNKNOWN", 				//22
+	"UNKNOWN", 				//23
+	"UNKNOWN", 				//24
+	"UNKNOWN", 				//25
+	"UNKNOWN", 				//26
+	"Images", 				//27
+]
+
+function loadPFB(fileHandler) {
+  totalListLenght = [];
+  totalLenght = 0;
+	myName = fileHandler.name;
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+		console.log("Loaded", rawFileContents.byteLength , " bytes.");
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myPFB = new Pfb	(st);
+		console.log(myPFB);
+		console.log("Nodes num.:", myPFB.nodes.length);
+		vertexDB = [];
+		vertexDBstr = "";
+    facesDB = [];
+    facesDBstr = "";
+		normalsDB = [];
+    normalsDBstr = "";
+		for (var nodeIndex = 0; nodeIndex < myPFB.nodes.length; nodeIndex++) {
+			thisNode = myPFB.nodes[nodeIndex];
+			console.log(nodeIndex, " - type:",  thisNode.type, "=", nodeTypes[thisNode.type], myPFB.nodes[nodeIndex].contents.count, myPFB.nodes[nodeIndex].contents.totalSize);
+
+
+			/////// Put all vertices in a single sequence:
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("VERTEX") >= 0 ) {
+				  totalListLenghtV = [];
+				  totalLenghtV = 0;
+//console.log("Building vertex db...");
+					for (var listIndex=0 ; listIndex<thisNode.contents.lists.length; listIndex++) {
+						var thisListV = thisNode.contents.lists[listIndex];
+//console.log("Processing list " + listIndex  + ", containing " + thisListV.elements.length + " vertices...");
+            totalListLenghtV[listIndex] = 0;
+						for (var elemIndex = 0; elemIndex < thisListV.elements.length ;elemIndex++) {
+							totalListLenghtV[listIndex] += 1
+							vertexObj = thisListV.elements[elemIndex];
+              vertexDB.push(vertexObj);
+							vertexStr = "";
+              vertexStr += vertexObj.x + " " + vertexObj.y + " " + vertexObj.z;
+              vertexDBstr += vertexStr + "\n";
+						}
+//						console.log("   ListV " , listIndex, ": ", thisListV.size , " vertices, ",  totalListLenght[listIndex]  );
+						totalLenghtV += totalListLenghtV[listIndex];
+					}
+			}
+
+
+			/////// Create faces as groups of pointers to vertices
+			// LENGTHSLISTS
+			//   |
+			//   +-- Num of lists  (69)
+			//   |
+			//   +-- LENGHTSLIST [0]
+			//   |     |
+			//   |     +-- Num of lengths (54)
+			//   |     |
+			//   |     +-- LENGTH 0 = 3   // 3 vertex = 1 triangle in the strip? Each length means 1 strip?
+			//   |     |
+			//   |     +-- LENGTH 1 = 6  // 6 vertex = 4 triangles in the strip? Each length means 1 strip?
+			//   |     |
+			//   |     ...
+			//   |     |
+			//   |     +-- LENGTH 63 = 4
+			//   |
+			//   |
+			//   +-- LENGHTSLIST [1]
+			//   |
+			//   ...
+			//   |
+			//   +-- LENGHTSLIST [68]
+			//
+      // Each lenght  a strip? How many triangles? len or len-2 as in VST format?
+
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("LENGHTS") >= 0 ) {
+				var listsCount = thisNode.contents.lists.length;
+				vertexOffset = 0;
+        strips = [];
+				for (var listIndex=0 ; listIndex < listsCount; listIndex++) { // Each list is a strip of faces or a list of strips of faces?
+					thisList = thisNode.contents.lists[listIndex];
+					arrayLengths = thisList.elements; // Each length refers to a strip, i.e. length <=> strip
+					for (var arrayLengthIndex = 0; arrayLengthIndex < arrayLengths.length; arrayLengthIndex++) {
+						var thisArrayLength = arrayLengths[arrayLengthIndex];
+						// array = [0,1,2,3,4], arrayLength = 5, striplLength = 3
+						strip = [];
+						for(var triangleIndex = 2; triangleIndex < thisArrayLength; triangleIndex++) { // Create triangle strip
+							triangle = [vertexOffset+2, vertexOffset+1, vertexOffset+0];
+              strip.push(triangle);
+							vertexOffset++;
+						} // parse vertices
+						strips.push(strip);
+					} // parse lengths
+				} // parse lists
+			} // if node is lengthslists
+
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("TEXTURES LIST") >= 0 ) {
+				console.log("====== TEXTURE Files====");
+				texturesList = thisNode.contents.textures;
+				texturesList.forEach ((textureElement) => {
+					console.log(textureElement.filename.contents);
+				});
+			} // if node is Textures
+
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("NORMALS LIST") >= 0 ) {
+				  totalListLenghtN = [];
+				  totalLenghtN = 0;
+//console.log("Building normals db...");
+					for (var listIndex=0 ; listIndex<thisNode.contents.lists.length; listIndex++) {
+						var thisListN = thisNode.contents.lists[listIndex];
+//console.log("Processing list " + listIndex  + ", containing " + thisListN.elements.length + " vertices...");
+            totalListLenghtN[listIndex] = 0;
+						for (var elemIndex = 0; elemIndex < thisListN.elements.length ;elemIndex++) {
+							totalListLenghtN[listIndex] += 1
+							normalObj = thisListN.elements[elemIndex];
+              normalsDB.push(normalObj);
+							normalStr = "";
+              normalStr += normalObj.x + " " + normalObj.y + " " + normalObj.z;
+              normalsDBstr += normalStr + "\n";
+						}
+//						console.log("   ListV " , listIndex, ": ", thisListN.size , " vertices, ",  totalListLenght[listIndex]  );
+						totalLenghtN += totalListLenghtN[listIndex];
+					}
+			} // if node is NormalsLists
+
+
+
+		} // nodes
+
+
+console.log("   Vertex in lists:", totalLenghtV );
+console.log("   Normals in lists:", totalLenghtN );
+  createPLY();
+
+//console.log(">>>>>>>>>>>>> STRIPS: ",strips);
+	/*console.log("Vertici:", vertexDB);
+	console.log("Vertici:", vertexDBstr);
+	console.log("Facce:", facesDB);
+	console.log("Facce:", facesDBstr);
+*/
+
+    XYZfile = "";
+    vertexGlobalIndex = 0;
+		var PFBvertexNode = myPFB.nodes[1]; // debug: non è detto che sia sempre in posizione 1
+		var PFBvertexLists = PFBvertexNode.contents.lists;
+		for (var vertListIndex = 0; vertListIndex < PFBvertexLists.length; vertListIndex++) {
+		  PFBvertList = PFBvertexLists[vertListIndex];
+			for (var vertIndex = 0; vertIndex < PFBvertList.elements.length; vertIndex++) {
+				var vertex = PFBvertList.elements[vertIndex];
+				XYZline = "" +
+					vertex.x + " " +
+					vertex.y + " " +
+					vertex.z;
+			/*	if (normalsDB.length > 0) {
+          XYZline += "" +
+            normalsDB[vertexGlobalIndex]
+				}*/
+				vertexGlobalIndex++;
+				XYZfile += XYZline + "\n";
+			}
+		}
+  saveFile(XYZfile, "PFBtest.txt","file_status");
+	alert("Done");
+
+	});
+	reader.readAsArrayBuffer(fileHandler);
+}
+
+
+function createPLY() {
+	for (stripIndex = 0; stripIndex < strips.length; stripIndex++) {
+		strip = strips[stripIndex];
+		for (var triangleIndex = 0; triangleIndex < strip.length; triangleIndex++) {
+			triangle = strip[triangleIndex];
+			face = []
+	    faceStr = triangle.length + " ";
+			for (var vertexIndex =0; vertexIndex<triangle.length;  vertexIndex++) {
+				vertexPointer = triangle[vertexIndex];
+				face.push(vertexPointer);
+				faceStr += vertexPointer + " ";
+			}
+			facesDB.push(face);
+	    facesDBstr += faceStr + "\n";
+		}
+	}
+
+	PLYheader = PLY_HEADER_BASE.replace("VVVV", vertexDB.length);
+	PLYheader = PLYheader.replace("FFFF", facesDB.length);
+	PLYfile = PLYheader + vertexDBstr + facesDBstr;
+  saveFile(PLYfile, "PFBtest.ply","file_status");
+
+}
+
+function savePLY() {
+	for (lodIndex=0; lodIndex < LODS_TO_PROCESS; lodIndex++) {
+		saveFile(PLYfiles[lodIndex], "LOD"+lodIndex + ".ply","file_status");
+	}
+}
+
+
+function saveXYZ() {
+	for (lodIndex=0; lodIndex < LODS_TO_PROCESS; lodIndex++) {
+		saveFile(XYZfiles[lodIndex], "LOD"+lodIndex + ".txt","file_status");
+	}
+}
+
+
+function loadTexture() {
+
+}
+
+  function writeCanvas(x,y,r,g,b) {
+		//var x = Math.floor(Math.random() * canvasWidth);
+		//var y = Math.floor(Math.random() * canvasHeight);
+		//var r = Math.floor(Math.random() * 256);
+		//var g = Math.floor(Math.random() * 256);
+		//var b = Math.floor(Math.random() * 256);
+
+  ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+  ctx.fillRect(x,y,x+1,y+1);
+
+  }
+
+
+
+
+</script>
+
+  </body>
+</html>
