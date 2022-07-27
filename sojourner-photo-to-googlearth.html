@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+
+Load images list: <input type="file" id="inpTAB" name = "inpTAB" width="100" accept=".tab" multiple><br>
+<span id="status" name="status" >processing status</span><br>
+<span id="file_status" name="file_status" >file status</span><br>
+<span id="file_length" name="file_length" >file length</span><br>
+<button id="KML" name="KML" onclick = "saveKML()">Save as .KML</button><br>
+
+<script src="kml_template_sojourner.js"></script>
+<script>
+// https://pdsimage2.wr.usgs.gov/Missions/Mars_Pathfinder/mprv_0001/index/
+ 
+ // from rvein dex.lbl:
+fields = [
+  "PRODUCT_ID",
+  "VOLUME_ID",
+  "PATH_NAME",                //// POS 2
+  "FILE_NAME",                //// POS 3
+  "COMMAND_SEQUENCE_NUMBER",
+  "APPLICATION_PACKET_ID",
+  "IMAGE_ID",
+  "FRAME_ID",
+  "IMAGE_TIME",
+  "PLANET_DAY_NUMBER",
+  "MPF_LOCAL_TIME",
+  "SPACECRAFT_CLOCK_START_COUNT",
+  "EARTH_RECEIVED_START_TIME",
+  "EARTH_RECEIVED_STOP_TIME",
+  "PRODUCT_CREATION_TIME",
+  "OBSERVATION_NAME",
+  "EXPOSURE_DURATION",
+  "EXPOSURE_TYPE",
+  "INST_CMPRS_BLOCKS",
+  "INST_CMPRS_NAME",
+  "INSTRUMENT_TEMPERATURE",
+  "ROVER_HEADING",            //// POS21     heading  in units w.r.t. 65536 ///////
+  "ROVER_POSITION_X",         //// POS22    "Offset in meters north of the Lander reference.", i.e. latitude ///////
+  "ROVER_POSITION_Y",         //// POS23    "Y offset in meters east of the Lander reference", i.e. longitude ////////
+  "LINEAR_ACCELEROMETER_X",   //// POS24    Pitch; >0 = down, <0 = up; Values are in units of g where 1g equals 9.8m/sec**2 --> = percentage of 90°
+  "LINEAR_ACCELEROMETER_Y",   //// POS25    Roll; >0 = clockwise; Values are in units of g where 1g equals 9.8m/sec**2.     --> = percentage of 90°
+  "SOLAR_AZIMUTH",
+  "SOLAR_ELEVATION",
+  "TLM_CMD_DISCREPANCY_FLAG",
+  "SOURCE_PRODUCT_ID",
+  "FIRST_LINE",
+  "FIRST_LINE_SAMPLE",
+  "EXPECTED_PACKETS",         //// POS32
+  "RECEIVED_PACKETS",         //// POS33
+  "PACKET_SEQUENCE_COUNT",
+  "PACKET_MAP_MASK"
+];
+
+SERVER="https://pdsimage2.wr.usgs.gov/Missions/Mars_Pathfinder/mprv_0001/browse/";
+
+PATH_ENUM = 2
+NAME_ENUM = 3;
+HEADING_ENUM = 21;
+LATITUDE_ENUM = 22;
+LONGITUDE_ENUM = 23;
+PITCH_ENUM = 24;
+ROLL_ENUM = 25;
+PACKETS_ENUM = 33;
+
+  const fileSelector = document.getElementById('inpTAB');
+  fileSelector.addEventListener('change', (event) => {
+    loadFile(event.target.files[0])
+  });
+
+
+  function saveFile(fileContent, filename,status_id) {
+    myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+    var url = window.URL.createObjectURL(myBlob);
+    var anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+        anchor.addEventListener('load', (event) => {
+      console.log("LOAD");
+    });
+
+        anchor.addEventListener('ended', (event) => {
+      console.log("ENDED");
+    });
+
+        anchor.addEventListener('loadeddata', (event) => {
+      console.log("loadeddata");
+    });
+
+        anchor.addEventListener('loadstart', (event) => {
+      console.log("loadstart");
+    });
+        anchor.addEventListener('mousedown', (event) => {
+      console.log("mousedown");
+    });
+
+
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+  }
+
+
+
+function loadFile(fileHandler) {
+      var reader = new FileReader();
+      reader.addEventListener('load', (event) => {
+        var rawFileContents = event.target.result;
+        var fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+    		UTF8decoder = new TextDecoder();
+    		UTF8string = UTF8decoder.decode(fileContentsUInt8);  // Interpret byte array as a string of UTF8 characters
+        fileLinesRaw = UTF8string.split("\n");
+        fileLines = [];
+        fileLinesRaw.forEach((line) => {
+          myLine = line.split('"').join("");
+          fileLines.push(myLine.split(","));
+        });
+        KML_FILE = KML_HEADER;
+        for (i=0; i< fileLines.length; i++) {
+          myLine = fileLines[i];
+          if (myLine.length > 10) {
+            p = myLine[PACKETS_ENUM];
+            if (p>50) {
+              rawLongitude = parseFloat(myLine[LONGITUDE_ENUM])*100;
+              rawLatitude = parseFloat(myLine[LATITUDE_ENUM])*100;
+              myLongitude = metersToDegrees(rawLongitude);
+              myLatitude = metersToDegrees(rawLatitude);
+              myHeading = (360*(parseInt(myLine[HEADING_ENUM])/65536)).toFixed(1)*1;
+              myPitch = 90-parseFloat(myLine[PITCH_ENUM]).toFixed(1)*1;
+              myRoll = parseFloat(myLine[ROLL_ENUM]).toFixed(1);
+              myPath = myLine[PATH_ENUM].toLowerCase();
+              myFilename = myLine[NAME_ENUM].toLowerCase().replace(".img",".gif");
+              myLink = SERVER + myPath + myFilename;
+              myPhoto = KML_PHOTO_TEMPLATE();
+              myPhoto = myPhoto.replace("#LON#",myLongitude);
+              myPhoto = myPhoto.replace("#LON2#",myLongitude);
+              myPhoto = myPhoto.replace("#LAT#",myLatitude);
+              myPhoto = myPhoto.replace("#LAT2#",myLatitude);
+              myPhoto = myPhoto.replace("#HEAD#",myHeading);
+              myPhoto = myPhoto.replace("#PITCH#",0); // debug
+              myPhoto = myPhoto.replace("#ROLL#",0); // debug
+              myPhoto = myPhoto.replace("#LINK#",myLink);
+              myPhoto = myPhoto.replace("#NAME#",rawLongitude + ", " + myLatitude + ", " + myHeading);
+              KML_FILE += myPhoto;
+              console.log(myLink);
+            }
+          }
+        }
+        KML_FILE += KML_FOOTER
+      });
+      reader.readAsArrayBuffer(fileHandler);
+}
+
+
+
+function saveKML() {
+    saveFile(KML_FILE, "mpf.kml","file_status");
+}
+
+function metersToDegrees(distM) {
+  planetCircumf = 21344000; // Mars
+  distDeg = distM * 360 / planetCircumf;
+  return distDeg;
+}
+
+</script>
+
+  </body>
+</html>
