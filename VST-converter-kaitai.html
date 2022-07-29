@@ -1,0 +1,578 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+<center> <h1>VST converter</h1>
+Converts .VST files from NASA archives of MER missions into 3d meshes in PLY format or into pointcloud in XYZ format<br>
+<i>by Jumpjack 2022</i><br>
+<br>
+</center>
+Note: there is no progress indicator in this page: you must open console (F12 or CTRL+SHIFT+J) to see progress,
+or wait for "Processing completed" alert before clicking SAVE buttons. <b>Processing can take several minutes</b>.<br>
+<br>
+Load VST file without texture: <input type="file" id="inpVSTfile" name = "inpVSTfile" width="100" accept=".vst"><br>
+Get texture reference from VST file: <input type="file" id="inpHeaderFile" name = "inpHeaderFile" width="100" accept=".vst" ><br>
+Texture reference: <span id = "spnTextureRef" name = "spnTextureRef">-</span><br>
+Load VST and texture: <input type="file" id="inpVST_TXTfile" name = "inpVST_TXTfile" width="100" accept= ".vst,.img" multiple><br>
+<span id="file_status" name="file_status" >waiting</span><br>
+<span id="file_length" name="file_length" >-</span><br>
+Status: <span id="status" name="status" >-</span><br>
+<button id="PLY" name="PLY" onclick = "savePLY()">Save as .PLY</button><br>
+<br>
+<button id="XYZ" name="XYZ" onclick = "saveXYZ()">Save as .XYZ</button><br>
+<br>
+-----<br>
+<canvas id="texture" name="texture" width="1024" height="1024"></canvas><br>
+-----<br>
+
+<script src="KaitaiStream.js"></script>
+<script src="Vst-header.js"></script>
+<script src="Vst.js"></script>
+<script src="img_gray16.js"></script>
+
+<script>
+
+// 0.4.0bis: Fixed texture handling
+// 0.3.3: Fixed texture handler assignment and texture loading; enlarged canvas to 2048x2048 (?!?)
+// 0.3.2: Added support for color images (to be improved with robustness)
+// 0.3.1: Added robustness against invalid texture coordinates values
+// 0.3.0: Texture working on XYZ
+// 0.2.0: Prepared for imnplementation of texture; still only supporting bare .vst; to include kaitai library for IMG textures img_gray16.js
+
+//LODS_TO_PROCESS = 1; // debug
+FIRST_LOD_TO_PROCESS = 4;
+LAST_LOD_TO_PROCESS = 4;
+PROCESS_CHUNK = 1000;
+
+  canvas = document.getElementById('texture');
+  canvasWidth = canvas.width;
+  canvasHeight = canvas.height;
+  ctx = canvas.getContext('2d');
+  canvasData = ctx.getImageData(0,0,canvasWidth,canvasHeight)
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+
+  myVst = null;
+  myImg = null;
+  TEXTURE_WIDTH = 1024; // to do: implement KSY reader for just PDS label, extract texture metadata and use  them to implement generic texture reader
+  TEXTURE_HEIGHT = 1024;
+  
+  rgbComponents = []; 
+
+  PLY_HEADER_BASE = "" +
+    "ply\n" +
+    "format ascii 1.0\n" +
+    "comment Created by VST JS convereter\n" +
+    "element vertex VVVV\n" +
+    "property float x\n" +
+    "property float y\n" +
+    "property float z\n" +
+    "element face FFFF\n" +
+    "property list uchar int vertex_index\n" +
+    "end_header\n"
+
+  PLYfiles = [];
+  XYZfiles = [];
+
+  VST_HEADER_LENGTH =  1+1+1+1 + 1+1+1+1 + 4 + 4 + 1+1+1+1 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4; // 40
+  BOUNDING_BOX_LENGTH = 6*4; // 24
+  TEXTURE_REF_LENGTH = 2048;
+  COORDINATE_SYSTEM_LENGTH = 4096;
+  LOD_HEADER_LENGTH = 4 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4 + 4; //28
+  PATCH_HEADER_LENGTH = 8 + 4 + 4 + 4 + 4; // 24
+
+  const headerSelector = document.getElementById('inpHeaderFile');
+  headerSelector.addEventListener('change', (event) => {
+    loadVSTheader(event.target.files[0])
+  });
+
+  const VST_TXT_Selector = document.getElementById('inpVST_TXTfile');
+  VST_TXT_Selector.addEventListener('change', (event) => {
+//  if (event.target.files.length !== 2) {
+//   alert("You must select one .vst file and one .img file");
+//    return;
+//  } else {
+      // VST, L2, L5, L7
+//console.log("event.target=",event.target.files);      
+    loadVST_TXT(event.target.files[0], event.target.files[1], event.target.files[2], event.target.files[3])
+//  }
+  });
+
+  const VST_Selector = document.getElementById('inpVSTfile');
+  VST_Selector.addEventListener('change', (event) => {
+    loadVST(event.target.files[0])
+  });
+
+
+  function saveFile(fileContent, filename,status_id) {
+    myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+    var url = window.URL.createObjectURL(myBlob);
+    var anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+//  a(anchor);
+        anchor.addEventListener('load', (event) => {
+      console.log("LOAD");
+    });
+
+        anchor.addEventListener('ended', (event) => {
+      console.log("ENDED");
+    });
+
+        anchor.addEventListener('loadeddata', (event) => {
+      console.log("loadeddata");
+    });
+
+        anchor.addEventListener('loadstart', (event) => {
+      console.log("loadstart");
+    });
+        anchor.addEventListener('mousedown', (event) => {
+      console.log("mousedown");
+    });
+
+
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+  }
+
+function loadVSTheader(fileHandler) {
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents);
+    console.log("Loaded: ", event, rawFileContents.length);
+    document.getElementById("file_status").innerHTML = "Loaded";
+    document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myVstHeader = new Vsth(st);
+    console.log("This file contains:");
+    console.log(myVstHeader.vistaHeader.lodsCount, " LODs");
+    sliceUInt8 = myVstHeader.textureRef;
+    textureRefRaw = String.fromCharCode(...sliceUInt8)
+    textureRef = textureRefRaw.split("\x00");
+    textureName = textureRef[2];
+    spnTextureRef.innerHTML = textureName;
+//console.log(textureName);
+  });
+  reader.readAsArrayBuffer(fileHandler);
+  console.log("Header reading process initiated...");
+}
+
+
+function assignHandler(handlers, type, count) {
+  // TYPE:
+  //  L2, L5, L7 for RGB bands
+  //  VST for 3d product
+  //
+  // COUNT: number of expected selected files: 2 for B/W texture, 4 for color texture
+
+   // 0-1   2p
+   // 2-10  293977893
+   // 11-13 ffl
+   // 14-15 b1
+   // 16-17 au
+   // 18-22 p2372
+   // 23-24 l5            <<<<<<<<<---- Band
+   // 25-26 m1
+
+  if ((count !=2 ) && (count != 4 )) {
+    console.log("INTERNAL ERROR ON TEXTURE REQUEST: USER MUST SELECT 2 OR 4 FILES (VIL+IMG or VIL + L2+L5+L7)");
+    return null;
+  }
+
+  if (count == 4) { // color texture requires 3 .img files (one per band) and 1 VST file
+      filenames = [handlers[0].name.toUpperCase(), handlers[1].name.toUpperCase(), handlers[2].name.toUpperCase(), handlers[3].name.toUpperCase()];   
+   } else {
+     //
+   }
+
+   if (count == 2) { // B/W texture
+      if ( handlers[0].name.toUpperCase().indexOf("VIL") < 0) {
+        if (type == "VST") {
+            console.log("B/W texture: returning ", handlers[1].name , " as 3d product.");
+            return handlers[1]
+        } else {
+            console.log("B/W texture: returning ", handlers[0].name , " as texture.");
+            return handlers[0]
+        }
+      } else {
+        if (type == "VST") {
+            console.log("B/W texture: returning ", handlers[0].name , " as 3d product.");
+            return handlers[0]
+        } else {
+            console.log("B/W texture: returning ", handlers[1].name , " as texture.");
+            return handlers[1]
+        }
+      }
+   }
+
+
+  for (var fileIndex=0; fileIndex < filenames.length; fileIndex++) {
+    var name = filenames[fileIndex].toUpperCase();
+    var band = name.substr(23,2).toUpperCase();
+    var productType = name.substr(11,3).toUpperCase();
+    switch (type) {
+      case "VST": // Looking for .VST file (=VIL product type)
+console.log("VST requested at loop ", fileIndex, " examining ", name, ", type=", productType);
+        if (productType == "VIL") { // VST/VIL product confirmed, return handler
+            console.log("Colortexture: returning ", handlers[fileIndex].name , " as 3d product.");
+           return handlers[fileIndex]
+        } else {
+console.log("not a VIL product, examine next file");
+    		// not a VIL product, examine next file
+        }
+        break
+      case band:  // Looking for specific band (L2, L5, L7) for color texture
+        console.log("Color texture: returning ", handlers[fileIndex].name , " as band ", band);
+        return handlers[fileIndex];
+    }
+  }
+  console.log(">>>>>>>>>>>>INTERNAL ERROR: UNABLE TO FIND TEXTURES IN THESE FILES:", filenames);
+  return -1;
+}
+
+
+function componentsFromImg(imgHandler, component) {
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents);
+    console.log("Loaded: ", event, rawFileContents.length);
+    document.getElementById("file_status").innerHTML = "Loaded " + imgHandler.name;
+    document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myImg = new ImgGray16(st);
+
+    console.log("myImg=",myImg);
+    rgbComponents[component] = [[],[]];
+    for (x = 0; x < 1023; x++) {
+      rgbComponents[component][x] = [];
+      for(y = 0; y < 1023; y++) {
+         rgbComponents[component][x][y] = myImg.lines[y].samples[x] / 10;
+         // myImg.lines[textureY].samples[textureX])/10
+      }
+    }
+  });
+  reader.readAsArrayBuffer(imgHandler);
+  console.log("Reading " + imgHandler.name);
+}
+
+
+function loadVST_TXT(handler1, handler2, handler3, handler4) {
+   if ((handler3 != null) && (handler4 != null)) { // 4 files selected ==> color texture
+     handlers = [handler1, handler2, handler3, handler4];
+     vstHandler = assignHandler(handlers,"VST",4);
+     R_Handler = assignHandler(handlers,"L2",4);
+     G_Handler = assignHandler(handlers,"L5",4);
+     B_Handler = assignHandler(handlers,"L7",4);
+  
+      if ((vstHandler != null) && (R_Handler != null) && (G_Handler != null) && (B_Handler != null)) {
+        console.log("COLOR TEXTURE:", R_Handler.name, G_Handler.name, B_Handler.name)
+        console.log("VST:", vstHandler.name)
+        componentsFromImg(R_Handler,0);
+        componentsFromImg(G_Handler,1);
+        componentsFromImg(B_Handler,2);
+      } else {
+      console.log(">>>>>>>>>ERROR LOADING COLOR TEXTURE  - VST, L2, L5, L7; ", vstHandler, R_Handler, G_Handler , B_Handler);
+      }
+   } else {  // 2 files selected ==> B/W texture
+     handlers = [handler1, handler2];
+     vstHandler = assignHandler(handlers,"VST",2);
+     grayHandler = assignHandler(handlers,"L2",2);
+    if ((vstHandler != null) && (grayHandler != null)) {
+      componentsFromImg(grayHandler,0);
+      console.log("B/W TEXTURE:", grayHandler.name)
+      console.log("VST:", vstHandler.name)
+      loadVST(vstHandler); // debug
+    } else {
+        console.log(">>>>> ERROR LOADING B/W TEXTURE -  VST, IMG:",vstHandler, grayHandler);
+    }
+   }
+}
+
+
+
+function loadVST(fileHandler) {
+     
+  myName = fileHandler.name;
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+    console.log("Loaded: ", event, rawFileContents.length);
+    document.getElementById("file_status").innerHTML = "Loaded";
+    document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myVst = new Vst(st);
+    totalFileLength =   VST_HEADER_LENGTH +
+              BOUNDING_BOX_LENGTH +
+              TEXTURE_REF_LENGTH * myVst.vistaHeader.texturesCount +
+              COORDINATE_SYSTEM_LENGTH +
+              myVst.vistaHeader.vertexCount*20;
+    LODsLength = 0;
+    console.log("This file contains:");
+    console.log(myVst.lods.length, " LODs");
+    sliceUInt8 = myVst.textureRef;
+    textureRefRaw = String.fromCharCode(...sliceUInt8)
+    textureRef = textureRefRaw.split("\x00");
+    textureName = textureRef[2];
+    console.log(textureName);
+    //LODS_TO_PROCESS =  myVst.lods.length; //debug
+    prevLODvertexCount = 0;
+    pointcloudReady = false;
+    meshReady = false;
+    for (var lodIndex = FIRST_LOD_TO_PROCESS; lodIndex < LAST_LOD_TO_PROCESS+1; lodIndex++) {
+      trianglesInLOD = 0;
+      myLOD = myVst.lods[lodIndex];
+      LODsLength += LOD_HEADER_LENGTH + BOUNDING_BOX_LENGTH;
+      lastVertex = myLOD.header.highestVertex;
+      LODvertexCount =  myLOD.header.vertexCount;
+      firstVertex = lastVertex - LODvertexCount + 1;
+      console.log("Processing LOD n.", lodIndex , " of " , LAST_LOD_TO_PROCESS+1 - FIRST_LOD_TO_PROCESS);
+      console.log("     Contains n. " + myLOD.header.patchesCount  + " patches.");
+      console.log("     Uses vertex from " + firstVertex +  " to " + lastVertex);
+      LODtrianglesCount = 0; // For PLY output
+      PLYvertex = "";
+      PLYfaces = "";
+      PLYfiles.push("");
+      for (var patchIndex = 0; patchIndex < myLOD.header.patchesCount; patchIndex++) {
+        myPatch = myLOD.patches[patchIndex];
+        totalPatchLength = PATCH_HEADER_LENGTH + myPatch.header.stripsCount*4 + myPatch.header.indexCount*4;
+        LODsLength += totalPatchLength;
+        console.log("     Patch n. " + patchIndex);
+        console.log("       Arrays/Strips num: ", myPatch.header.stripsCount);
+        console.log("       Total length: ", totalPatchLength);
+
+
+        pointers = myPatch.pointersToVertexOfFaces; // Pointers to vertex database at beginning of file
+
+        XYZfile = "";
+        usedVertex = 0;
+        processCount = 0;
+        console.log("");
+        console.log("       Processing ",  pointers.length  , " vertex...");
+        for (p=0; p <  pointers.length ; p++) {
+          processCount++;
+          if (processCount > PROCESS_CHUNK) {
+            processCount = 0;
+            progress = (100*p/pointers.length).toFixed(1);
+            console.log(progress , "%");
+          }
+          vertex = myVst.vertices[pointers[p]];
+          if ((vertex.x !== 0 ) && (vertex.y !== 0) && (vertex.z !== 0)) { // triple 0 = no 3d data => skip
+            XYZline = vertex.x + " " + vertex.y + " " + vertex.z;
+            usedVertex++;
+            if (myImg) {
+              textureX = (vertex.s * TEXTURE_WIDTH).toFixed(0)*1;
+              textureY = (vertex.t * TEXTURE_HEIGHT).toFixed(0)*1;
+              if ((textureX >= 0) && (textureX <= TEXTURE_WIDTH)  && (textureY >= 0) && (textureY <= TEXTURE_HEIGHT) ) {
+                if (rgbComponents.length > 1) {
+                    Rcompo = rgbComponents[0][textureX][textureY] ;
+                    Gcompo = rgbComponents[1][textureX][textureY] ;
+                    Bcompo = rgbComponents[2][textureX][textureY] ;
+                 } else { // B/W texture
+                   Rcompo = (myImg.lines[textureY].samples[textureX]/10).toFixed(0);
+                   Gcompo = (myImg.lines[textureY].samples[textureX]/10).toFixed(0);
+                   Bcompo = (myImg.lines[textureY].samples[textureX]/10).toFixed(0);
+                 }
+                 XYZline += " " + Rcompo + " " + Gcompo + " " +  Bcompo + "\n";
+                 writeCanvas(textureX,textureY, Rcompo,  Gcompo,  Bcompo);
+              } else { // Invalid texture  coordinates
+                //
+              }
+            } else {
+              // no texture
+              XYZline += "\n";
+            }
+          } else {
+            // Invalid 3d data
+          } 
+          XYZfile += XYZline;
+        } // vertex loop
+        XYZfiles.push(XYZfile);
+        //updateCanvas();
+
+        pointcloudReady = true;
+        console.log("Point clouod extracted, now processing triangles in ", myPatch.header.stripsCount , " trianglestrips...");
+console.log(minX,maxX,minY,maxY);
+        triangleStrips = [];
+        arrayOffset = 0;
+        arrayLen = 0; // dummy value, to properly calculate first arrayOffset (=0)
+        processedTriangles = 0;
+
+        // The "arrays" are actually just a sequence of values; how many values form
+        // an array depends on arrayLen values; such values are stored in sequence, just before the arrays.
+        totalArraysTrianglesCount = 0;
+        processCount = 0;
+        for (arrayIndex = 0; arrayIndex < myPatch.header.stripsCount; arrayIndex++) {
+          processCount++;
+          if (processCount > PROCESS_CHUNK) {
+            processCount = 0;
+            progress = (100*arrayIndex/myPatch.header.stripsCount).toFixed(1);
+            console.log(progress , "%");
+          }
+
+
+          // An = length of array n
+          // Sn = An - 2  = lenght of strip n = number of triangles
+          // Triangle n.1: vertex 0, 1, 2 of array
+          // Following triangles: Using the remaining (Sn -1) vertex after vertex 2
+          //
+          // Example:
+          // Array: [10, 15, 14, 18, 17, 11]
+          //         ^^^^^^^^^^^  ^^^^^^^^^
+          //          |   |   |       |
+          //          |   |   |       |
+          //          \   |  /        |
+          //       Triangle  n.1      |
+          //                          \- Further triangles
+          //
+          //        [10, 15, 14, 18, 17, 11]
+          //              |   |   |
+          //              |   |   |
+          //              \   |  /
+          //                 n.2
+          //
+          //        [10, 15, 14, 18, 17, 11]
+          //                  |   |   |
+          //                  |   |   |
+          //                  \   |  /
+          //                     n.3
+          //
+          //        [10, 15, 14, 18, 17, 11]
+          //                      |   |   |
+          //                      |   |   |
+          //                      \   |  /
+          //                         n.4
+          //
+          // Array lenght : 6
+          // Strip lenght (= number of triangles): Sn = 6-2 = 4
+          // First triangle:  [10, 15, 14]
+          // Other triangles are described by 3 vertex (Sn-1 = 3) after vertex of first triangle: 18, 17, 11
+          arrayOffset += arrayLen;
+          arrayLen = myPatch.trianglesStripsLengths[arrayIndex];
+          trianglesCount = arrayLen - 2; // Sn = An-2 0 number of triangles/faces in this strip
+          totalArraysTrianglesCount += trianglesCount;
+//console.log("Processing array n.", arrayIndex , "(from pos. " , arrayOffset , " to pos " , (arrayOffset + arrayLen-1) );
+          triangleStrip = [];
+          triangles = [];
+          for (triangleIndex = 0 + 2; triangleIndex < arrayLen; triangleIndex++) {
+//console.log("Processing triangle n."  + (triangleIndex-1) + " of " + (arrayLen-3));
+            triangle = [];
+            PLYface = "3 "; // Always triangles
+            for (pointIndex = 0; pointIndex < 3; pointIndex++) {
+              if (triangleIndex % 2 == 0) { // Even triangle => CCW, Odd triangle => CW
+                vertexPointer = pointers[arrayOffset + triangleIndex - pointIndex];
+              } else {
+                vertexPointer = pointers[arrayOffset + triangleIndex - (2-pointIndex)];
+              }
+//console.log("Adding point n."  + (pointIndex+1) + " of 3");
+            // [ [1, 3, 5, 7],       [11, 10, 8, 7, 9, 14 , 15],    6[, ...]    Arrays database (=sequence of integers)
+            //   ^^^^^^^^^^^          ^^^^^^^^^^
+            //    |     ^              |      ^
+            //    |     |              |      |
+            //    |  triangleIndex     |  triangleIndex
+            //    |     (2..3)         |    (2..6)
+            //    |                    |
+            //    |                    |
+            //    \- Array offset      \- Array offset
+            //       (constant)           (constant)
+
+              x = myVst.vertices[vertexPointer].x;
+              y = myVst.vertices[vertexPointer].y;
+              z = myVst.vertices[vertexPointer].z;
+              point = {x, y, z};
+              PLYface += (vertexPointer - firstVertex) + " "; // Each ply file has its own independent index list starting from 0
+              triangle.push(point)
+            } // point
+            triangles.push(triangle);
+            PLYfaces += PLYface + "\n";
+            LODtrianglesCount++;
+           }  // triangle loop
+          triangleStrips.push(triangles);
+          processedTriangles += triangles.length;
+        }  // arrayIndex loop
+        trianglesInLOD += totalArraysTrianglesCount;
+      } // patches loop
+       PLYheader = PLY_HEADER_BASE.replace("VVVV", LODvertexCount);
+       PLYheader = PLYheader.replace("FFFF", LODtrianglesCount);
+       PLYfiles[lodIndex] += PLYheader;
+console.log("FIRST,LAST=",firstVertex,lastVertex);
+      for (v=firstVertex; v <= lastVertex; v++) {
+        PLYvertex += myVst.vertices[v].x + " " + myVst.vertices[v].y + " " + myVst.vertices[v].z + "\n";
+		if (myImg) { // append texture data if available
+            textureX = (myVst.vertices[v].s * TEXTURE_WIDTH).toFixed(0)*1;
+			textureY = (myVst.vertices[v].t * TEXTURE_HEIGHT).toFixed(0)*1;
+			textureValue = ((myImg.lines[textureY].samples[textureX])/10).toFixed(0); // Original value is 16 bit.
+			PLYtexture = " " + textureValue + " " + textureValue + " " + textureValue + "\n";
+		} else {
+			// no texture
+			PLYtexture += "\n";
+		}
+        PLYvertex += PLYtexture;
+      }
+      PLYfiles[lodIndex] += PLYvertex;
+      PLYfiles[lodIndex] += PLYfaces;
+//console.log("File ply for LOD n. :" , lodIndex, PLYfiles[lodIndex]);
+      prevLODvertexCount = LODvertexCount;
+console.log("triangles expected :",trianglesInLOD)
+console.log("triangles processed :",processedTriangles)
+    } // LODs loop
+    totalFileLength += LODsLength;
+    console.log("totalFileLength=",totalFileLength);
+    meshReady = true;
+alert("Processing completed. Now you can save to PLY or XYZ.");
+
+  });
+  reader.readAsArrayBuffer(fileHandler);
+  //console.log("Reading process initiated...");
+
+}
+
+
+function savePLY() {
+    if (!meshReady) {
+        alert("Mesh not ready!");
+        return;
+    }
+  for (lodIndex=0; lodIndex < PLYfiles.length+1; lodIndex++) {
+    if (PLYfiles[lodIndex]) {
+      if (PLYfiles[lodIndex].length>0) {
+          saveFile(PLYfiles[lodIndex], "LOD"+lodIndex + ".ply","file_status");
+      }
+    }
+  }
+}
+
+
+function saveXYZ() {
+    if (!pointcloudReady) {
+        alert("Point cloud not ready!");
+        return;
+    }
+  for (lodIndex=0; lodIndex < XYZfiles.length; lodIndex++) {
+    if (XYZfiles[lodIndex]) {
+      if (XYZfiles[lodIndex].length>0) {
+          saveFile(XYZfiles[lodIndex], "LOD"+lodIndex + ".txt","file_status");
+      }
+    }
+  }
+}
+
+
+  function writeCanvas(x,y,r,g,b) {
+    ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    ctx.fillRect(x,y,2,2);
+  }
+
+
+
+</script>
+
+  </body>
+</html>
