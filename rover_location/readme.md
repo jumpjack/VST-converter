@@ -30,7 +30,20 @@ Context images
 
 Hirise images interactive map: http://global-data.mars.asu.edu/bin/hirise.pl?res=32&clat=-14.57&clon=175.47&ids=PSP_002391_1995_COLOR&day_night=2&rel=0
      
-     
+## Digital elevation models
+![image](https://user-images.githubusercontent.com/1620953/182662355-cf6cdd2d-5894-44d4-8ae0-f477ea92c4bd.png)
+
+This folder contains digital elevation models (DEM), aka Digital Terrain Models (DTM) associated to some Hirise images; folders are grouped by orbit number, the first number in image name (e.g. ESP_021925_1650 would be in folder [ESP_021900](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/):
+https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/
+
+DEMs/DTMs are grayscale images; you can view a depthmap, associating a visible map to it, using these online viewers:
+
+ - https://depthmapviewer.ugocapeto.com/
+ - http://win98.altervista.org/space/exploration/depthviewer-master ([source](https://github.com/kmgill/depthviewer))
+
+Try with [this depthmap](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/DTEEC_021914_1475_022336_1475_U01.br.jpg) associated to [this image](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/ESP_021914_1475_RED_C_01_ORTHO.br.jpg).
+
+
 ## Traverse map
 
 ### Resources in KML format for Google Earth  
