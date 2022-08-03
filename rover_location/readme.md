@@ -41,8 +41,11 @@ DEMs/DTMs are grayscale images; you can view a depthmap, associating a visible m
  - https://depthmapviewer.ugocapeto.com/
  - http://win98.altervista.org/space/exploration/depthviewer-master ([source](https://github.com/kmgill/depthviewer))
 
-Try with [this depthmap](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/DTEEC_021914_1475_022336_1475_U01.br.jpg) associated to [this image](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/ESP_021914_1475_RED_C_01_ORTHO.br.jpg).
+Try with [this depthmap](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/DTEEC_021914_1475_022336_1475_U01.br.jpg) associated to [this image](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/ESP_021914_1475_ESP_022336_1475/ESP_021914_1475_RED_C_01_ORTHO.br.jpg); you will get something like this:
 
+![image](https://user-images.githubusercontent.com/1620953/182662991-c0601380-52e6-4f1e-8a30-2eba66168586.png)
+
+This file contains the list of all available DEMs/DTMs: https://hirise-pds.lpl.arizona.edu/PDS/INDEX/DTMCUMINDEX.TAB
 
 ## Traverse map
 
