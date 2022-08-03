@@ -14,6 +14,22 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
      - Latitude:   -14.5690 N  
      - Longitude:  175.4729 E     
      
+## Troy (final resting site) in Hirise images
+
+ - [ESP_021925_1650](https://www.uahirise.org/ESP_021925_1650)
+ - [ESP_013499_1650](http://hirise.lpl.arizona.edu/ESP_013499_1650) ([page](https://www.jpl.nasa.gov/images/pia12205-orbital-view-of-spirit-at-troy))
+
+Context images
+- Traverse map:
+
+![image](https://user-images.githubusercontent.com/1620953/182660442-890e1fd5-61d1-4f2e-8164-1a4642929641.png)
+
+- ESP_021925_1650 ([page](https://www.uahirise.org/ESP_021925_1650)) ([online viewer](http://viewer.mars.asu.edu/planetview/inst/hirise/ESP_021925_1650_COLOR#P=ESP_021925_1650_COLOR&T=2))
+
+![image](https://user-images.githubusercontent.com/1620953/182660839-fd321502-4781-4afd-ad5d-e05fe7eb2216.png)
+
+Hirise images interactive map: http://global-data.mars.asu.edu/bin/hirise.pl?res=32&clat=-14.57&clon=175.47&ids=PSP_002391_1995_COLOR&day_night=2&rel=0
+     
      
 ## Traverse map
 
