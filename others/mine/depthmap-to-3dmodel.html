@@ -1,0 +1,335 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+
+Load depthmap+texture: <input type="file" id="inpPPMfiles" name = "inpPPMfiles" width="100" accept=".PPM" multiple><br>
+Texture file: <span id="texture_name" name="texture_name"></span><br>
+Depthmap file: <span id="depthmap_name" name="depthmap_name"></span><br>
+<span id="file_status" name="file_status" >waiting</span><br>
+<span id="file_length" name="file_length" >-</span><br>
+<button id="PLY" name="PLY" onclick = "savePLY()">Save as .PLY</button><br>
+<br>
+<button id="XYZ" name="XYZ" onclick = "saveXYZ()">Save as .XYZ</button><br>
+<br>
+-----<br>
+<canvas id="texture" name="texture" width="256" height="248"></canvas><br>
+<br>
+<canvas id="depthmap" name="depthmap" width="256" height="248"></canvas><br>
+-----<br>
+<script src="KaitaiStream.js"></script>
+<script src="ppm.js"></script>
+
+<script>
+// 0.1.0 - All working fine.
+// 0.0.1 - Working pointcloud, no texture, XYZ save
+
+PROGRESS_STEP = 1000;
+sizeCheckResult = [];
+  canvas = document.getElementById('texture');
+  ctx = canvas.getContext('2d');
+  canvasWidth = 1024;
+  canvasHeight = 1024;
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+
+  Dcanvas = document.getElementById('depthmap');
+  Dctx = Dcanvas.getContext('2d');
+  DcanvasWidth = 1024;
+  DcanvasHeight = 1024;
+  Dctx.clearRect(0, 0, DcanvasWidth, DcanvasHeight);
+  Dctx.rect(0, 0, DcanvasWidth, DcanvasHeight);
+  Dctx.fillStyle = 'blue';
+  Dctx.fill();
+
+
+  myImg = null;
+  
+  PPMComponents = []; 
+
+  PLY_HEADER_BASE = "" +
+    "ply\n" +
+    "format ascii 1.0\n" +
+    "comment Created by VST JS convereter\n" +
+    "element vertex VVVV\n" +
+    "property float x\n" +
+    "property float y\n" +
+    "property float z\n" +
+    "element face FFFF\n" +
+    "property list uchar int vertex_index\n" +
+    "end_header\n"
+ 
+  const PPM_Selector = document.getElementById('inpPPMfiles');
+  PPM_Selector.addEventListener('change', (event) => {
+    assignHandlers(event.target.files)
+    getImageSize(fileHandlerTexture,fileHandlerDepth);
+  });
+
+
+  function saveFile(fileContent, filename,status_id) {
+    myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+    var url = window.URL.createObjectURL(myBlob);
+    var anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.addEventListener('load', (event) => {
+      console.log("LOAD");
+    });
+
+        anchor.addEventListener('ended', (event) => {
+      console.log("ENDED");
+    });
+
+        anchor.addEventListener('loadeddata', (event) => {
+      console.log("loadeddata");
+    });
+
+        anchor.addEventListener('loadstart', (event) => {
+      console.log("loadstart");
+    });
+        anchor.addEventListener('mousedown', (event) => {
+      console.log("mousedown");
+    });
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+  }
+
+function getImageSize(fileHandler1, fileHandler2) {
+      var reader = new FileReader();
+      var reader2 = new FileReader();
+      reader.addEventListener('load', (event) => {   
+        var rawFileContents = event.target.result;
+        var fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+console.log("Loaded :", fileHandler1.name);
+        var st = new KaitaiStream(fileContentsUInt8);
+        myPPM = new Ppm(st);   
+        console.log("Size: ",myPPM.width , myPPM.height);
+        sizeCheckResult[0] =  {
+          W : myPPM.width, 
+          H : myPPM.height
+        };    
+
+          reader2.addEventListener('load', (event) => {   
+            var rawFileContents = event.target.result;
+            var fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+    console.log("Loaded :", fileHandler2.name);
+            var st2 = new KaitaiStream(fileContentsUInt8);
+            myPPM2 = new Ppm(st2);   
+            console.log("Size: ",myPPM2.width , myPPM2.height);
+            sizeCheckResult[1] =  {
+              W : myPPM2.width, 
+              H : myPPM2.height
+            };    
+            console.log(sizeCheckResult[0], sizeCheckResult[1]);
+            
+            if ((sizeCheckResult[0].W != sizeCheckResult[1].W) || (sizeCheckResult[0].H !=  sizeCheckResult[1].H) ) {
+              alert("Sizes do not match!\n(" +sizeCheckResult[0].W + "," + sizeCheckResult[0].H + ") vs (" + sizeCheckResult[1].W + "," + sizeCheckResult[1].H + ")")
+              return -1;
+            }   else { 
+            console.log("GO!");      
+              processTexture(fileHandlerTexture,fileHandlerTexture.name, fileHandlerDepth);
+            }
+          
+                
+           });
+          reader2.readAsArrayBuffer(fileHandler2); 
+
+
+       });
+      reader.readAsArrayBuffer(fileHandler1); 
+}
+
+
+
+
+function processDepth(fileHandler, myName,RGBimage) {
+console.log("Depthmap processing...", fileHandler, myName,RGBimage);
+      var reader = new FileReader();
+      reader.addEventListener('load', (event) => {   
+        var rawFileContents = event.target.result;
+        var fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+
+console.log("Loaded depth map:", fileHandler.name);
+        document.getElementById("depthmap_name").innerHTML =  fileHandler.name;
+        var st = new KaitaiStream(fileContentsUInt8);
+        myDepthMap = new Ppm(st);        
+        Dcanvas.height = myDepthMap._m_height;    
+        Dcanvas.width = myDepthMap._m_width; 
+        
+console.log("Depth map width, height =", myDepthMap._m_width, myDepthMap._m_height);       
+console.log("Depth map pixels =", myDepthMap._m_width * myDepthMap._m_height);  
+
+    
+        Dctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        Dctx.rect(0, 0, canvasWidth, canvasHeight);
+        Dctx.fillStyle = 'blue';
+        Dctx.fill();
+        depthRawData = [];                      
+        DRcompo = [];
+//        DGcompo = [];
+//        DBcompo = [];
+        minValue = 256;
+        maxValue = -1;
+        progressCount = 0;
+        for (var valIdx=0;  valIdx <  myDepthMap.image.data.length;  valIdx += 3) {
+         depthRawData.push(myDepthMap.image.data[valIdx]);
+         depthValue =  myDepthMap.image.data[valIdx + 0];
+         if (depthValue > maxValue) maxValue = depthValue;
+         if (depthValue < minValue) minValue = depthValue;
+         DRcompo.push(255-depthValue);
+ //        DGcompo.push(255-myDepthMap.image.data[valIdx + 1]);
+//         DBcompo.push(255-myDepthMap.image.data[valIdx + 2]);   
+
+         progressCount++;
+         if (progressCount > PROGRESS_STEP) {
+             progressCount = 0;
+             console.log("Depth 1/2: ", (100*valIdx/myDepthMap.image.data.length).toFixed(1) + "%");
+         }
+
+        }
+
+console.log("Depth min, max:" , minValue, maxValue);
+        
+        XYZline = "";
+        XYZfile = "";        
+        for (y = 0; y < myDepthMap._m_height; y++) {
+          for (x = 0; x < myDepthMap._m_width; x++) {
+            idx = y * myDepthMap._m_width + x;
+            DwriteCanvas(x, y, DRcompo[idx], DRcompo[idx], DRcompo[idx]);
+            XYZline = x + " " + y + " " + DRcompo[idx] + " " + Rcompo[idx] + " " + Gcompo[idx] + " " + Bcompo[idx] + "\n";
+            XYZfile += XYZline;
+            
+             progressCount++;
+             if (progressCount > PROGRESS_STEP) {
+                 progressCount = 0;
+                 console.log("Depth 2/2: ", x,y);
+             }       
+          }
+        
+        }                  
+          console.log("XYZ file length:" ,XYZfile.length);
+          document.getElementById("file_status").innerHTML = "Loaded";
+          document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+
+      });
+      reader.readAsArrayBuffer(fileHandler); 
+}
+
+
+
+
+
+function processTexture(fileHandler, myName, depthHandler) {
+console.log("   PROCESS texture:",fileHandler, myName, depthHandler.name);
+      var reader = new FileReader();
+      reader.addEventListener('load', (event) => {   
+console.log("   done reading of " + myName);      
+        document.getElementById("texture_name").innerHTML =  fileHandler.name;
+        var rawFileContents = event.target.result;        
+        var fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+        var st = new KaitaiStream(fileContentsUInt8);        
+        myTexture = new Ppm(st);  
+        canvas.height = myTexture._m_height;    
+        canvas.width = myTexture._m_width;     
+ 
+console.log("Texture width, height =", myTexture._m_width, myTexture._m_height);       
+console.log("Texture pixels =", myTexture._m_width * myTexture._m_height);       
+console.log("Texture size =", myTexture.image.data.length);       
+ 
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.rect(0, 0, canvasWidth, canvasHeight);
+        ctx.fillStyle = 'blue';
+        ctx.fill();
+        textureRawData = [];                      
+ 
+        Rcompo = [];
+        Gcompo = [];
+        Bcompo = [];   
+        progressCount = 0;   
+        x=0;
+        y=0;
+        for (var valIdx=0;  valIdx <  myTexture.image.data.length-2;  valIdx += 3) { // debug: meno 2?
+         textureRawData.push(myTexture.image.data[valIdx]);
+         Rcompo.push(myTexture.image.data[valIdx + 0]);
+         Gcompo.push(myTexture.image.data[valIdx + 1]);
+         Bcompo.push(myTexture.image.data[valIdx + 2]);   
+         writeCanvas(x, y, myTexture.image.data[valIdx + 0], myTexture.image.data[valIdx + 1], myTexture.image.data[valIdx + 2])
+         x+=1;
+         if (x >= myTexture._m_width * 1) {
+          x=0;
+          y+=1;
+         }
+
+         progressCount++;
+         if (progressCount > PROGRESS_STEP) {
+             progressCount = 0;
+             console.log("Texture 1/2: ", x,y,valIdx,(100*valIdx/myTexture.image.data.length).toFixed(1) +"%");
+         }
+        }
+         
+         result =  processDepth(depthHandler,depthHandler.name,textureRawData);
+         console.log("result = ", result);
+         
+        if (result === -1) {
+          console.log("SIZE ERROR, no output");
+         }             
+
+        if (result === 0) {
+          console.log("Done.");
+          alert("done");
+         }             
+
+      });
+console.log("   Reading " + fileHandler.name + " from disk...");      
+      reader.readAsArrayBuffer(fileHandler); 
+}
+
+
+
+function assignHandlers(fileHandlers) {
+   for (var fileIndex = 0; fileIndex < fileHandlers.length;  fileIndex++) {
+      var fileHandler = fileHandlers[fileIndex];
+      var myName = fileHandlers[fileIndex].name;
+      if (myName.toUpperCase().indexOf("DEPTH")>=0) {     
+         fileHandlerDepth = fileHandler;        
+      }
+
+      if (myName.toUpperCase().indexOf("TEXTURE")>=0) {     
+         fileHandlerTexture = fileHandler;        
+      }  
+    }
+}
+
+
+function savePLY() {
+  for (lodIndex=0; lodIndex < LODS_TO_PROCESS; lodIndex++) {
+    saveFile(PLYfiles[lodIndex], "LOD"+lodIndex + ".ply","file_status");
+  }
+}
+
+
+function saveXYZ() {
+    saveFile(XYZfile, "test.txt","file_status");
+}
+
+
+
+function writeCanvas(x,y,r,g,b) {
+  ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+  ctx.fillRect(x,y,x+1,y+1);
+}
+
+function DwriteCanvas(x,y,r,g,b) {
+  Dctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+  Dctx.fillRect(x,y,x+1,y+1);
+}
+
+
+
+</script>
+
+  </body>
+</html>
