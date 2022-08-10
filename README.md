@@ -118,11 +118,11 @@ end_header                  delimits the end of the header
  To look for available images for texturing, use  [query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?mission=mars*exploration*rover&product_type=%22edr%22&pds.ROVER_INSTRUMENT_ELEVATION=[-90%20to%205]&pds.ROVER_MOTION_COUNTER_SITE=137&pds.FILTER_NAME=*l7*&pds.eye=left) which can be split in:
 
 - https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?   -  base address
-- mission=mars*exploration*rover&  - mission
-- product_type="mer"& - processed images
-- pds.ROVER_INSTRUMENT_ELEVATION=[-90 to 5]& - elevation of pancam (interval)
-- pds.ROVER_MOTION_COUNTER_SITE=137& - Site 137 (final position)
-- pds.FILTER_NAME=*L7*& - Filters are L2, L3, L4, L5, l6, L7; combine L2 + L5 + L7 to create colore texture
+- mission=mars\*exploration\*rover  - mission
+- product_type="mer" - processed images
+- pds.ROVER_INSTRUMENT_ELEVATION=[-90 to 5] - elevation of pancam (interval)
+- pds.ROVER_MOTION_COUNTER_SITE=137 - Site 137 (final position)
+- pds.FILTER_NAME=\*L7\* - Filters are L2, L3, L4, L5, l6, L7; combine L2 + L5 + L7 to create colore texture
 - pds.eye=left - left camera
 
 
