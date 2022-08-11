@@ -100,6 +100,37 @@ end_header                  delimits the end of the header
 - [Hazcam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
 - [Pancam - mer2mw_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/) (as above)
 
+Query to list all available XYZ products for a specified site:
+
+[query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?pds.INSTRUMENT_HOST_ID=MERA/MER2/Spirit&pds.atlas_instrument_name=pancam&identifier=*xyl*&pds.ROVER_MOTION_COUNTER_SITE=137&rows=0&wt=json)
+
+ 
+Split:
+
+- https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?
+- pds.INSTRUMENT_HOST_ID=MERA/MER2/Spirit
+- pds.atlas_instrument_name=pancam
+- identifier=\*xyl*\ **- product type for XYZ is XYL**
+- pds.ROVER_MOTION_COUNTER_SITE=137
+- rows=0 **- to get just results count**
+
+Once you get the count of results, use this query to get all of them in CSV format:
+
+[query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?identifier=*xyl*&pds.FILTER_NAME=*l*&pds.INSTRUMENT_HOST_ID=MERA/MER2/Spirit&pds.atlas_instrument_name=pancam&mission=mars*exploration*rover&pds.ROVER_MOTION_COUNTER_SITE=137&wt=csv&rows=1000&fl=FILE_NAME&fl=FILTER_NAME&fl=SEQUENCE_ID&fl=INSTRUMENT_HOST_ID) (please use needed number of rows/result)
+
+https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?
+identifier=\*xyl\*
+pds.FILTER_NAME=\*l\*
+pds.INSTRUMENT_HOST_ID=MERA/MER2/Spirit
+pds.atlas_instrument_name=pancam
+pds.ROVER_MOTION_COUNTER_SITE=137
+wt=csv
+rows=1000
+fl=FILE_NAME
+fl=FILTER_NAME
+fl=SEQUENCE_ID
+fl=INSTRUMENT_HOST_ID
+
 ### Mosaics
 - [Navcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/)
 - [Hazcam - mer2om_0xxx](https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/) (as above)
