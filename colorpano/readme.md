@@ -1,5 +1,8 @@
 Collection of color panoramas of the troy area depicting the "sand trap" were Spirit will rest for ever
 
+## Before being trapped
+
+
  - Outcrop:  [page](https://web.archive.org/web/20110418050732/http://pancam.astro.cornell.edu/pancam_instrument/1886A_P2369.html) - [label]():
 
 ![image](https://user-images.githubusercontent.com/1620953/184197167-ea600ed0-df53-40b4-88f4-670fea6584fa.png)
@@ -13,8 +16,12 @@ Collection of color panoramas of the troy area depicting the "sand trap" were Sp
 ![image](https://user-images.githubusercontent.com/1620953/184197629-c15f9bcb-a3b2-41c5-8aa4-2832b509b99e.png)
 
 - "West valley" view2 - [page](https://web.archive.org/web/20110424194309/http://pancam.astro.cornell.edu/pancam_instrument/1367A_P2415.html) - [label]()
-- 
+
 ![image](https://user-images.githubusercontent.com/1620953/184197807-39cbaf1c-4c85-46c5-8374-5cd367218ee4.png)
+
+- Objective (never reached): [page](https://web.archive.org/web/20110415002224/http://pancam.astro.cornell.edu/pancam_instrument/2114A_P2556.html)
+
+![image](https://user-images.githubusercontent.com/1620953/184198922-d9ce7b86-136a-44d5-b400-0e6e855bd53c.png)
 
 
 Raw/hires and labels:
