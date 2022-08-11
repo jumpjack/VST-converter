@@ -121,7 +121,7 @@ end_header                  delimits the end of the header
 - Third party detailed instructions (by apache.org): https://solr.apache.org/guide/8_11/the-standard-query-parser.html
 
 #### Query 1
- To look for available images for texturing, use  [query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?mission=mars*exploration*rover&product_type=%22edr%22&pds.ROVER_INSTRUMENT_ELEVATION=[-90%20to%205]&pds.ROVER_MOTION_COUNTER_SITE=137&pds.FILTER_NAME=*l7*&pds.eye=left) which can be split in:
+ To look for available images for texturing,you can use this [query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?mission=mars*exploration*rover&product_type=%22edr%22&pds.ROVER_INSTRUMENT_ELEVATION=[-90%20to%205]&pds.ROVER_MOTION_COUNTER_SITE=137&pds.FILTER_NAME=*l7*&pds.eye=left), which can be split in:
 
 - https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search? *  -  base address*
 - mission=mars\*exploration\*rover **- mission**
@@ -138,14 +138,14 @@ https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?pds.FILTER_NAME=*l2*&p
 
 Split:
 
-https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?
+- https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?
 - pds.FILTER_NAME=\*l2\* 
 - pds.FILTER_NAME=\*l7\* **- Repeating same parameter with different values results in "OR"**
 - spacecraft_name=spirit
 - atlas_instrument_name=pancam
 - mission=mars\*exploration\*rover
 - pds.ROVER_MOTION_COUNTER_SITE=137
-- wt=json **- output format: default=json; available: xml, csv, ..? **
+- wt=json **- output format: default=json; available: xml, csv, ..?**
 - fl=FILE_NAME **- fields in output**
 - rows=1000 **- output size**
 
