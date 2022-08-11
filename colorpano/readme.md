@@ -25,6 +25,11 @@ Collection of color panoramas of the troy area depicting the "sand trap" were Sp
  
  ![image](https://user-images.githubusercontent.com/1620953/184197495-eed0bc6f-834e-4e4a-b426-244446cbea56.png)
 
-Raw/hires and labels:
+## Raw/hires and labels
 
 https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-5-color-mosaics-sci-v1/mer2pc_2xxx/data/sol2xxx/
+
+## Where to look for color images:
+
+ - https://pds-geosciences.wustl.edu/dataserv/holdings.html
+ - https://pds-geosciences.wustl.edu/missions/mer/geo_mer_datasets.htm
