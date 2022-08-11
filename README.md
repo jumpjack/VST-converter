@@ -118,11 +118,11 @@ end_header                  delimits the end of the header
  To look for available images for texturing, use  [query](https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?mission=mars*exploration*rover&product_type=%22edr%22&pds.ROVER_INSTRUMENT_ELEVATION=[-90%20to%205]&pds.ROVER_MOTION_COUNTER_SITE=137&pds.FILTER_NAME=*l7*&pds.eye=left) which can be split in:
 
 - https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search? *  -  base address*
-- mission=mars\*exploration\*rover **- mission**
+- mission=mars\*exploration\*rover **mission**
 - product_type="mer" **- processed images**
-- pds.ROVER_INSTRUMENT_ELEVATION=[-90 to 5] **- elevation of pancam (interval)**
-- pds.ROVER_MOTION_COUNTER_SITE=137 **- Site 137 (final position)**
-- pds.FILTER_NAME=\*L7\* **- Filters are L2, L3, L4, L5, l6, L7; combine L2 + L5 + L7 to create colore texture**
+- pds.ROVER_INSTRUMENT_ELEVATION=[-90 to 5] **elevation of pancam (interval)**
+- pds.ROVER_MOTION_COUNTER_SITE=137 **Site 137 (final position)**
+- pds.FILTER_NAME=\*L7\* **Filters are L2, L3, L4, L5, l6, L7; combine L2 + L5 + L7 to create colore texture**
 - pds.eye=left **- left camera**
 
 A more advanced query allows listing only the filenames corresponding to specified parameter, and allows combining multiple values for filter by "OR" operator:
@@ -133,14 +133,14 @@ Split:
 
 https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?
 - pds.FILTER_NAME=\*l2\* 
-- pds.FILTER_NAME=\*l7\* **- Repeating same parameter with different values results in "OR"**
+- pds.FILTER_NAME=\*l7\* **Repeating same parameter with different values results in "OR"**
 - spacecraft_name=spirit
 - atlas_instrument_name=pancam
 - mission=mars\*exploration\*rover
 - pds.ROVER_MOTION_COUNTER_SITE=137
-- wt=json - **output format: default=json; available: xml, csv, ..? **
+- wt=json **output format: default=json; available: xml, csv, ..? **
 - fl=FILE_NAME **fields in output**
-- rows=1000 **- output size**
+- rows=1000 **output size**
 
 ## Folders
 
