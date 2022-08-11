@@ -2,15 +2,6 @@ Collection of color panoramas of the troy area depicting the "sand trap" were Sp
 
 ## Before being trapped
 
-
- - Outcrop:  [page](https://web.archive.org/web/20110418050732/http://pancam.astro.cornell.edu/pancam_instrument/1886A_P2369.html) - [label]():
-
-![image](https://user-images.githubusercontent.com/1620953/184197167-ea600ed0-df53-40b4-88f4-670fea6584fa.png)
-
- - Detail ("Mustang"): [page](https://web.archive.org/web/20110418051136/http://pancam.astro.cornell.edu/pancam_instrument/1798A_P2536.html) - [label]():
- 
- ![image](https://user-images.githubusercontent.com/1620953/184197495-eed0bc6f-834e-4e4a-b426-244446cbea56.png)
-
 - "West valley" view; rover is right above sandtrap, walking around on Homeplate: [page](https://web.archive.org/web/20110424185651/http://pancam.astro.cornell.edu/pancam_instrument/1366A_WestValley.html) - [label]():
 
 ![image](https://user-images.githubusercontent.com/1620953/184197629-c15f9bcb-a3b2-41c5-8aa4-2832b509b99e.png)
@@ -23,6 +14,16 @@ Collection of color panoramas of the troy area depicting the "sand trap" were Sp
 
 ![image](https://user-images.githubusercontent.com/1620953/184198922-d9ce7b86-136a-44d5-b400-0e6e855bd53c.png)
 
+
+## After
+
+ - Outcrop:  [page](https://web.archive.org/web/20110418050732/http://pancam.astro.cornell.edu/pancam_instrument/1886A_P2369.html) - [label]():
+
+![image](https://user-images.githubusercontent.com/1620953/184197167-ea600ed0-df53-40b4-88f4-670fea6584fa.png)
+
+ - Detail ("Mustang"): [page](https://web.archive.org/web/20110418051136/http://pancam.astro.cornell.edu/pancam_instrument/1798A_P2536.html) - [label]():
+ 
+ ![image](https://user-images.githubusercontent.com/1620953/184197495-eed0bc6f-834e-4e4a-b426-244446cbea56.png)
 
 Raw/hires and labels:
 
