@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="PSPad editor, www.pspad.com">
+  <title></title>
+  </head>
+  <body>
+  <h1>PDS image id identifier</h1><br>
+  <br>
+
+Please insert filename or single data:<br>
+<br>
+Filename (13 characters): <input type = "text" id="txtFile" name="txtFile" value="2ppj11ilfb1cypdop2284r222m1" size = 30>
+(example: <a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137/2ppj11ilfb1cypdop2284r222m1.img.jpg">2ppj11ilfb1cypdop2284r222m1</a> (<a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137">folder</a>) )
+<button onclick="calcAndUrls()">Calc</button><br>
+<br>
+<img id="imgThumbnail" name="imgThumbnail" src=""><br>
+Thumbnail url: <span id="thumbnail" name="thumbnail"></span><br>
+Preview url: <span id="preview" name="preview"></span><br>
+Product url: <span id="product" name="product"></span><br>
+List of images used: <span id="list" name="list"></span><br>
+Folder for single images: <span id="single" name="single"></span><br>
+<br>
+Data:<br>
+<button onclick="fillData()">Fill from filename</button><br>
+Sol(*) (3 characters): <input type = "text" id="txtSol" name="txtSol" value="i69" size=4>  <span id="solResult" name="solResult"></span><br>
+Site (2 characters): <input type = "text" id="txtSite" name="txtSite" value="b1" size=3> <span id="siteResult" name="siteResult"></span><br>
+Drive (2 characters): <input type = "text" id="txtDrive" name="txtDrive" value="zz" size=3> <span id="driveResult" name="driveResult"></span><br>
+<button onclick="calculate()">Calc</button><br>
+<br>
+
+<br><hr><br>
+From <a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/document/CAMSIS_latest.PDF">camsis.pdf</a>:<br>
+<strong>sol</strong> = (3 alphanumeric) Starting Sol. Indicates the Sol of the first (in time order, the lowest SCLK)
+mosaic chip, denoting the start of mosaic data acquisition. Example value is &quot;004&quot;.<br>
+The valid Sol values, in their progression, are as follows (non-Hex):<br>
+Range 000 thru 999 - &quot;000&quot;, &quot;001&quot;, ... &quot;999&quot;<br>
+Range 1000 thru 1099 - &quot;A00&quot;, &quot;A01&quot;, ... &quot;A99&quot;<br>
+Range 1100 thru 1199 - &quot;B00&quot;, &quot;B01&quot;, ... &quot;B99&quot;<br>
+Range 3500 thru 3599 - &quot;Z00&quot;, &quot;Z01&quot;, ... &quot;Z99&quot;<br>
+Range 3600 thru 10359 - "AA0", "AA1" ... "AA9", "AB0", "AB1" ... "AB9", "ZA0", "ZA1" ... "ZA9", "ZB0" ... "ZZ9"<br>
+Range 10360 thru 27935 - "AAA", "AAB" ... "AAZ", "ABA", "ABB" ... "ABZ", "ZZA", "ZZB" ... "ZZZ"<br>
+Range 27936 or greater - "###" (3 pound signs) for Operations, or &quot;___&quot; (3 underscores) for Archive<br>
+<br>
+<strong>site</strong> = (2 alphanumeric) Site location count. Use of both integers and alphas allows for a total
+range of 0 thru 1295. A value greater than 1295 is denoted by &quot;##&quot; (2 pound signs) for
+Operations and by &quot;__&quot; (2 underscores) for Archive volumes, requiring the user to extract
+actual value from label.<br>
+The valid values, in their progression, are as follows:<br>
+Range 0 thru 99 - &quot;00&quot;, &quot;01&quot;, &quot;02&quot;... &quot;99&quot;<br>
+Range 100 thru 1035 - &quot;A0&quot;, &quot;A1&quot; ... &quot;A9&quot;, &quot;AA&quot;, &quot;AB&quot;...&quot;AZ&quot;, &quot;B0&quot;, &quot;B1&quot;... &quot;ZZ&quot;<br>
+Range 1036 thru 1295 - &quot;0A&quot;, &quot;0B ... &quot;0Z&quot;, &quot;1A&quot;, &quot;1B&quot;...&quot;9Z&quot;<br>
+Range 1296 or greater - &quot;##&quot; (2 pound signs) for Operations, or &quot;__&quot; (2 underscores) for Archive<br>
+Example value is &quot;AK&quot; for value of 120<br>
+<br>
+<strong>pos</strong> = (2 alphanumeric) Position-within-Site count. (see "site" above).<br>
+<br>
+(*) Only up to Z99 (3599)<br>
+<script>
+myValues ="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+alphabet = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+thumbnailBaseUrlPancamSingle = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/extras/thumbnail/";
+previewBaseUrlPancamSingle = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/browse/";
+productBaseUrlPancamSingle = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/data/";
+
+thumbnailBaseUrlPancam = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/extras/thumbnail/pancam/";
+previewBaseUrlPancam = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/";
+productBaseUrlPancam = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/data/pancam/";
+
+
+function fillData() {
+  document.getElementById("txtSol").value = document.getElementById("txtFile").value.substr(3,3);
+  document.getElementById("txtSite").value = document.getElementById("txtFile").value.substr(9,2);
+  document.getElementById("txtDrive").value = document.getElementById("txtFile").value.substr(14,2);
+}
+
+function fillAndCalc() {
+  fillData();
+  calculate();
+}
+
+function zeroes(num, figures) {
+  num = num+"";
+  count = 0;
+  while (num.length<figures) {
+    count++;
+    num = "0" + num;
+  }
+  return num;
+}
+
+function calculate(){
+  solRaw=document.getElementById("txtSol").value;
+  siteRaw=document.getElementById("txtSite").value;
+  driveRaw=document.getElementById("txtDrive").value;
+
+  solRaw = solRaw.toUpperCase();
+  sol_1=solRaw[0];
+  sol_2=solRaw[1]*1;
+  sol_3=solRaw[2]*1;
+  solNum = myValues.indexOf(sol_1)*100 + sol_2*10 + sol_3;
+  solString = "sol"+zeroes(solNum,4);
+  console.log(solString);
+  console.log(previewBaseUrlPancam + solString + "/rdr/");
+  solResult.innerHTML = solNum;
+
+  siteRaw = siteRaw.toUpperCase();
+  site_1=siteRaw[0];
+  site_2=siteRaw[1];
+  if (myValues.indexOf(site_1) <= 9) {
+    siteNum = (site_1 + site_2)*1;
+  }
+  if (myValues.indexOf(site_1) > 9) {
+    siteNum = (alphabet.indexOf(site_1)-1)*36+100 + myValues.indexOf(site_2)*1;
+  }
+  siteString = "site" + zeroes(siteNum,4);
+  console.log(siteString);
+  siteResult.innerHTML = siteNum;
+
+  driveRaw = driveRaw.toUpperCase();
+  drive_1=driveRaw[0];
+  drive_2=driveRaw[1];
+  if (myValues.indexOf(drive_1) <= 9) {
+    driveNum = (drive_1 + drive_2)*1;
+  }
+  if (myValues.indexOf(drive_1) > 9) {
+    driveNum = (alphabet.indexOf(drive_1)-1)*36+100 + myValues.indexOf(drive_2)*1;
+  }
+  console.log(driveNum);
+  driveResult.innerHTML = driveNum;
+
+}
+
+function fillUrls() {
+  thumbnailFolderUrl = thumbnailBaseUrlPancam + siteString + "/";
+  previewFolderUrl = previewBaseUrlPancam + siteString + "/";
+  productFolderUrl = productBaseUrlPancam + siteString + "/";
+  thumbnailSingleFolderUrl = thumbnailBaseUrlPancamSingle + solString + "/rdr/";
+  previewSingleFolderUrl = previewBaseUrlPancamSingle + solString + "/rdr/";
+  productSingleFolderUrl = productBaseUrlPancamSingle + solString + "/rdr/";
+
+  thumbnailUrl = thumbnailFolderUrl + document.getElementById("txtFile").value + ".img.jpg";
+  previewUrl = previewFolderUrl + document.getElementById("txtFile").value + ".img.jpg";
+  productUrl = productFolderUrl + document.getElementById("txtFile").value + ".img";
+  listUrl = productFolderUrl + document.getElementById("txtFile").value + ".lis";
+
+  document.getElementById("thumbnail").innerHTML = '<a href="' + thumbnailUrl + '">JPG file</a> (<a href="' + thumbnailFolderUrl  + '">folder</a>)';
+  document.getElementById("preview").innerHTML = '<a href="' + previewUrl + '">JPG file</a> (<a href="' + previewFolderUrl  + '">folder</a>)';
+  document.getElementById("product").innerHTML = '<a href="' + productUrl + '">IMG file</a> (<a href="' + productFolderUrl  + '">folder</a>)';
+  document.getElementById("list").innerHTML = '<a href="' + listUrl + '">LIS file</a> (<a href="' + productFolderUrl  + '">folder</a>)';
+  document.getElementById("single").innerHTML = '<a href="' + thumbnailSingleFolderUrl  + '">thumbnail</a>, <a href="' + previewSingleFolderUrl  + '">preview</a>, <a href="' + productSingleFolderUrl  + '">product</a>';
+
+  document.getElementById("imgThumbnail").src =  thumbnailUrl;
+}
+
+function calcAndUrls() {
+  calculate();
+  fillUrls();
+}
+</script>
+</body>
+</html>
