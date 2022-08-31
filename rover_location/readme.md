@@ -17,7 +17,7 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
 ## Timetables for Spirit and opportunity
 
  - [Spirit](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-spirit.tsv) ([source](https://an.rsl.wustl.edu/mera/merxbrowser/an3.aspx?))
- - [Opportunity](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-opportunity.tsv)) ([https://an.rsl.wustl.edu/merb/merxbrowser/an3.aspx](source))
+ - [Opportunity](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-opportunity.tsv) ([https://an.rsl.wustl.edu/merb/merxbrowser/an3.aspx](source))
      
 ## Troy (final resting site) in Hirise images
 
