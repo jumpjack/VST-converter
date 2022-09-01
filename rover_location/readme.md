@@ -52,6 +52,14 @@ Context images
 
 ![image](https://user-images.githubusercontent.com/1620953/187912772-a49acb84-e48c-4eb7-8bf2-babc160fb0e9.png)
 
+![image](https://user-images.githubusercontent.com/1620953/187950229-e7dbcac0-4317-43c0-a1ed-1873075a921a.png)
+
+![image](https://user-images.githubusercontent.com/1620953/187950585-67cdc6bb-b445-499e-b310-434a10ea611b.png)
+
+
+![image](https://user-images.githubusercontent.com/1620953/187950506-7f859948-634a-4526-9d56-52309a0f3225.png)
+
+
 
 https://chart-studio.plotly.com/create/?fid=jumpjack:10&fid=jumpjack:9
 
