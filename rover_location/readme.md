@@ -16,6 +16,9 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
      
 ## Timetables for Spirit and opportunity
 
+![image](https://user-images.githubusercontent.com/1620953/187862679-4f751de7-93c9-4b04-b7c8-bd19a3b34870.png)
+
+
  - [Spirit](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-spirit.tsv) ([source](https://an.rsl.wustl.edu/mera/merxbrowser/an3.aspx?))
  - [Opportunity](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-opportunity.tsv) ([source](https://an.rsl.wustl.edu/merb/merxbrowser/an3.aspx))
      
@@ -27,6 +30,9 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
 Context images
 
 - Traverse map:
+
+![image](https://user-images.githubusercontent.com/1620953/187862466-3319d7cb-fda2-43ec-a0fe-7093e202b421.png)
+
 
 ![image](https://user-images.githubusercontent.com/1620953/182660442-890e1fd5-61d1-4f2e-8164-1a4642929641.png)
 
