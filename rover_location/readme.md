@@ -25,6 +25,7 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
  - [ESP_013499_1650](http://hirise.lpl.arizona.edu/ESP_013499_1650) ([page](https://www.jpl.nasa.gov/images/pia12205-orbital-view-of-spirit-at-troy))
 
 Context images
+
 - Traverse map:
 
 ![image](https://user-images.githubusercontent.com/1620953/182660442-890e1fd5-61d1-4f2e-8164-1a4642929641.png)
