@@ -56,9 +56,17 @@ Context images
 
 ![image](https://user-images.githubusercontent.com/1620953/187950585-67cdc6bb-b445-499e-b310-434a10ea611b.png)
 
-
 ![image](https://user-images.githubusercontent.com/1620953/187950506-7f859948-634a-4526-9d56-52309a0f3225.png)
 
+![image](https://user-images.githubusercontent.com/1620953/187954672-19b3d2db-b23d-46d0-a707-be56a9c6be85.png)
+
+![image](https://user-images.githubusercontent.com/1620953/187954772-f80b40bc-ff98-4155-8d9c-338603a5bfe3.png)
+
+![image](https://user-images.githubusercontent.com/1620953/187956035-b73019bd-4f8b-451d-8c27-70d175645e31.png)
+
+![image](https://user-images.githubusercontent.com/1620953/187956318-65696a0a-2bc2-4096-bf41-b26e54b021b3.png)
+
+![image](https://user-images.githubusercontent.com/1620953/187956914-c1115120-56e2-40b8-acee-121aebbbd547.png)
 
 
 https://chart-studio.plotly.com/create/?fid=jumpjack:10&fid=jumpjack:9
