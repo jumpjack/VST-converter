@@ -106,8 +106,12 @@ Hirise images interactive map: http://global-data.mars.asu.edu/bin/hirise.pl?res
 ## Digital elevation models
 ![image](https://user-images.githubusercontent.com/1620953/182662355-cf6cdd2d-5894-44d4-8ae0-f477ea92c4bd.png)
 
-This folder contains digital elevation models (DEM), aka Digital Terrain Models (DTM) associated to some Hirise images; folders are grouped by orbit number, the first number in image name (e.g. ESP_021925_1650 would be in folder [ESP_021900](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/):
+This folder contains digital elevation models (DEM), aka Digital Terrain Models (DTM) associated to some Hirise images; folders are grouped by orbit number, the first number in image name (e.g. ESP_021925_1650 would be in folder [ESP_021900](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/)):
+
 https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/
+
+This page allows searching for available DEMs in HIRISE database: https://www.uahirise.org/hiwish/maps/dtms.jsp
+
 
 DEMs/DTMs are grayscale images; you can view a depthmap, associating a visible map to it, using these online viewers:
 
