@@ -118,11 +118,14 @@ This page allows searching for available DEMs in HIRISE database: https://www.ua
 
 ![image](https://user-images.githubusercontent.com/1620953/188086088-57231658-4e99-4982-8230-d5a8b9528c7b.png)
 
-Low res DEM creatde from **PSP_001513_1655** and **PSP_001777_1650**:
-
+DEM created from **PSP_001513_1655** and **PSP_001777_1650**:
+ - [Main page](https://www.uahirise.org/dtm/dtm.php?ID=PSP_001513_1655)
+ - [Full file](https://www.uahirise.org/PDS/DTM/PSP/ORB_001500_001599/PSP_001513_1655_PSP_001777_1650/DTEEC_001513_1655_001777_1650_U01.IMG) (280 MB)
+ - [Low-res preview](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/PSP/ORB_001500_001599/PSP_001513_1655_PSP_001777_1650/DTEEC_001513_1655_001777_1650_U01.ab.jpg) 
 ![image](https://user-images.githubusercontent.com/1620953/188086292-9f20d719-a881-4770-bc53-ccc7dffd3f8a.png)
 
-https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/PSP/ORB_001500_001599/PSP_001513_1655_PSP_001777_1650/DTEEC_001513_1655_001777_1650_U01.ab.jpg
+
+
 
 DEMs/DTMs are grayscale images; you can view a depthmap, associating a visible map to it, using these online viewers:
 
