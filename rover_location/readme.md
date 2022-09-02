@@ -27,15 +27,14 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
  - [ESP_021925_1650](https://www.uahirise.org/ESP_021925_1650)
  - [ESP_013499_1650](http://hirise.lpl.arizona.edu/ESP_013499_1650) ([page](https://www.jpl.nasa.gov/images/pia12205-orbital-view-of-spirit-at-troy))
 
-![image](https://user-images.githubusercontent.com/1620953/188088197-fbcc0e4a-596a-4968-a5b8-a77993b65b80.png)
-
 
 Context images
+
+
 
 - Traverse map:
 
 ![image](https://user-images.githubusercontent.com/1620953/187862466-3319d7cb-fda2-43ec-a0fe-7093e202b421.png)
-
 
 ![image](https://user-images.githubusercontent.com/1620953/182660442-890e1fd5-61d1-4f2e-8164-1a4642929641.png)
 
@@ -120,6 +119,8 @@ This page allows searching for available DEMs in HIRISE database: https://www.ua
 ![image](https://user-images.githubusercontent.com/1620953/188085682-799fb601-0cd3-4ea3-a5f1-7bc69b2a0871.png)
 
 ![image](https://user-images.githubusercontent.com/1620953/188086088-57231658-4e99-4982-8230-d5a8b9528c7b.png)
+
+![image](https://user-images.githubusercontent.com/1620953/188088197-fbcc0e4a-596a-4968-a5b8-a77993b65b80.png)
 
 DEM created from **PSP_001513_1655** and **PSP_001777_1650**:
  - [Main page](https://www.uahirise.org/dtm/dtm.php?ID=PSP_001513_1655)
