@@ -1,5 +1,8 @@
 # Spirit
 
+![image](https://user-images.githubusercontent.com/1620953/188098277-52201a87-b6f1-44fa-9d57-e4feefe122ef.png)
+
+
 ## Landing site position
 
 There are various valuse for latitude and longitude of landing site, depending on source.
@@ -13,6 +16,14 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
 - With respect to surface features in maps produced in the MOLA IAU 2000 cartographic reference frame:
      - Latitude:   -14.5690 N  
      - Longitude:  175.4729 E     
+
+## Final resting position ("Troy", near "Homeplate")
+ 
+![image](https://user-images.githubusercontent.com/1620953/188097610-d8bc33ff-1ac1-4df1-9d7d-dd8cc55af650.png)
+
+ - Latitude: -14.60036585863168 N
+ - Longitude: 175.52537659512154 E
+
      
 ## Timetables for Spirit and opportunity
 
@@ -69,6 +80,8 @@ Context images
 ![image](https://user-images.githubusercontent.com/1620953/187956318-65696a0a-2bc2-4096-bf41-b26e54b021b3.png)
 
 ![image](https://user-images.githubusercontent.com/1620953/187956914-c1115120-56e2-40b8-acee-121aebbbd547.png)
+
+![image](https://user-images.githubusercontent.com/1620953/188098394-31f69136-e344-44d3-8482-10651ee6ccc3.png)
 
 
 https://chart-studio.plotly.com/create/?fid=jumpjack:10&fid=jumpjack:9
