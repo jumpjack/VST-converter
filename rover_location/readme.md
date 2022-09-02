@@ -120,9 +120,14 @@ https://chart-studio.plotly.com/create/?fid=jumpjack:10&fid=jumpjack:9
 
 ![image](https://user-images.githubusercontent.com/1620953/188165822-b480481e-063a-485f-8fbb-f8d4b159f663.png)
 
-
 Hirise images interactive map: http://global-data.mars.asu.edu/bin/hirise.pl?res=32&clat=-14.57&clon=175.47&ids=PSP_002391_1995_COLOR&day_night=2&rel=0
-     
+
+Labels:
+
+ - https://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_021900_021999/ESP_021925_1650/
+ - https://hirise-pds.lpl.arizona.edu/PDS/RDR/PSP/ORB_008900_008999/PSP_008963_1650/
+
+
 ## Digital elevation models
 ![image](https://user-images.githubusercontent.com/1620953/182662355-cf6cdd2d-5894-44d4-8ae0-f477ea92c4bd.png)
 
