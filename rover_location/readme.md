@@ -116,6 +116,8 @@ https://chart-studio.plotly.com/create/?fid=jumpjack:10&fid=jumpjack:9
 
 ![image](https://user-images.githubusercontent.com/1620953/182660839-fd321502-4781-4afd-ad5d-e05fe7eb2216.png)
 
+- PSP_008963_1650 ([page](https://www.uahirise.org/PSP_008963_1650)) ([online viewer](http://viewer.mars.asu.edu/planetview/inst/hirise/PSP_008963_1650_COLOR#P=PSP_008963_1650_COLOR&T=2))
+
 Hirise images interactive map: http://global-data.mars.asu.edu/bin/hirise.pl?res=32&clat=-14.57&clon=175.47&ids=PSP_002391_1995_COLOR&day_night=2&rel=0
      
 ## Digital elevation models
