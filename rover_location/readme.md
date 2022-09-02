@@ -110,8 +110,19 @@ This folder contains digital elevation models (DEM), aka Digital Terrain Models 
 
 https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/
 
-This page allows searching for available DEMs in HIRISE database: https://www.uahirise.org/hiwish/maps/dtms.jsp
+This page allows searching for available DEMs in HIRISE database: https://www.uahirise.org/hiwish/maps/dtms.jsp The coordinates under mouse cursor are (faintly)= shown in bottom-right corner; SPIRIT landing site is located at Latitude: -14.571892 N, Longitude: 175.478480 E
 
+![image](https://user-images.githubusercontent.com/1620953/188085522-71a9c1a7-fb5d-445e-a99a-c76c7913236c.png)
+
+![image](https://user-images.githubusercontent.com/1620953/188085682-799fb601-0cd3-4ea3-a5f1-7bc69b2a0871.png)
+
+![image](https://user-images.githubusercontent.com/1620953/188086088-57231658-4e99-4982-8230-d5a8b9528c7b.png)
+
+Low res DEM creatde from **PSP_001513_1655** and **PSP_001777_1650**:
+
+![image](https://user-images.githubusercontent.com/1620953/188086292-9f20d719-a881-4770-bc53-ccc7dffd3f8a.png)
+
+https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/PSP/ORB_001500_001599/PSP_001513_1655_PSP_001777_1650/DTEEC_001513_1655_001777_1650_U01.ab.jpg
 
 DEMs/DTMs are grayscale images; you can view a depthmap, associating a visible map to it, using these online viewers:
 
