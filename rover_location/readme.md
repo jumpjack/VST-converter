@@ -29,6 +29,7 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
 
 ![image](https://user-images.githubusercontent.com/1620953/188088197-fbcc0e4a-596a-4968-a5b8-a77993b65b80.png)
 
+
 Context images
 
 - Traverse map:
