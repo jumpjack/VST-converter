@@ -3,17 +3,24 @@
   <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="generator" content="PSPad editor, www.pspad.com">
-  <title></title>
+  <title>PDS image Id identifier</title>
   </head>
   <body>
+<!--
+Extracts reference to XYZ products and texture to allow passing them to Blender Navcam Import plugin to generate 3d model.
+
+v. 0.0.1 - First working version. To do: path to texture for existing XYZ products is not managed correctly (function aPath() )
+
+-->
   <h1>PDS image id identifier</h1><br>
   <br>
 
 Please insert filename or single data:<br>
 <br>
 Filename (13 characters): <input type = "text" id="txtFile" name="txtFile" value="2ppj11ilfb1cypdop2284r222m1" size = 30>
-(example: <a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137/2ppj11ilfb1cypdop2284r222m1.img.jpg">2ppj11ilfb1cypdop2284r222m1</a> (<a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137">folder</a>) )
-<button onclick="calcAndUrls()">Calc</button><br>
+(example: <a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137/2ppj11ilfb1cypdop2284r222m1.img.jpg">2ppj11ilfb1cypdop2284r222m1</a> <button onclick="calcAndUrls()">Calc</button><br>
+(<a href="https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2om_0xxx/browse/pancam/site0137">Example folder</a>) )
+<br>
 <br>
 <img id="imgThumbnail" name="imgThumbnail" src=""><br>
 Thumbnail url: <span id="thumbnail" name="thumbnail"></span><br>
@@ -21,6 +28,17 @@ Preview url: <span id="preview" name="preview"></span><br>
 Product url: <span id="product" name="product"></span><br>
 List of images used: <span id="list" name="list"></span><br>
 Folder for single images: <span id="single" name="single"></span><br>
+<br>
+<button onclick="downloadFilesList(listUrl);">Download</button>Source files list:<br>
+<textarea id="list2" name="list2" cols=50 rows= 20></textarea><br>
+<br>
+Check 3d data availability: <button onclick="check3d()">Execute</button><br>
+<br>
+Paste this list into Blender Navcam Importer plugin to create the 3d model:<br>
+<span id="spnBlenderlist" name="spnXYZlist"></span><br>
+<br>
+Use following links to manually download XYZ products if available:<br>
+<span id="spnXYZlist" name="spnXYZlist"></span><br>
 <br>
 Data:<br>
 <button onclick="fillData()">Fill from filename</button><br>
@@ -57,7 +75,14 @@ Example value is &quot;AK&quot; for value of 120<br>
 <strong>pos</strong> = (2 alphanumeric) Position-within-Site count. (see "site" above).<br>
 <br>
 (*) Only up to Z99 (3599)<br>
+
+<!--<script src="https://unpkg.com/axios/dist/axios.min.js"></script>-->
+<script src="downloader-lib.js"></script>
+
 <script>
+sourceFilesArr = [];
+MIN_FILE_LENGTH = 27;
+SPIRIT_TIMETABLE_FILE_URL = "https://github.com/jumpjack/VST-converter/raw/main/rover_location/timetable-spirit.tsv";
 myValues ="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 alphabet = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 thumbnailBaseUrlPancamSingle = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2po_0xxx/extras/thumbnail/";
@@ -155,9 +180,141 @@ function fillUrls() {
 }
 
 function calcAndUrls() {
+	fillData();
   calculate();
   fillUrls();
 }
+
+async function downloadFilesList(listUrl) {
+  document.getElementById("list2").value = "";
+  if (await remoteFileExists(listUrl)) {
+		console.log("Ok, LIS file exists...");
+		LISfileContents = await retrieve(listUrl); // Download LIS file
+		if (LISfileContents.indexOf("\n") >= 0) {
+			console.log("Ok, LIS file not empty...");
+      // Extract list of images
+			sourceFilesList = LISfileContents.split("\n");
+      sourceFilesList.forEach((sourceFileRaw) => {
+        sourceFileArr = sourceFileRaw.split("/");
+				sourceFile = sourceFileArr[sourceFileArr.length-1]; // Last element is file name
+				if (sourceFile.length> MIN_FILE_LENGTH) {
+					//sourceFilesArr.push(sourceFile);
+					document.getElementById("list2").value += sourceFile + "\n";
+				}
+			});
+			console.log("Source images list retrieved.",sourceFilesList);
+		} else {
+			console.log("******** ERROR - Empty LIS file?!?");
+		}
+  } else {
+    console.log("ERROR, no LIS file at this url:", listUrl);
+  }
+}
+
+function cleanList() {
+	rawList = document.getElementById("list2").value;
+	fixedList = rawList.split('"').join("");
+	fixedList = fixedList.split(',').join("");
+	fixedList = fixedList.split(' ').join("");
+	fixedList = fixedList.split('\t').join("");
+	document.getElementById("list2").value = fixedList;
+}
+
+async function check3d() {
+  sourceFilesArr = document.getElementById("list2").value.split("\n");
+	console.log(">>>>", sourceFilesArr);
+      // Associate sol folder to SCLK value:
+			  // For each image:
+			    // Check 3d file existence (XYZ product with same SCLK and filter)
+			    // If file exists, add marker, else delete marker
+
+					// Filename format: 2P131789123ILF1200P2440L7M1.IMG
+					// (Usually XYZ products are associated to "L7" product images)
+					// 2 = rover
+					// P = pancam
+					// 131789123 = SCLK (2..10, size = 9)   <<<<<<<<=============
+					// ILF = product type; we have to look for "XYZ" instead
+					// 12 = site
+					// 00 = drive
+					// P2440 = sequence
+					// L = Left camera                      <<<<<<<<=============
+					// 7 = filter                           <<<<<<<<=============
+					// M = created by NASA MIPS
+					// 1 = Version 1 of product
+					//
+					// Have to look for 2P131789123XYZ*.img in SOLxxxx folder derived from 131789123
+
+				XYZlist = [];
+        document.getElementById("spnBlenderlist").innerHTML ="";
+        document.getElementById("spnXYZlist").innerHTML ="";
+        sourceFilesArr.forEach((sourceImage) => aPath(sourceImage) );
+				console.log(XYZlist);
+  }
+
+	async function aPath(sourceImage) {
+					imgRoverAndCam = sourceImage.substr(0,2);
+					imgSCLK = sourceImage.substr(2,9);
+          imgSCLKnum = imgSCLK * 1;
+					imgSiteDrive = sourceImage.substr(14,4);
+					imgSeq = sourceImage.substr(18,5);
+					XYZ_Data = await getImagePath(sourceImage); // Query official NASA API to figure out if and where XYZ products are available
+					XYZpath = XYZ_Data.fullPath;
+          XYZfolder = XYZ_Data.folderName;
+					XYZname = XYZ_Data.fileName;
+	console.log("Image  =", sourceImage);
+	console.log("Product=", imgRoverAndCam + imgSCLK + "XYZ" + imgSiteDrive + imgSeq + "L7M1", "path=",XYZpath);
+          XYZlist.push({path: XYZpath});
+					document.getElementById("spnBlenderlist").innerHTML += XYZname + ',';
+					textureFullPath = XYZfolder.replace("data/sol","browse/sol") + sourceImage.toUpperCase().replace("EFF","FFL") + '.img.jpg';
+          textureFullPath = textureFullPath.toLowerCase();
+					if (XYZpath != "N/A") {
+						document.getElementById("spnXYZlist").innerHTML += '<a href="' + XYZpath + '">' +
+						XYZname +
+						'</a> (<a href="' +
+						XYZfolder +
+						'">folder</a>, <a href="' + textureFullPath +
+						'">texture</a>)<br>';
+					} else {
+						document.getElementById("spnXYZlist").innerHTML += sourceImage  + ': N/A (<a href="' +
+						XYZfolder +
+						'">folder</a>, <a href="' + textureFullPath + // DEBUG: texture for not-found-XYZ not working
+						'">texture</a>)<br>';
+					}
+		}
+
+	async function getImagePath(textureName) {
+		chunk = textureName.substr(0,11) + "XYL";
+    // Query official NASA PDS API to figure out if and where XYZ products are available
+		var DOWNLOAD_URL = "https://pds-imaging.jpl.nasa.gov/data/mer/";
+  	var QUERY_BASE_URL="https://pds-imaging.jpl.nasa.gov/solr/pds_archives/search?pds.FILE_NAME=";
+		var PARAMETERS = "*&pds.INSTRUMENT_HOST_ID=MERA/MER2/Spirit&pds.atlas_instrument_name=pancam&wt=json&rows=100&fl=FILE_NAME&fl=ATLAS_THUMBNAIL_URL&fl=FILE_PATH";
+		var url = QUERY_BASE_URL + chunk + PARAMETERS;
+	  return new Promise(resolve => {
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', PROXY + encodeURIComponent(url), true);
+				xhr.onload = function(resp) {
+					var rawResponse = resp.currentTarget.response;
+					var queryResultJSON = JSON.parse(rawResponse);
+					if (queryResultJSON.response) {
+						if (queryResultJSON.response.docs) {
+							if (queryResultJSON.response.docs.length > 0) {
+console.log("FOUND ",DOWNLOAD_URL + queryResultJSON.response.docs[0].FILE_PATH +  queryResultJSON.response.docs[0].FILE_NAME)
+								resolve ({fullPath: DOWNLOAD_URL + queryResultJSON.response.docs[0].FILE_PATH +  queryResultJSON.response.docs[0].FILE_NAME, folderName: DOWNLOAD_URL + queryResultJSON.response.docs[0].FILE_PATH, fileName : queryResultJSON.response.docs[0].FILE_NAME, originalName: chunk } );
+							} else {
+console.log("NOT FOUND")
+								resolve ({fullPath: "N/A" , folderName: "N/A", fileName : "N/A"	, originalName : textureName} );
+							}
+						}
+					}
+				}
+				xhr.send();
+		});
+	}
+
+
+
+
+
 </script>
 </body>
 </html>
