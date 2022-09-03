@@ -29,6 +29,7 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
 
 ![image](https://user-images.githubusercontent.com/1620953/187862679-4f751de7-93c9-4b04-b7c8-bd19a3b34870.png)
 
+NOTE: Timekeeping values for each sol of the mission's landed operations contain time and position values listed for **local noon on each sol**. 
 
  - [Spirit](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-spirit.tsv) ([source](https://an.rsl.wustl.edu/mera/merxbrowser/an3.aspx?))
  - [Opportunity](https://github.com/jumpjack/VST-converter/blob/main/rover_location/timetable-opportunity.tsv) ([source](https://an.rsl.wustl.edu/merb/merxbrowser/an3.aspx))
