@@ -133,10 +133,14 @@ Labels:
 ![image](https://user-images.githubusercontent.com/1620953/182662355-cf6cdd2d-5894-44d4-8ae0-f477ea92c4bd.png)
 
 This folder contains digital elevation models (DEM), aka Digital Terrain Models (DTM) associated to some Hirise images; folders are grouped by orbit number, the first number in image name (e.g. ESP_021925_1650 would be in folder [ESP_021900](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/ORB_021900_021999/)):
-
 https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/
 
-This page allows searching for available DEMs in HIRISE database: https://www.uahirise.org/hiwish/maps/dtms.jsp The coordinates under mouse cursor are (faintly)= shown in bottom-right corner; SPIRIT landing site is located at Latitude: -14.571892 N, Longitude: 175.478480 E
+Pages for visual searching of DTMs (SPIRIT landing site is located at Latitude: -14.571892 N, Longitude: 175.478480 E):
+-  https://www.uahirise.org/hiwish/maps/dtms.jsp The coordinates under mouse cursor are (faintly)= shown in bottom-right corner; 
+-  https://ode.rsl.wustl.edu/mars/mapsearch
+
+List of all available DEMs/DTMs (54 MB as of september 2022): https://hirise-pds.lpl.arizona.edu/PDS/INDEX/DTMCUMINDEX.TAB
+
 
 ![image](https://user-images.githubusercontent.com/1620953/188085522-71a9c1a7-fb5d-445e-a99a-c76c7913236c.png)
 
@@ -145,6 +149,9 @@ This page allows searching for available DEMs in HIRISE database: https://www.ua
 ![image](https://user-images.githubusercontent.com/1620953/188086088-57231658-4e99-4982-8230-d5a8b9528c7b.png)
 
 ![image](https://user-images.githubusercontent.com/1620953/188088197-fbcc0e4a-596a-4968-a5b8-a77993b65b80.png)
+
+![image](https://user-images.githubusercontent.com/1620953/188415256-82911eb9-74a9-4130-8c06-31363f33a57c.png)
+
 
 DEM created from **PSP_001513_1655** and **PSP_001777_1650**:
  - [Main page](https://www.uahirise.org/dtm/dtm.php?ID=PSP_001513_1655)
@@ -164,7 +171,7 @@ Try with [this depthmap](https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/ESP/O
 
 ![image](https://user-images.githubusercontent.com/1620953/182662991-c0601380-52e6-4f1e-8a30-2eba66168586.png)
 
-This file contains the list of all available DEMs/DTMs: https://hirise-pds.lpl.arizona.edu/PDS/INDEX/DTMCUMINDEX.TAB
+
 
 ## Traverse map
 
