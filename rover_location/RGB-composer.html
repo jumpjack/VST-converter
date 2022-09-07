@@ -1,0 +1,226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="PSPad editor, www.pspad.com">
+  <title>Javascript RGB composer</title>
+      <style type="text/css">
+		.rgbcombo{
+		  filter: url(#myfilter);
+		}
+
+    </style>
+  </head>
+  <body>
+  <h1>Javascript RGB composer</h1>
+	Please select 3 images in R,G,B order:<br>
+   <input type="file" accept="image/*"  onchange="loadImage(event)" multiple><br>
+	<br>
+	<br>
+	Y position for R: <input type="range"   min="0" max="200" value="100" class="slider" id="rngYR" onchange="reposition()">
+	<span id="spnYR" name="spnYR"></span>
+	<br>
+	Y position for G: <input type="range"   min="0" max="200" value="100" class="slider" id="rngYG" onchange="reposition()">
+	<span id="spnYG" name="spnYG"></span>
+	<br>
+	Y position for B: <input type="range"   min="0" max="200" value="100" class="slider" id="rngYB" onchange="reposition()">
+	<span id="spnYB" name="spnYB"></span>
+	<br>
+	<br>
+	<br>
+	R: <input type="range"   min="0" max="255" value="255" class="slider" id="rngR" onchange="setFilter()">
+	<span id="spnR" name="spnR"></span>
+	<br>
+	G: <input type="range"   min="0" max="255" value="255" class="slider" id="rngG" onchange="setFilter()">
+	<span id="spnG" name="spnG"></span>
+	<br>
+	B: <input type="range"   min="0" max="255" value="255" class="slider" id="rngB" onchange="setFilter()">
+	<span id="spnB" name="spnB"></span>
+	<br><br>
+
+   <table border = 1>
+   <tr>
+   <td colspan = 3><center>Original</td>
+   <td  colspan = 3><center>Repositioned</td>
+   <td><center>Preview</td>
+   <td><center>Final</td>
+   </tr>
+   <tr>
+   <td><center>Red</td>
+   <td><center>Green</td>
+   <td><center>Blue</td>
+
+   <td><center>Red</td>
+   <td><center>Green</td>
+   <td><center>Blue</td>
+
+   <td></td>
+   <td><center> <button onclick="finalUpdate()">Update</button></td>
+   </tr>
+   <tr>
+	<td><img id="sourceImageR" crossorigin="anonymous" width=100></td>
+	<td><img id="sourceImageG" crossorigin="anonymous" width=100></td>
+	<td><img id="sourceImageB" crossorigin="anonymous" width=100></td>
+	<td><canvas id="canvasR" width=10></canvas></td>
+	<td><canvas id="canvasG" width=10></canvas></td>
+	<td><canvas id="canvasB" width=10></canvas></td>
+	<td><canvas id="rgbCanvas" name="rgbCanvas" class="rgbcombo"></canvas></td>
+	<td><canvas id="finalCanvas" name="finalCanvas"></canvas></td>
+	</tr>
+   </table>
+   <br>
+	<svg>
+	  <filter id="myfilter">
+	    <feColorMatrix type="matrix" values="1 0 0 0 1  0 1 0 0 1  0 0 1 0 1  0 0 0 1 10" />
+	  </filter>
+	</svg>
+<script>
+
+// Get the source images
+imageR = document.getElementById('sourceImageR');
+imageG = document.getElementById('sourceImageG');
+imageB = document.getElementById('sourceImageB');
+rgbCanvas = document.getElementById('rgbCanvas');
+finalCanvas = document.getElementById('finalCanvas');
+
+// Get the canvas for the edited image
+canvasR = document.getElementById('canvasR');
+canvasG = document.getElementById('canvasG');
+canvasB = document.getElementById('canvasB');
+
+// Get the 2D context of the canvas
+contextR = canvasR.getContext('2d');
+contextG = canvasG.getContext('2d');
+contextB = canvasB.getContext('2d');
+rgbContext = rgbCanvas.getContext('2d');
+finalContext = finalCanvas.getContext('2d');
+
+// Apply CSS filter to preview cavcas:
+rgbContext.filter = 'url(#myfilter)';
+
+
+function loadImage(event) {
+	const imageUrls = [
+	    URL.createObjectURL(event.target.files[0]),
+	    URL.createObjectURL(event.target.files[1]),
+	    URL.createObjectURL(event.target.files[2])
+	];
+
+	// imageUrls.map returns Promise array (because callback function is async),
+	// which is immediately passed to Promise.all which accumulates them into one
+	// promise which will be resolved when all its elements will finish.
+	counter = 0;
+	im = [imageR, imageG, imageB]
+	Promise.all(
+	  imageUrls.map(async (imageUrls, i) => {
+	    const tmpImage = new Image();
+
+	    // Create synchronization promise
+	    const syncPromise = new Promise((resolve) => {
+
+	      tmpImage.onload = (e) => {
+	        // Handle loaded image
+	        console.log("Finished loading image: ", i);
+	        // Resolve syncPromise
+	        resolve();
+	      };
+
+	      tmpImage.src = imageUrls;
+		  im[counter].src = tmpImage.src;
+		  counter++;
+	    });
+
+	    // Wait for syncPromise (image loaded)
+	    await syncPromise;
+	  })
+	).then(() => {
+console.log("Finished loading all images");
+		WIDTH = im[2].width;
+		HEIGHT = im[2].height
+
+	    // Set the canvas the same width and height of the image
+	    canvasR.width = WIDTH;
+	    canvasR.height = HEIGHT;
+	    canvasG.width = WIDTH;
+	    canvasG.height = HEIGHT;
+	    canvasB.width = WIDTH;
+	    canvasB.height = HEIGHT;
+	    rgbCanvas.width = WIDTH;
+	    rgbCanvas.height = HEIGHT;
+	    finalCanvas.width = WIDTH;
+	    finalCanvas.height = HEIGHT;
+		reposition();
+		combine();
+		alert("Ready");
+	});
+};
+
+function reposition() {
+	// Read input values for Y offset:
+	RvalY =  rngYR.value*1-100;
+	GvalY =  rngYG.value*1-100;
+	BvalY =  rngYB.value*1-100;
+
+	// Update values in GUI:
+	document.getElementById("spnYR").innerHTML = RvalY;
+	document.getElementById("spnYG").innerHTML = GvalY;
+	document.getElementById("spnYB").innerHTML = BvalY;
+
+	// Move R,G,B components/images:
+    contextR.drawImage(imageR, 0, RvalY,  WIDTH, HEIGHT);
+    contextG.drawImage(imageG, 0, GvalY,  WIDTH, HEIGHT);
+    contextB.drawImage(imageB, 0, BvalY,  WIDTH, HEIGHT);
+
+	// Read data from moved images:
+    imageDataR = contextR.getImageData(0, 0,  WIDTH, HEIGHT); 
+    imageDataG = contextG.getImageData(0, 0,  WIDTH, HEIGHT); 
+    imageDataB = contextB.getImageData(0, 0,  WIDTH, HEIGHT); 
+
+	imageDataRGB = structuredClone(imageDataR); // just to create proper object structure; data will be overwritten.
+    combine();
+    setFilter();
+	rgbContext.putImageData(imageDataRGB, 0, 0);
+}
+
+function combine() {
+	// Combine R,G,B components only in preview
+	dataR = imageDataR.data;
+	dataG = imageDataG.data;
+	dataB = imageDataB.data;
+	Rfact = (rngR.value/255);
+	Gfact = (rngG.value/255);
+	Bfact = (rngB.value/255);
+	document.getElementById("spnR").innerHTML = Rfact;
+	document.getElementById("spnG").innerHTML = Gfact;
+	document.getElementById("spnB").innerHTML = Bfact;
+	for (var i = 0; i < dataR.length; i += 4) {
+	  imageDataRGB.data[i + 0] = dataR[i + 0];
+	  imageDataRGB.data[i + 1] = dataG[i + 1];
+	  imageDataRGB.data[i + 2] = dataB[i + 2];
+	}
+	rgbContext.putImageData(imageDataRGB, 0, 0);
+}
+
+function setFilter() {
+	Rfact = (rngR.value/255)//.toFixed(1);
+	Gfact = (rngG.value/255)//.toFixed(1);
+	Bfact = (rngB.value/255)//.toFixed(1);
+	document.getElementById("spnR").innerHTML = Rfact;
+	document.getElementById("spnG").innerHTML = Gfact;
+	document.getElementById("spnB").innerHTML = Bfact;
+	filter = document.querySelector('#myfilter feColorMatrix');;
+	lineR = (rngR.value/255)+ ' 0 0 0 0 ';
+	lineG = '0 ' + (rngG.value/255) + ' 0 0 0 ';
+	lineB = '0 0 ' + (rngB.value/255) + ' 0 0 ';
+	lineA = '0 0 0 1 0';
+    filter.setAttribute('values',  lineR + lineG + lineB + lineA);
+}
+
+function finalUpdate() {
+	var cssFilter = getComputedStyle(rgbCanvas).filter;
+	finalContext.filter = cssFilter;
+    finalContext.drawImage(rgbCanvas, 0, 0);
+}
+</script>
+  </body>
+</html>

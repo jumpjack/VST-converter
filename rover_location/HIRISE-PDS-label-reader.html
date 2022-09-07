@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="PSPad editor, www.pspad.com">
+  <title>Hirise PDS label analyzer</title>
+  </head>
+  <body>
+<h1>Hirise PDS label analyze</h1>
+Example folder: <a href="https://hirise-pds.lpl.arizona.edu/PDS/RDR/PSP/ORB_008900_008999/PSP_008963_1650/">link</a><br>
+		Past label: <br>
+		<textarea id="txtInput" name="txtInput" cols = 80 rows = 20>
+		    LINE_FIRST_PIXEL             = 1
+		    LINE_LAST_PIXEL              = 73370
+		    SAMPLE_FIRST_PIXEL           = 1
+		    SAMPLE_LAST_PIXEL            = 11030
+		    MAP_PROJECTION_ROTATION      = 0.0 <DEG>
+		    MAP_RESOLUTION               = 118528.17278819 <PIX/DEG>
+		    MAP_SCALE                    = 0.5 <METERS/PIXEL>
+		    MAXIMUM_LATITUDE             = -14.3777373155 <DEG>
+		    MINIMUM_LATITUDE             = -14.99673524649 <DEG>
+		    LINE_PROJECTION_OFFSET       = -1704165.5 <PIXEL>
+		    SAMPLE_PROJECTION_OFFSET     = 527122.5 <PIXEL>
+		    EASTERNMOST_LONGITUDE        = 175.57865894523 <DEG>
+		    WESTERNMOST_LONGITUDE        = 175.48417218882 <DEG>
+		</textarea><br>
+		Latitude 1: <input id="inputLat1" name="inputLat1" value="-14.571892"><br>
+		Longitude 1: <input id="inputLon1" name="inputLon1" value = "175.47848"><br>
+		Latitude 2: <input id="inputLat2" name="inputLat2" value = "-14.5690"><br>
+		Longitude 2: <input id="inputLon2" name="inputLon2" value = "175.4729"><br>
+		<button onclick="process()">Process</button><br>
+		<br><hr>
+Raw components (.IMG):                   <a href="https://hirise-pds.lpl.arizona.edu/PDS/EDR/PSP/ORB_009100_009199/PSP_009174_1650/">https://hirise-pds.lpl.arizona.edu/PDS/EDR/PSP/ORB_009100_009199/PSP_009174_1650/</a><br>
+Raw components (.JPG):                   <a href="https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/EDR/PSP/ORB_009100_009199/PSP_009174_1650/">https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/EDR/PSP/ORB_009100_009199/PSP_009174_1650/</a><br>
+Hires   JP2+LBL:                         <a href="https://hirise-pds.lpl.arizona.edu/PDS/RDR/PSP/ORB_009100_009199/PSP_009174_1650/">https://hirise-pds.lpl.arizona.edu/PDS/RDR/PSP/ORB_009100_009199/PSP_009174_1650/</a></br>
+Preview JP2+LBL, JPG (th and br):        <a href="https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/RDR/PSP/ORB_009100_009199/PSP_009174_1650/">https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/RDR/PSP/ORB_009100_009199/PSP_009174_1650/</a><br>
+Page:                                    <a href="https://www.uahirise.org/PSP_009174_1650">https://www.uahirise.org/PSP_009174_1650</a><br>
+Label:                                   <a href="https://hirise-pds.lpl.arizona.edu/PDS/RDR/PSP/ORB_009100_009199/PSP_009174_1650/PSP_009174_1650_RED.LBL">PSP_009174_1650_RED.LBL</a><br>
+<br>
+<br>
+Thumbnails:<br>
+<table border = 1>
+<tr>
+<td>
+	<a id="RED.NOMAPurl" name="RED.NOMAPurl"  href=""><img id="RED.NOMAP" name="RED.NOMAP" src="" height = 150></a>
+</td>
+<td>
+	<a id="IRB.NOMAPurl" name="IRB.NOMAPurl"  href=""><img id="IRB.NOMAP" name="IRB.NOMAP"  src="" height = 150></a>
+</td>
+<td>
+	<a id="RGB.NOMAPurl" name="RGB.NOMAPurl"  href=""><img id="RGB.NOMAP" name="RGB.NOMAP"  src="" height = 150></a>
+</tr>
+<tr>
+<td>RED.NOMAP</td>
+<td>IRB.NOMAP</td>
+<td>RGB.NOMAP</td>
+</tr>
+<tr>
+<td>
+	<a id="REDurl" name="REDurl" href="">     <img id="RED"  name="RED"     src="" height = 150></a>
+</td>
+<td>
+	<a id="MIRBPurl" name="MIRBPurl"  href=""><img id="MIRB" name="MIRB"    src="" height = 150></a>
+</td>
+<td>
+	<a id="MRGBurl" name="MRGBurl"  href="">  <img id="MRGB" name="MRGB"    src="" height = 150></a>
+</td>
+<td>
+	<a id="COLORurl" name=COLORurl"  href=""> <img id="COLOR" name="COLOR"  src="" height = 150></a>
+</td>
+</tr>
+<tr>
+<td>RED</td>
+<td>MIRB</td>
+<td>MRGB</td>
+<td>COLOR</td>
+
+</tr>
+</table>
+ <a id="BG12_1url" name="BG12_1url"  href=""><img id="BG12_1" name="BG12_1"  src="" width = 20
+><a id="BG12_0url" name="BG12_0url"  href=""><img id="BG12_0" name="BG12_0"  src="" width = 20
+><a id="BG13_1url" name="BG13_1url"  href=""><img id="BG13_1" name="BG13_1"  src="" width = 20
+><a id="BG13_0url" name="BG13_0url"  href=""><img id="BG13_0" name="BG13_0"  src="" width = 20>
+
+ <a id="IR10_1url" name="IR10_1url"  href=""><img id="IR10_1" name="IR10_1"   src="" width = 20
+><a id="IR10_0url" name="IR10_0url"  href=""><img id="IR10_0" name="IR10_0"  src="" width = 20
+><a id="IR11_1url" name="IR11_1url"  href=""><img id="IR11_1" name="IR11_1"  src="" width = 20
+><a id="IR11_0url" name="IR11_0url"  href=""><img id="IR11_0" name="IR11_0"  src="" width = 20>
+
+
+<!--
+https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/EDR/PSP/ORB_009100_009199/PSP_009174_1650/PSP_009174_1650_RED0_1.thumb.jpg
+-->
+
+<a id="RED0_1url" name="RED0_1url" href=""><img  id = "RED0_1" name = "RED0_1"   src="" width = 20
+></a
+><a id="RED0_0url" name="RED0_0url" href=""><img id = "RED0_0" name = "RED0_0"  src="" width = 20
+><a id="RED1_1url" name="RED1_1url"  href=""><img id = "RED1_1" name = "RED1_1"  src="" width = 20
+><a id="RED1_0url" name="RED1_0url"  href=""><img id = "RED1_0" name = "RED1_0"  src="" width = 20
+><a id="RED2_1url" name="RED2_1url"  href=""><img id = "RED2_1" name = "RED2_1"  src="" width = 20
+><a id="RED2_0url" name="RED2_0url"  href=""><img id = "RED2_0" name = "RED2_0"  src="" width = 20
+><a id="RED3_1url" name="RED3_1url"  href=""><img id = "RED3_1" name = "RED3_1"  src="" width = 20
+><a id="RED3_0url" name="RED3_0url"  href=""><img id = "RED3_0" name = "RED3_0"  src="" width = 20
+><a id="RED4_1url" name="RED4_1url"  href=""><img id = "RED4_1" name = "RED4_1"  src="" width = 20
+><a id="RED4_0url" name="RED4_0url"  href=""><img id = "RED4_0" name = "RED4_0"  src="" width = 20
+><a id="RED5_1url" name="RED5_1url"  href=""><img id = "RED5_1" name = "RED5_1"  src="" width = 20
+><a id="RED5_0url" name="RED5_0url"  href=""><img id = "RED5_0" name = "RED5_0"  src="" width = 20
+><a id="RED6_1url" name="RED6_1url"  href=""><img id = "RED6_1" name = "RED6_1"  src="" width = 20
+><a id="RED6_0url" name="RED6_0url"  href=""><img id = "RED6_0" name = "RED6_0"  src="" width = 20
+><a id="RED7_1url" name="RED7_1url"  href=""><img id = "RED7_1" name = "RED7_1"  src="" width = 20
+><a id="RED7_0url" name="RED7_0url"  href=""><img id = "RED7_0" name = "RED7_0"  src="" width = 20
+><a id="RED8_1url" name="RED8_1url"  href=""><img id = "RED8_1" name = "RED8_1"  src="" width = 20
+><a id="RED8_0url" name="RED8_0url"  href=""><img id = "RED8_0" name = "RED8_0"  src="" width = 20
+><a id="RED9_1url" name="RED9_1url"  href=""><img id = "RED9_1" name = "RED9_1"  src="" width = 20
+><a id="RED9_0url" name="RED9_0url"  href=""><img id = "RED9_0" name = "RED9_0"  src="" width = 20>
+
+<br>
+<br>
+
+  </body>
+  	<script>
+	BASE_URL = "https://hirise-pds.lpl.arizona.edu/";
+	BASE_FOLDER = "PDS/EXTRAS/EDR/";
+	BASE_FOLDER_RDR = "PDS/EXTRAS/RDR/";
+	imagesIds = [
+		"RED0_1",
+		"RED0_0",
+		"RED1_1",
+		"RED1_0",
+		"RED2_1",
+		"RED2_0",
+		"RED3_1",
+		"RED3_0",
+		"RED4_1",
+		"RED4_0",
+		"RED5_1",
+		"RED5_0",
+		"RED6_1",
+		"RED6_0",
+		"RED7_1",
+		"RED7_0",
+		"RED8_1",
+		"RED8_0",
+		"RED9_1",
+		"RED9_0",
+		"IR10_1",
+		"IR10_0",
+		"IR11_1",
+		"IR11_0",
+		"BG12_1",
+		"BG12_0",
+		"BG13_1",
+		"BG13_0"
+	];
+
+	imagesIdsRDR = [
+		"RED.NOMAP",
+		"IRB.NOMAP",
+		"RGB.NOMAP",
+		"RED",
+		"MIRB",
+		"MRGB",
+		"COLOR"
+	]
+
+
+function calculateUrl(imgName) {
+	// PSP_009174_1650
+	imgType = imgName.substr(0,3); // PSP, ESP
+	orbit = imgName.substr(4,6); // 009174
+	observation = imgName.substr(11,4); //1650
+	console.log (imgType, orbit, observation);
+	orbitsFolder = "ORB_" + orbit.substr(0,3) + "100_" +  orbit.substr(0,3) + "199/";
+	typeFolder = imgType + "/"
+	imageFolder = imgName + "/";
+	fullFolder = BASE_URL + BASE_FOLDER + typeFolder + orbitsFolder + imageFolder;
+	fullFolderRDR = BASE_URL + BASE_FOLDER_RDR + typeFolder + orbitsFolder + imageFolder;
+	console.log (fullFolder);
+
+	for (var i = 0; i < imagesIds.length; i++) {
+        document.getElementById(imagesIds[i]+"url").href=  fullFolder + imgName + "_" + imagesIds[i] + ".browse.jpg";
+		document.getElementById(imagesIds[i]).src = fullFolder + imgName + "_" + imagesIds[i] + ".thumb.jpg";
+        document.getElementById(imagesIds[i]).alt = imgName;
+	}
+
+	for (var i = 0; i < imagesIdsRDR.length; i++) {
+		document.getElementById(imagesIdsRDR[i]).src = fullFolderRDR + imgName + "_" + imagesIdsRDR[i] + ".thumb.jpg";
+	}
+}
+		function process() {
+			labelPart = document.getElementById("txtInput").value;
+			labelPartArr = labelPart.split("\n");
+			console.log(labelPartArr);
+            labelValues = [];
+			labelPartArr.forEach( (labelLine) => {
+				splittedLine = labelLine.split(" = ");
+				fieldName = splittedLine[0].trim();
+				fieldValueTemp = splittedLine[1];
+console.log(fieldName +","+ fieldValueTemp);
+				if (fieldValueTemp) {
+					fieldValue = fieldValueTemp.split(" ")[0];//.trim();
+					labelValues[fieldName] = fieldValue;
+				}
+			});
+			console.log(labelValues);
+			imgWidthPx = labelValues["SAMPLE_LAST_PIXEL"]*1 - labelValues["SAMPLE_FIRST_PIXEL"]*1;
+			imgHeightPx = labelValues["LINE_LAST_PIXEL"]*1 - labelValues["LINE_FIRST_PIXEL"]*1;
+
+			imgLeftLon = labelValues["WESTERNMOST_LONGITUDE"]*1;
+			imgRightLon = labelValues["EASTERNMOST_LONGITUDE"]*1;
+			imgTopLat = labelValues["MAXIMUM_LATITUDE"];
+			imgBottomLat = labelValues["MINIMUM_LATITUDE"]*1;
+			imgHeightDeg = imgTopLat - imgBottomLat;
+			imgWidthDeg = imgRightLon - imgLeftLon;
+
+			Xfactor = imgWidthPx  / imgWidthDeg;
+			Yfactor = imgHeightPx / imgHeightDeg;
+
+			console.log("W x H = ", imgWidthPx, imgHeightPx, imgWidthDeg, imgHeightDeg);
+
+			topLeftLon = inputLon1.value*1 - imgLeftLon;
+			topLeftLat = imgTopLat - inputLat1.value*1;
+			bottomRightLon = inputLon2.value*1 - imgLeftLon;
+			bottomRightLat = imgTopLat - inputLat2.value*1;
+
+            topLeftX = topLeftLon * Xfactor;
+            topLeftY = topLeftLat * Yfactor;
+            BottomRightX = bottomRightLon * Xfactor;
+            BottomRightY = bottomRightLat * Yfactor;
+			console.log(topLeftX, topLeftY, BottomRightX, BottomRightY);
+		}
+	</script>
+</html>
