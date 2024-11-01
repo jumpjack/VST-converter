@@ -1,0 +1,474 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+<center> <h1>VST converter</h1>
+Converts .VST files from NASA archives of MER missions into 3d meshes in PLY format or into pointcloud in XYZ format<br>
+<i>by Jumpjack 2022/2024 - v.0.6.0</i><br>
+<br>
+</center>
+<textarea id="logArea" rows="15" cols="100"></textarea>
+<div id="convStatus"></div><br>
+<br>
+Load VST file without texture: <input type="file" id="inpVSTfile" name = "inpVSTfile" width="100" accept=".vst"><br>
+Get texture reference from VST file: <input type="file" id="inpHeaderFile" name = "inpHeaderFile" width="100" accept=".vst" ><br>
+Texture reference: <span id = "spnTextureRef" name = "spnTextureRef">-</span><br>
+Load VST and texture: <input type="file" id="inpVST_TXTfile" name = "inpVST_TXTfile" width="100" accept= ".vst,.img" multiple><br>
+<span id="file_status" name="file_status" >waiting</span><br>
+<span id="file_length" name="file_length" >-</span><br>
+Status: <span id="status" name="status" >-</span><br>
+<button id="PLY" name="PLY" onclick = "savePLY()">Save as .PLY</button><br>
+<a href="https://3dviewer.net/">PLY viewer</a><br>
+<br>
+<button id="XYZ" name="XYZ" onclick = "saveXYZ()">Save as .XYZ</button><br>
+<br>
+-----<br>
+<canvas id="texture" name="texture" width="1024" height="1024"></canvas><br>
+-----<br>
+
+<script src="KaitaiStream.js"></script>
+<script src="Vst-header.js"></script>
+<script src="Vst.js"></script>
+<script src="img_gray16.js"></script>
+
+<script>
+
+// 0.6.0: Added progress viewer, added more debug data. Yet to be implemented/understood texture format and faces format.
+// 0.5.0: Fixed texture in PLY
+// 0.4.0bis: Fixed texture handling in XYZ, lost texture in PLY...
+// 0.4.0: Added texture in PLY
+// 0.3.3: Fixed texture handler assignment and texture loading; enlarged canvas to 2048x2048 (?!?)
+// 0.3.2: Added support for color images (to be improved with robustness)
+// 0.3.1: Added robustness against invalid texture coordinates values
+// 0.3.0: Texture working on XYZ
+// 0.2.0: Prepared for imnplementation of texture; still only supporting bare .vst; to include kaitai library for IMG textures img_gray16.js
+
+  function logMessage(message) {
+    logArea.value += message + "\n";
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  function updateProgress(progress) {
+    convStatus.innerHTML = `Progress: ${progress}%`;
+  }
+
+textureName = "n/a";
+//LODS_TO_PROCESS = 1; // debug
+FIRST_LOD_TO_PROCESS = 5; // Always 6 LODs, first one is highest resolution, usable in modern computers
+LAST_LOD_TO_PROCESS = 5;
+PROCESS_CHUNK = 1000;
+
+  canvas = document.getElementById('texture');
+  canvasWidth = canvas.width;
+  canvasHeight = canvas.height;
+  ctx = canvas.getContext('2d');
+
+
+  myVst = null;
+  myImg = null;
+  TEXTURE_WIDTH = 1024; // to do: implement KSY reader for just PDS label, extract texture metadata and use  them to implement generic texture reader
+  TEXTURE_HEIGHT = 1024;
+  
+  rgbComponents = []; 
+
+	PLY_HEADER_BASE = "" +
+		"ply\n" +
+		"format ascii 1.0\n" +
+		"comment Created by VST JS convereter\n" +
+		"element vertex VVVV\n" +
+		"property float x\n" +
+		"property float y\n" +
+		"property float z\n" +
+		"TTTT" +
+		"element face FFFF\n" +
+		"property list uchar int vertex_index\n" +
+		"end_header\n";
+
+	PLY_TEXTURE_HEADER = "" +
+		"property uchar red\n" +
+		"property uchar green\n" +
+		"property uchar blue\n";
+
+
+  PLYfiles = [];
+  XYZfiles = [];
+
+  VST_HEADER_LENGTH =  1+1+1+1 + 1+1+1+1 + 4 + 4 + 1+1+1+1 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4; // 40
+  BOUNDING_BOX_LENGTH = 6*4; // 24
+  TEXTURE_REF_LENGTH = 2048;
+  COORDINATE_SYSTEM_LENGTH = 4096;
+  LOD_HEADER_LENGTH = 4 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4 + 4; //28
+  PATCH_HEADER_LENGTH = 8 + 4 + 4 + 4 + 4; // 24
+
+
+  const VST_Selector = document.getElementById('inpVSTfile');
+  VST_Selector.addEventListener('change', (event) => {
+    loadVST(event.target.files[0])
+  });  
+  
+  
+  const headerSelector = document.getElementById('inpHeaderFile');
+  headerSelector.addEventListener('change', (event) => {
+    loadVSTheader(event.target.files[0])
+  });
+  
+
+  const VST_TXT_Selector = document.getElementById('inpVST_TXTfile');
+  VST_TXT_Selector.addEventListener('change', (event) => {    
+   loadVST_TXT(event.target.files[0], event.target.files[1], event.target.files[2], event.target.files[3])
+  });
+
+
+
+  function saveFile(fileContent, filename,status_id) {
+    myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+    var url = window.URL.createObjectURL(myBlob);
+    var anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+        anchor.addEventListener('load', (event) => {
+      logMessage("LOAD");
+    });
+
+        anchor.addEventListener('ended', (event) => {
+      logMessage("ENDED");
+    });
+
+        anchor.addEventListener('loadeddata', (event) => {
+      logMessage("loadeddata");
+    });
+
+        anchor.addEventListener('loadstart', (event) => {
+      logMessage("loadstart");
+    });
+        anchor.addEventListener('mousedown', (event) => {
+      logMessage("mousedown");
+    });
+
+
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+  }
+/*
+async function loadVSTheader(fileHandler) {
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents);
+    document.getElementById("file_status").innerHTML = "Loaded";
+    document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myVstHeader = new Vsth(st);
+    logMessage("This file contains:");
+    logMessage(myVstHeader.vistaHeader.lodsCount + " LODs");
+    sliceUInt8 = myVstHeader.textureRef;
+    textureRefRaw = String.fromCharCode(...sliceUInt8)
+    textureRef = textureRefRaw.split("\x00");
+    textureName = textureRef[2];
+    spnTextureRef.innerHTML = textureName;
+  });
+  reader.readAsArrayBuffer(fileHandler);
+  logMessage("Header reading process initiated...");
+}*/
+
+async function loadVSTheader(fileHandler) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const rawFileContents = event.target.result;
+        const fileContentsUInt8 = new Uint8Array(rawFileContents);
+        document.getElementById("file_status").innerHTML = "Loaded";
+        document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+        const st = new KaitaiStream(fileContentsUInt8);
+        myVstHeader = new Vsth(st);
+        logMessage("This file contains:");
+        logMessage("   " +myVstHeader.vistaHeader.lodsCount + " LODs");
+        logMessage("   " +myVstHeader.vistaHeader.texturesCount + " textures");
+        logMessage("   " +myVstHeader.vistaHeader.vertexCount + " vertices");
+
+        const sliceUInt8 = myVstHeader.textureRef;
+        const textureRefRaw = String.fromCharCode(...sliceUInt8);
+        const textureRef = textureRefRaw.split("\x00");
+        textureName = textureRef[2];
+        document.getElementById("spnTextureRef").innerHTML = textureName;
+
+		logMessage("Completed readinh header of VST file.\n")
+        resolve(myVstHeader); // Risolviamo la promise con l'oggetto header
+      } catch (error) {
+        reject(error); // In caso di errore, rifiutiamo la promise
+      }
+    };
+
+    reader.onerror = (error) => {
+      reject(error); // In caso di errore nella lettura, rifiutiamo la promise
+    };
+
+    reader.readAsArrayBuffer(fileHandler);
+    logMessage("Header reading process initiated...");
+  });
+}
+
+
+function assignHandler(handlers, type, count) {
+  // TYPE:
+  //  L2, L5, L7 for RGB bands
+  //  VST for 3d product
+  //
+  // COUNT: number of expected selected files: 2 for B/W texture, 4 for color texture
+
+   // 0-1   2p
+   // 2-10  293977893
+   // 11-13 ffl
+   // 14-15 b1
+   // 16-17 au
+   // 18-22 p2372
+   // 23-24 l5            <<<<<<<<<---- Band
+   // 25-26 m1
+
+  if ((count !==2 ) && (count !== 4 )) {
+    logMessage("INTERNAL ERROR ON TEXTURE REQUEST: USER MUST SELECT 2 OR 4 FILES (VIL+IMG or VIL + L2+L5+L7)");
+    return null;
+  }
+
+  if (count === 4) { // color texture requires 3 .img files (one per band) and 1 VST file
+      filenames = [handlers[0].name.toUpperCase(), handlers[1].name.toUpperCase(), handlers[2].name.toUpperCase(), handlers[3].name.toUpperCase()];   
+   } else {
+     //
+   }
+
+   if (count === 2) { // B/W texture
+      if ( handlers[0].name.toUpperCase().indexOf("VIL") < 0) {
+        if (type == "VST") {
+            logMessage("Found " + handlers[1].name + " 3d product in .VIL file.");
+            return handlers[1]
+        } else {
+            logMessage("Found " + handlers[0].name + " texture in .VIL file");
+            return handlers[0]
+        }
+      } else {
+        if (type == "VST") {
+            logMessage("Not .VIL file but found " + handlers[0].name + " 3d product.");
+            return handlers[0]
+        } else {
+            logMessage("Not .VIL file but found " + handlers[1].name + " texture.");
+            return handlers[1]
+        }
+      }
+   }
+
+
+  for (var fileIndex=0; fileIndex < filenames.length; fileIndex++) {
+    var name = filenames[fileIndex].toUpperCase();
+    var band = name.substr(23,2).toUpperCase();
+    var productType = name.substr(11,3).toUpperCase();
+    switch (type) {
+      case "VST": // Looking for .VST file (=VIL product type)
+logMessage("VST requested at loop "+ fileIndex+ " examining "+ name+ "+ type="+ productType);
+        if (productType == "VIL") { // VST/VIL product confirmed, return handler
+            logMessage("OK, " + handlers[fileIndex].name + " is a 3d product.");
+           return handlers[fileIndex]
+        } else {
+logMessage("File n. " + fileIndex + " is not a VIL product, examining next file");
+    		// not a VIL product, examine next file
+        }
+        break
+      case band:  // Looking for specific band (L2, L5, L7) for color texture
+        logMessage("Found band data in  " + handlers[fileIndex].name + ", band ="+ band);
+        return handlers[fileIndex];
+    }
+  }
+  logMessage(">>>>>>>>>>>>INTERNAL ERROR: UNABLE TO FIND TEXTURES, see console");
+  console.log(">>>>>>>>>>>>INTERNAL ERROR: UNABLE TO FIND TEXTURES IN THESE FILES:" , filenames);
+  return -1;
+}
+
+
+function componentsFromImg(imgHandler, component) {
+	logMessage("Loading selected texture(s)...");
+	  logMessage("**WARNING:Texture file is loaded, but processing is not yet implemented!**");
+ 	
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents);
+    document.getElementById("file_status").innerHTML = "Loaded " + imgHandler.name;
+    document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myImg = new ImgGray16(st);
+
+    rgbComponents[component] = [[],[]];
+    for (x = 0; x < 1023; x++) {
+      rgbComponents[component][x] = [];
+      for(y = 0; y < 1023; y++) {
+         rgbComponents[component][x][y] = myImg.lines[y].samples[x] / 10;
+      }
+    }
+	logMessage("RGB components loaded, see console");
+	console.log("RGB components: ", rgbComponents)
+  });
+  reader.readAsArrayBuffer(imgHandler);
+  logMessage("Reading texture file: " + imgHandler.name);
+}
+
+
+async function loadVST_TXT(handler1, handler2, handler3, handler4) {
+   clearCanvas();
+   await loadVSTheader(handler1);
+   if ((handler3 != null) && (handler4 != null)) { // 4 files selected ==> color texture
+   	logMessage("Handling RGB texture");
+     handlers = [handler1, handler2, handler3, handler4];
+     vstHandler = assignHandler(handlers,"VST",4);
+     R_Handler = assignHandler(handlers,"L2",4);
+     G_Handler = assignHandler(handlers,"L5",4);
+     B_Handler = assignHandler(handlers,"L7",4);
+  
+      if ((vstHandler != null) && (R_Handler != null) && (G_Handler != null) && (B_Handler != null)) {
+        logMessage("COLOR TEXTURE:"+ R_Handler.name +" ," +G_Handler.name +" ," + B_Handler.name)
+        logMessage("VST:" + vstHandler.name)
+        componentsFromImg(R_Handler,0);
+        componentsFromImg(G_Handler,1);
+        componentsFromImg(B_Handler,2);
+        loadVST(vstHandler);
+      } else {
+      logMessage(">>>>>>>>>ERROR LOADING COLOR TEXTURE  - see console");
+      console.log(">>>>>>>>>ERROR LOADING COLOR TEXTURE  - VST, L2, L5+ L7; ", vstHandler, R_Handler,G_Handler, B_Handler);
+      }
+   } else {  // 2 files selected ==> B/W texture
+   	logMessage("Handling case of B/W texture:");
+     handlers = [handler1, handler2];
+     vstHandler = assignHandler(handlers,"VST",2);
+     grayHandler = assignHandler(handlers,"L2",2);
+    if ((vstHandler != null) && (grayHandler != null)) {
+       logMessage("  Selected VST file:        " + vstHandler.name)
+       logMessage("     Texture ref found in VST: " + textureName)
+       logMessage("     Selected BW texture file: " + grayHandler.name)
+       componentsFromImg(grayHandler,0);
+      loadVST(vstHandler); 
+    } else {
+        logMessage(">>>>> ERROR LOADING B/W TEXTURE, see console");
+        console.log(">>>>> ERROR LOADING B/W TEXTURE -  VST, IMG:",vstHandler, grayHandler);
+    }
+   }
+}
+
+
+
+async function loadVST(fileHandler) {
+  const convStatus = document.getElementById("convStatus");
+  const logArea = document.getElementById("logArea");
+
+
+  const reader = new FileReader();
+
+  reader.addEventListener('load', async (event) => {
+    rawFileContents = event.target.result;
+    fileContentsUInt8 = new Uint8Array(rawFileContents);
+    logMessage(`VST file loaded, length: ${fileContentsUInt8.length} bytes`);
+
+    st = new KaitaiStream(fileContentsUInt8);
+    myVst = new Vst(st);
+
+    const totalLODs = LAST_LOD_TO_PROCESS + 1 - FIRST_LOD_TO_PROCESS;
+    let overallProgress = 0;
+
+    for (let lodIndex = FIRST_LOD_TO_PROCESS; lodIndex < LAST_LOD_TO_PROCESS + 1; lodIndex++) {
+      logMessage(`Processing LOD n.${lodIndex}`);
+
+      myLOD = myVst.lods[lodIndex];
+      const patchesCount = myLOD.header.patchesCount;
+
+      for (let patchIndex = 0; patchIndex < patchesCount; patchIndex++) {
+	  	logMessage(`   Processing patch n.${patchIndex} (only points, not faces)`);
+        myPatch = myLOD.patches[patchIndex];
+        const pointers = myPatch.pointersToVertexOfFaces;
+        const pointersLength = pointers.length;
+		logMessage(`      Header/patchType:` + myPatch.header.patchType);
+		logMessage(`      Header/stripsCount:` + myPatch.header.stripsCount);
+		logMessage(`      Header/indexCount:` + myPatch.header.indexCount);
+		logMessage(`      trianglesStripsLengths:` + myPatch.trianglesStripsLengths.length);
+	  	logMessage(`      Processing `  + pointersLength  + ` pointersToVertexOfFaces...`);
+
+        for (let p = 0; p < pointersLength; p++) {
+          const vertex = myVst.vertices[pointers[p]];
+
+          // Operazioni sui vertici
+          if (vertex.x !== 0 && vertex.y !== 0 && vertex.z !== 0) {
+            XYZline = `${vertex.x} ${vertex.y} ${vertex.z}\n`;
+          }
+
+          if (p % PROCESS_CHUNK === 0) {
+            const progress = ((100 * p) / pointersLength).toFixed(1);
+            updateProgress(progress);
+
+            // Lasciamo aggiornare il DOM prima di continuare
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        }
+        logMessage(`   Patch ${patchIndex + 1} di ${patchesCount} elaborata`);
+      }
+      overallProgress = ((lodIndex + 1 - FIRST_LOD_TO_PROCESS) / totalLODs * 100).toFixed(1);
+      updateProgress(overallProgress);
+      logMessage(`LOD ${lodIndex} completato`);
+      
+      // Consenti aggiornamento DOM
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    logMessage("Processing completed. Now you can save to PLY or XYZ.");
+  });
+
+  reader.readAsArrayBuffer(fileHandler);
+}
+
+
+function savePLY() {
+    if (!meshReady) {
+        alert("Mesh not ready!");
+        return;
+    }
+  for (lodIndex=0; lodIndex < PLYfiles.length+1; lodIndex++) {
+    if (PLYfiles[lodIndex]) {
+      if (PLYfiles[lodIndex].length>0) {
+          saveFile(PLYfiles[lodIndex], "LOD"+lodIndex + ".ply","file_status");
+      }
+    }
+  }
+}
+
+
+function saveXYZ() {
+    if (!pointcloudReady) {
+        alert("Point cloud not ready!");
+        return;
+    }
+  for (lodIndex=0; lodIndex < XYZfiles.length; lodIndex++) {
+    if (XYZfiles[lodIndex]) {
+      if (XYZfiles[lodIndex].length>0) {
+          saveFile(XYZfiles[lodIndex], "LOD"+lodIndex + ".txt","file_status");
+      }
+    }
+  }
+}
+
+
+  function writeCanvas(x,y,r,g,b) {
+    ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    ctx.fillRect(x,y,2,2);
+  }
+
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+}
+
+</script>
+
+  </body>
+</html>
