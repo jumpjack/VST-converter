@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VST to X3D Converter</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            background: #fafafa;
+            cursor: pointer;
+        }
+        .upload-area.dragover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+        }
+        .button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .button:hover {
+            background: #3182ce;
+        }
+        .button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        .error {
+            background: #fff5f5;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+        }
+        .success {
+            background: #f0fff4;
+            color: #2f855a;
+            border: 1px solid #9ae6b4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VST to X3D Converter</h1>
+        <p>Upload a .vst file to convert it to X3D format.</p>
+        
+        <div id="dropArea" class="upload-area">
+            <p>Drag and drop a .vst file here or click to select</p>
+            <input type="file" id="fileInput" accept=".vst" style="display: none">
+        </div>
+
+        <button id="convertBtn" class="button" disabled>Convert to X3D</button>
+        
+        <div id="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Strutture dati VST
+        class VSTHeader {
+            constructor(dataView, offset = 0) {
+                this.label = dataView.getInt32(offset, true);
+                this.byteOrder = dataView.getInt32(offset + 4, true);
+                this.versionMajor = dataView.getInt32(offset + 8, true);
+                this.versionMinor = dataView.getInt32(offset + 12, true);
+                this.implementation = dataView.getInt32(offset + 16, true);
+                this.res1 = dataView.getInt32(offset + 20, true);
+                this.res2 = dataView.getInt32(offset + 24, true);
+                this.textureNum = dataView.getInt32(offset + 28, true);
+                this.vertexNum = dataView.getInt32(offset + 32, true);
+                this.lodNum = dataView.getInt32(offset + 36, true);
+                
+                // Gestione byte order
+                if (this.byteOrder === 0x00010203) {
+                    this.reverseValues();
+                }
+            }
+
+            reverseValues() {
+                this.versionMajor = this.reverseInt32(this.versionMajor);
+                this.versionMinor = this.reverseInt32(this.versionMinor);
+                this.textureNum = this.reverseInt32(this.textureNum);
+                this.vertexNum = this.reverseInt32(this.vertexNum);
+                this.lodNum = this.reverseInt32(this.lodNum);
+            }
+
+            reverseInt32(value) {
+                return ((value & 0xFF) << 24) |
+                       ((value & 0xFF00) << 8) |
+                       ((value & 0xFF0000) >>> 8) |
+                       ((value & 0xFF000000) >>> 24);
+            }
+        }
+
+        class BoundingBox {
+            constructor(dataView, offset = 0, needsReverse = false) {
+                this.xMin = dataView.getFloat32(offset, true);
+                this.yMin = dataView.getFloat32(offset + 4, true);
+                this.zMin = dataView.getFloat32(offset + 8, true);
+                this.xMax = dataView.getFloat32(offset + 12, true);
+                this.yMax = dataView.getFloat32(offset + 16, true);
+                this.zMax = dataView.getFloat32(offset + 20, true);
+
+                if (needsReverse) {
+                    this.reverseValues();
+                }
+            }
+
+            reverseValues() {
+                [this.xMin, this.yMin, this.zMin, this.xMax, this.yMax, this.zMax] =
+                [this.xMin, this.yMin, this.zMin, this.xMax, this.yMax, this.zMax].map(this.reverseFloat32);
+            }
+
+            reverseFloat32(value) {
+                const buffer = new ArrayBuffer(4);
+                const view = new DataView(buffer);
+                view.setFloat32(0, value, true);
+                return view.getFloat32(0, false);
+            }
+        }
+
+        class Vertex {
+            constructor(dataView, offset = 0, needsReverse = false) {
+                this.tx = dataView.getFloat32(offset, true);
+                this.ty = dataView.getFloat32(offset + 4, true);
+                this.x = dataView.getFloat32(offset + 8, true);
+                this.y = dataView.getFloat32(offset + 12, true);
+                this.z = dataView.getFloat32(offset + 16, true);
+
+                if (needsReverse) {
+                    this.reverseValues();
+                }
+            }
+
+            reverseValues() {
+                [this.tx, this.ty, this.x, this.y, this.z] =
+                [this.tx, this.ty, this.x, this.y, this.z].map(this.reverseFloat32);
+            }
+
+            reverseFloat32(value) {
+                const buffer = new ArrayBuffer(4);
+                const view = new DataView(buffer);
+                view.setFloat32(0, value, true);
+                return view.getFloat32(0, false);
+            }
+        }
+
+        class LODHeader {
+            constructor(dataView, offset = 0, needsReverse = false) {
+                this.size = dataView.getInt32(offset, true);
+                this.res1 = dataView.getInt32(offset + 4, true);
+                this.res2 = dataView.getInt32(offset + 8, true);
+                this.vertexNum = dataView.getInt32(offset + 12, true);
+                this.distThreshold = dataView.getFloat32(offset + 16, true);
+                this.patchNum = dataView.getInt32(offset + 20, true);
+                this.vertMax = dataView.getInt32(offset + 24, true);
+
+                if (needsReverse) {
+                    this.reverseValues();
+                }
+            }
+
+            reverseValues() {
+                this.patchNum = this.reverseInt32(this.patchNum);
+                this.vertexNum = this.reverseInt32(this.vertexNum);
+                this.vertMax = this.reverseInt32(this.vertMax);
+                this.distThreshold = this.reverseFloat32(this.distThreshold);
+            }
+
+            reverseInt32(value) {
+                return ((value & 0xFF) << 24) |
+                       ((value & 0xFF00) << 8) |
+                       ((value & 0xFF0000) >>> 8) |
+                       ((value & 0xFF000000) >>> 24);
+            }
+
+            reverseFloat32(value) {
+                const buffer = new ArrayBuffer(4);
+                const view = new DataView(buffer);
+                view.setFloat32(0, value, true);
+                return view.getFloat32(0, false);
+            }
+        }
+
+        class PatchHeader {
+            constructor(dataView, offset = 0, needsReverse = false) {
+                this.res1 = dataView.getInt32(offset, true);
+                this.res2 = dataView.getInt32(offset + 4, true);
+                this.pointCloud = dataView.getInt32(offset + 8, true);
+                this.texture = dataView.getInt32(offset + 12, true);
+                this.arrayNum = dataView.getInt32(offset + 16, true);
+                this.totalVertexNum = dataView.getInt32(offset + 20, true);
+
+                if (needsReverse) {
+                    this.reverseValues();
+                }
+            }
+
+            reverseValues() {
+                this.pointCloud = this.reverseInt32(this.pointCloud);
+                this.arrayNum = this.reverseInt32(this.arrayNum);
+                this.texture = this.reverseInt32(this.texture);
+                this.totalVertexNum = this.reverseInt32(this.totalVertexNum);
+            }
+
+            reverseInt32(value) {
+                return ((value & 0xFF) << 24) |
+                       ((value & 0xFF00) << 8) |
+                       ((value & 0xFF0000) >>> 8) |
+                       ((value & 0xFF000000) >>> 24);
+            }
+        }
+
+        class VSTParser {
+            constructor(arrayBuffer) {
+                this.dataView = new DataView(arrayBuffer);
+                this.offset = 0;
+                this.textureFiles = [];
+                this.vertices = [];
+            }
+
+            parse() {
+console.log("HEADER");			
+                // Parse header
+                const header = new VSTHeader(this.dataView, this.offset);
+console.log("HEADER",header);			
+                this.offset += 40; // Size of VSTHeader
+
+                // Validate VST format
+                if (header.label !== 0x00545356) {
+                    throw new Error('Invalid VST file format');
+                }
+
+                if (header.implementation !== 0x0052454D) {
+                    throw new Error('Implementation MER expected');
+                }
+
+                const needsReverse = header.byteOrder === 0x00010203;
+
+                // Parse bounding box
+                const bbox = new BoundingBox(this.dataView, this.offset, needsReverse);
+                this.offset += 24; // Size of BoundingBox
+
+     // Parse texture references
+    for (let i = 0; i < header.textureNum; i++) {
+        // Leggi 2048 byte direttamente da DataView come array di byte
+        const textureBytes = new Uint8Array(this.dataView.buffer, this.offset, 2048);
+        console.log("RAW BYTES (textureRef):", textureBytes);
+
+        // Converti i byte in stringa per poter ottenere il nome della texture
+        const textureRef = String.fromCharCode.apply(null, textureBytes);
+        console.log("STRINGA (textureRef):", textureRef);
+
+        // Ottieni il nome del file di texture e applica le modifiche necessarie
+        let textureName = textureRef.substring(10, 37) + '.PNG';
+        textureName = textureName.substring(0, 11) + 'FF' + textureName.substring(13);
+        console.log("HEADER - texture:", textureName);
+
+        // Aggiungi textureName all'array textureFiles
+        this.textureFiles.push(textureName);
+
+        // Aggiorna l'offset per la prossima texture
+        this.offset += 2048;
+    }				
+				
+				
+				
+				
+				
+
+                // Skip coordinate system
+                this.offset += 4096;
+
+                // Read vertices
+console.log("HEADER - vertices: ",header.vertexNum);			
+                for (let i = 0; i < header.vertexNum; i++) {
+                    const vertex = new Vertex(this.dataView, this.offset, needsReverse);
+                    this.vertices.push(vertex);
+                    this.offset += 20; // Size of Vertex
+                }
+
+                // Process LODs
+console.log("HEADER - LODs: ",header.lodNum);			
+                const lods = [];
+                for (let i = 0; i < header.lodNum; i++) {
+                    const lod = this.parseLOD(needsReverse);
+                    lods.push(lod);
+                }
+
+                return {
+                    header,
+                    bbox,
+                    textureFiles: this.textureFiles,
+                    vertices: this.vertices,
+                    lods
+                };
+            }
+
+            parseLOD(needsReverse) {
+                const lodHeader = new LODHeader(this.dataView, this.offset, needsReverse);
+                this.offset += 28; // Size of LODHeader
+
+                // Skip texture bounding boxes
+                this.offset += 24 * this.textureFiles.length;
+
+                const patches = [];
+                for (let i = 0; i < lodHeader.patchNum; i++) {
+                    const patch = this.parsePatch(needsReverse);
+                    patches.push(patch);
+                }
+
+                return {
+                    header: lodHeader,
+                    patches
+                };
+            }
+
+            parsePatch(needsReverse) {
+                const patchHeader = new PatchHeader(this.dataView, this.offset, needsReverse);
+                this.offset += 24; // Size of PatchHeader
+
+                const arrays = [];
+                let pos1 = this.offset;
+                let pos2 = pos1 + patchHeader.arrayNum * 4;
+
+                for (let i = 0; i < patchHeader.arrayNum; i++) {
+                    // Save current position
+                    const currentPos = this.offset;
+
+                    // Read array length
+                    this.offset = pos1;
+                    let arrayLen = this.dataView.getInt32(this.offset, true);
+                    if (needsReverse) {
+                        arrayLen = ((arrayLen & 0xFF) << 24) |
+                                 ((arrayLen & 0xFF00) << 8) |
+                                 ((arrayLen & 0xFF0000) >>> 8) |
+                                 ((arrayLen & 0xFF000000) >>> 24);
+                    }
+                    pos1 += 4;
+
+                    // Read vertex indices
+                    this.offset = pos2;
+                    const indices = [];
+                    for (let j = 0; j < arrayLen; j++) {
+                        let index = this.dataView.getInt32(this.offset, true);
+                        if (needsReverse) {
+                            index = ((index & 0xFF) << 24) |
+                                   ((index & 0xFF00) << 8) |
+                                   ((index & 0xFF0000) >>> 8) |
+                                   ((index & 0xFF000000) >>> 24);
+                        }
+                        indices.push(index);
+                        this.offset += 4;
+                    }
+                    pos2 = this.offset;
+
+                    arrays.push(indices);
+                }
+
+                return {
+                    header: patchHeader,
+                    arrays
+                };
+            }
+
+            readString(length) {
+                const bytes = new Uint8Array(this.dataView.buffer, this.offset, length);
+                let str = '';
+                for (let i = 0; i < length && bytes[i] !== 0; i++) {
+                    str += String.fromCharCode(bytes[i]);
+                }
+                this.offset += length;
+                return str;
+            }
+        }
+
+function generateX3D(vstData) {
+    const bbox = vstData.bbox;
+    const vertices = vstData.vertices;
+    const lods = vstData.lods;
+
+    // Helper to format coordinates for X3D
+    const formatPoint = (vertex) => `${vertex.x} ${-vertex.z} ${vertex.y}`;
+    const formatTexCoord = (vertex) => `${vertex.tx} ${1 - vertex.ty}`;
+
+    let x3d = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 3.0//EN" "http://www.web3d.org/specifications/x3d-3.0.dtd">
+<X3D profile="CADInterchange">
+  <head>
+    <meta name="generator" content="vst2x3d"/>
+  </head>
+  <Scene>
+    <NavigationInfo type='"WALK" "ANY"'/>
+    <Viewpoint description="Start" position="0.0 0.0 0.0" orientation="1 0 0 3.14"/>`;
+
+    // Calculate bounding box center and size
+    const bboxCenter = {
+        x: (bbox.xMax + bbox.xMin) / 2,
+        y: -(bbox.zMax + bbox.zMin) / 2,
+        z: (bbox.yMax + bbox.yMin) / 2
+    };
+    
+    const bboxSize = {
+        x: (bbox.xMax - bbox.xMin) / 2,
+        y: (bbox.zMax - bbox.zMin) / 2,
+        z: (bbox.yMax - bbox.yMin) / 2
+    };
+
+    lods.forEach((lod, lodIndex) => {
+        x3d += `\n      <Shape bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
+
+        lod.patches.forEach(patch => {
+            if (patch.header.pointCloud === 1) {
+                // Handle point cloud
+                x3d += '\n          <PointSet>\n              <Coordinate point="';
+                
+                const points = [];
+                patch.arrays.forEach(array => {
+                    array.forEach(vertexIndex => {
+                        points.push(formatPoint(vertices[vertexIndex]));
+                    });
+                });
+                
+                x3d += points.join(', ');
+                x3d += '"/>\n          </PointSet>';
+            } else {
+                // Handle textured triangles
+                x3d += `\n          <Appearance>
+              <ImageTexture url='"${vstData.textureFiles[patch.header.texture]}"'/>
+          </Appearance>
+          <IndexedTriangleStripSet index="`;
+
+                // Add indices with strip separators
+                const indices = [];
+                patch.arrays.forEach((array, arrayIndex) => {
+                    if (arrayIndex > 0) indices.push(-1);
+                    indices.push(...array);
+                });
+                x3d += indices.join(' ');
+
+                // Add coordinates
+                x3d += `">\n              <Coordinate point="`;
+                const points = [];
+                for (let i = 0; i <= lod.header.vertMax; i++) {
+                    points.push(formatPoint(vertices[i]));
+                }
+                x3d += points.join(', ');
+                x3d += '"/>';
+
+                // Add texture coordinates
+                x3d += `\n              <TextureCoordinate point="`;
+                const texCoords = [];
+                for (let i = 0; i <= lod.header.vertMax; i++) {
+                    texCoords.push(formatTexCoord(vertices[i]));
+                }
+                x3d += texCoords.join(', ');
+                x3d += '"/>\n          </IndexedTriangleStripSet>';
+            }
+        });
+
+        x3d += '\n      </Shape>';
+    });
+
+    x3d += '\n  </Scene>\n</X3D>';
+    return x3d;
+}
+
+// Aggiungi questi event listener alla fine del file, dopo tutte le classi esistenti
+
+const dropArea = document.getElementById('dropArea');
+const fileInput = document.getElementById('fileInput');
+const convertBtn = document.getElementById('convertBtn');
+const status = document.getElementById('status');
+
+let selectedFile = null;
+
+// Handler per il click sull'area di drop
+dropArea.addEventListener('click', () => {
+    fileInput.click();
+});
+
+// Handler per il cambio del file input
+fileInput.addEventListener('change', (e) => {
+    handleFile(e.target.files[0]);
+});
+
+// Handlers per il drag and drop
+dropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropArea.classList.add('dragover');
+});
+
+dropArea.addEventListener('dragleave', () => {
+    dropArea.classList.remove('dragover');
+});
+
+dropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropArea.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+});
+
+// Funzione per gestire il file selezionato
+function handleFile(file) {
+    if (!file) return;
+    
+    if (!file.name.toLowerCase().endsWith('.vst')) {
+        showStatus('Per favore seleziona un file .vst', 'error');
+        return;
+    }
+
+    selectedFile = file;
+    convertBtn.disabled = false;
+    showStatus(`File selezionato: ${file.name}`, 'success');
+}
+
+// Handler per il pulsante di conversione
+convertBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    try {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const parser = new VSTParser(arrayBuffer);
+        const vstData = parser.parse();
+        const x3dContent = generateX3D(vstData);
+
+        // Crea e scarica il file X3D
+        const blob = new Blob([x3dContent], { type: 'model/x3d+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile.name.replace('.vst', '.x3d');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showStatus('Conversione completata con successo!', 'success');
+    } catch (error) {
+        showStatus(`Errore durante la conversione: ${error.message}`, 'error');
+    }
+});
+
+// Funzione per mostrare lo status
+function showStatus(message, type) {
+    status.textContent = message;
+    status.style.display = 'block';
+    status.className = type;
+}
+</script>
+</body>
+</hrml>
+

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html> 
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/> 
+     <title>My first X3DOM page</title> 
+     <script type='text/javascript' src='https://www.x3dom.org/download/x3dom.js'></script> 
+     <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link>
+     <script type="text/javascript">
+        function loadX3DFile(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    var content = e.target.result;
+                    var parser = new DOMParser();
+                    var x3dDoc = parser.parseFromString(content, "text/xml");
+                    
+                    // Controlla e correggi i percorsi delle texture
+                    var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+                    imageTextures.forEach(function(texture) {
+                        var url = texture.getAttribute("url");
+                        if (!url || url === "") {
+                            // Rimuovi l'attributo url se è vuoto
+                            texture.removeAttribute("url");
+                        }
+                    });
+                    
+                    // Ottieni il contenuto della scena dal file X3D
+                    var sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+                    
+                    if (sourceScene) {
+                        // Ottieni la scena della pagina
+                        var targetScene = document.querySelector("scene");
+                        
+                        // Pulisci la scena esistente
+                        targetScene.innerHTML = '';
+                        
+                        // Copia tutti i nodi figli dalla scena sorgente
+                        Array.from(sourceScene.children).forEach(function(child) {
+                            var importedNode = document.importNode(child, true);
+                            targetScene.appendChild(importedNode);
+                        });
+                        
+                        console.log("Scene content loaded:", targetScene.innerHTML);
+                        
+                        // Forza X3DOM a ricaricare la scena
+                        x3dom.reload();
+                    } else {
+                        console.error("Nessuna scena trovata nel file X3D");
+                    }
+                };
+                
+                reader.readAsText(input.files[0]);
+            }
+        }
+
+        // Aggiungi gestori per gli eventi X3DOM
+        window.onload = function() {
+            x3dom.runtime.ready = function() {
+                console.log('X3DOM runtime is ready');
+            };
+            
+            x3dom.runtime.noBackendFound = function() {
+                console.log('No X3DOM backend found');
+            };
+            
+            // Cattura gli errori di caricamento delle texture
+            window.addEventListener('error', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    console.log('Texture loading failed:', e.target.src);
+                    // Impedisci il caricamento delle texture mancanti
+                    e.preventDefault();
+                }
+            }, true);
+        };
+     </script>
+   </head> 
+   <body> 
+     <h1>Hello, X3DOM!</h1> 
+     <p> 
+       Select an X3D file to load:
+     </p>
+     <input type="file" accept=".x3d" onchange="loadX3DFile(this)">
+     <br><br>
+     <x3d width='500px' height='400px'> 
+       <scene> 
+         <!-- La scena iniziale può essere vuota o contenere un modello di default -->
+         <shape> 
+           <appearance> 
+             <material diffuseColor='1 0 0'></material> 
+           </appearance> 
+           <box></box> 
+         </shape>
+       </scene> 
+     </x3d> 
+   </body> 
+</html>
