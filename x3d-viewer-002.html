@@ -7,62 +7,68 @@
      <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link>
      <script type="text/javascript">
 	 navigationInfo = null;
-        function loadX3DFile(input) {
-            if (input.files && input.files[0]) {
-                var reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    var content = e.target.result;
-                    var parser = new DOMParser();
-                    x3dDoc = parser.parseFromString(content, "text/xml");
-console.log("x3dDoc=",x3dDoc)                    
-                    // Corregge i percorsi delle texture
-                    var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
-                    imageTextures.forEach(function(texture) {
-                        var url = texture.getAttribute("url");
-                        if (!url || url === "") {
-                            texture.removeAttribute("url");
-                        }
-                    });
-                    
-                    var sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
- 					
-                    if (sourceScene) {
-						navigationInfo = sourceScene.querySelector("NavigationInfo");
-						// Se non esiste, creane uno nuovo
-						if (!navigationInfo) {
-						navigationInfo = x3dDoc.createElement("NavigationInfo");
-						sourceScene.appendChild(navigationInfo);
-						}
-						// Imposta l'attributo type per la modalità EXAMINE
-						navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
+ function loadX3DFile(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
 
-viewpoint = sourceScene.querySelector("Viewpoint");
+        reader.onload = function(e) {
+            var content = e.target.result;
+            var parser = new DOMParser();
+            x3dDoc = parser.parseFromString(content, "text/xml");
+
+            // Corregge i percorsi delle texture
+            var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+            imageTextures.forEach(function(texture) {
+                var url = texture.getAttribute("url");
+                if (!url || url === "") {
+                    texture.removeAttribute("url");
+                }
+            });
+
+            sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+
+            if (sourceScene) {
+                // Configura NavigationInfo per la modalità EXAMINE
+                navigationInfo = sourceScene.querySelector("NavigationInfo");
+                if (!navigationInfo) {
+                    navigationInfo = x3dDoc.createElement("NavigationInfo");
+                    sourceScene.appendChild(navigationInfo);
+                }
+                navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
 
 
-// Imposta la posizione del viewpoint (cambia questi valori per regolare lo zoom)
-//navigationInfo.setAttribute("position", "0 0 20"); // Cambia il valore 10 per lo zoom (maggiore = più lontano)
+                // Inserisce la scena nel documento
+                targetScene = document.getElementById("modelScene");
+                targetScene.innerHTML = '';  // Pulisci solo la scena del modello
 
+                // Configura o crea il Viewpoint
+                viewpoint = targetScene.querySelector("Viewpoint");
+                if (!viewpoint) {
+                    viewpoint = x3dDoc.createElement("Viewpoint");
+                    targetScene.insertBefore(viewpoint, targetScene.firstChild); // Aggiungi Viewpoint all'inizio della scena
+                }
 
- 
-                        var targetScene = document.getElementById("modelScene");
-                        targetScene.innerHTML = '';  // Pulisci solo la scena del modello
-                        
-                        Array.from(sourceScene.children).forEach(function(child) {
-                            var importedNode = document.importNode(child, true);
-                            targetScene.appendChild(importedNode);
-                        });
-                        
-                        console.log("Scene content loaded:", targetScene.innerHTML.length);
-                        x3dom.reload();
-                    } else {
-                        console.error("Nessuna scena trovata nel file X3D");
-                    }
-                };
-                
-                reader.readAsText(input.files[0]);
+                // Imposta posizione e zoom
+                viewpoint.setAttribute("position", "20 20 0"); // Cambia 0 0 10 con la posizione desiderata
+                viewpoint.setAttribute("orientation", "0 1 0 0"); // Cambia orientamento se necessario
+                viewpoint.setAttribute("fieldOfView", "1.7"); // Cambia questo valore per regolare lo zoom
+				
+                Array.from(sourceScene.children).forEach(function(child) {
+                    var importedNode = document.importNode(child, true);
+                    targetScene.appendChild(importedNode);
+                });
+
+                console.log("Scene content loaded:", targetScene.innerHTML.length);
+                x3dom.reload(); // Ricarica x3dom per aggiornare il viewpoint
+            } else {
+                console.error("Nessuna scena trovata nel file X3D");
             }
-        }
+        };
+
+        reader.readAsText(input.files[0]);
+    }
+}
+
      </script>
    </head> 
    <body> 

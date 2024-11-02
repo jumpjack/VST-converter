@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<strong></strong><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -74,12 +74,43 @@
             <input type="file" id="fileInput" accept=".vst" style="display: none">
         </div>
 
-        <button id="convertBtn" class="button" disabled>Convert to X3D</button>
+        <button id="convertBtn" class="button" >Convert to X3D</button>
         
         <div id="status" style="display: none;"></div>
     </div>
 
     <script>
+//	           
+// JPG images                                 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/edr/
+// IMG images                                 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/edr/
+// VST files:                                 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/
+
+// JPG images   https://planetarydata.jpl.nasa.gov/img/data/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/browse/sol1869/rdr/
+// IMG images   https://planetarydata.jpl.nasa.gov/img/data/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/data/sol1869/rdr/
+// VST files    https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/ 
+
+
+/*
+Root folders nomenclature:
+mer2mw_0xxx	3d Meshes
+mer2no_0xxx	Navigation Camera (EDR & RDR)  images (JPG and IMG)
+mer2om_0xxx	Mosaic images
+mer2po_0xxx	Panoromic Camera (EDR & RDR) images (JPG and IMG)
+mer2pc_0xxx	Panoromic Camera Science Products (EDRs) images (JPG and IMG)
+*/
+
+BASE_IMG_URL = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/";
+IMG_RAW_FOLDER = "data/";
+IMG_JPG_FOLDER = "browse/";
+PRODUCT_FOLDER = "sol1870/rdr/"; // sol must be determined from VST?!?
+BASE_VST_URL = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/";
+VST_CAMERA_FOLDER = "data/navcam/"; // (navcam --> mer2no_0xxx for images)
+VST_FOLDER_SITE_NAME = "site0137/"; 
+product_name_no_ext = "2n292377885vilb126f0006l0m1"; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
+
+base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext;
+base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
+	
         // Strutture dati VST
         class VSTHeader {
             constructor(dataView, offset = 0) {
@@ -269,16 +300,15 @@ console.log("HEADER",header);
     for (let i = 0; i < header.textureNum; i++) {
         // Leggi 2048 byte direttamente da DataView come array di byte
         const textureBytes = new Uint8Array(this.dataView.buffer, this.offset, 2048);
-        console.log("RAW BYTES (textureRef):", textureBytes);
 
         // Converti i byte in stringa per poter ottenere il nome della texture
         const textureRef = String.fromCharCode.apply(null, textureBytes);
-        console.log("STRINGA (textureRef):", textureRef);
 
         // Ottieni il nome del file di texture e applica le modifiche necessarie
-        let textureName = textureRef.substring(10, 37) + '.PNG';
-        textureName = textureName.substring(0, 11) + 'FF' + textureName.substring(13);
-        console.log("HEADER - texture:", textureName);
+        let textureName = textureRef.substring(10, 37) + '.img.jpg';
+        textureName = base_texture_folder + textureName.substring(0, 11) + 'DN' + textureName.substring(13);
+		textureName = textureName.toLowerCase();
+console.log("HEADER - texture:", textureName);
 
         // Aggiungi textureName all'array textureFiles
         this.textureFiles.push(textureName);
@@ -450,7 +480,7 @@ function generateX3D(vstData) {
             } else {
                 // Handle textured triangles
                 x3d += `\n          <Appearance>
-              <ImageTexture url='"${vstData.textureFiles[patch.header.texture]}"'/>
+              <ImageTexture url="` + vstData.textureFiles[patch.header.texture]+ `"/>
           </Appearance>
           <IndexedTriangleStripSet index="`;
 
@@ -540,7 +570,7 @@ function handleFile(file) {
 }
 
 // Handler per il pulsante di conversione
-convertBtn.addEventListener('click', async () => {
+/*convertBtn.addEventListener('click', async () => {
     if (!selectedFile) return;
 
     try {
@@ -564,7 +594,54 @@ convertBtn.addEventListener('click', async () => {
     } catch (error) {
         showStatus(`Errore durante la conversione: ${error.message}`, 'error');
     }
-});
+});*/
+
+
+txtVSTurl = base_VST_filename + ".vst"; // DEBUG
+
+
+convertBtn.addEventListener('click', async () => {
+    let arrayBuffer;
+
+    try {
+        if (selectedFile) {
+            // Se il file è selezionato dall'utente
+            arrayBuffer = await selectedFile.arrayBuffer();
+        } else if (txtVSTurl) {
+console.log("url=",txtVSTurl);			
+            // Se esiste un URL in txtVSTurl, scarica il file usando il proxy
+            const proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+            response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));
+console.log(response.length);			
+            if (!response.ok) throw new Error("Errore nel download del file da URL.");
+            arrayBuffer = await response.arrayBuffer();
+console.log(arrayBuffer.length);			
+        } else {
+            showStatus("Nessun file selezionato o URL fornito.", "error");
+            return;
+        }
+
+        // Parsing e generazione del contenuto X3D
+        const parser = new VSTParser(arrayBuffer);
+        const vstData = parser.parse();
+        const x3dContent = generateX3D(vstData);
+
+        // Crea e scarica il file X3D
+        const blob = new Blob([x3dContent], { type: 'model/x3d+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile ? selectedFile.name.replace('.vst', '.x3d') : 'file.x3d';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showStatus('Conversione completata con successo!', 'success');
+    } catch (error) {
+        showStatus(`Errore durante la conversione: ${error.message}`, 'error');
+    }
+});	
 
 // Funzione per mostrare lo status
 function showStatus(message, type) {
