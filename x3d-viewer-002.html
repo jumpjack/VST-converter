@@ -58,7 +58,20 @@ navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
    </head> 
    <body> 
      <h1>X3DOM with Fixed Rotation Center</h1> 
-     <p>Select an X3D file to load:</p>
+	 <ul>
+	 <li>A = Full model view
+	 <li>W = Walk mode (with mouse)
+	 <li>E = Examine mode (rotate around origin)
+	 <li>I = "Look at" mode
+	 <li>R = Reset view
+	 <li>O = Strange view mode
+	 <li>D = Debug mode
+	 <li>G = Immediate pan mode
+	 <li>F = flight mode
+	 <li>U = Reset flight mode
+	 </ul>
+	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+     <p>Select an X3D file to load (.PNG textures will be automatically searched in its folder):</p>
      <input type="file" accept=".x3d" onchange="loadX3DFile(this)">
      <br><br>
      <x3d width='500px' height='400px'> 
