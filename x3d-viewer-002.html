@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html> 
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/> 
+     <title>My X3DOM Page with Proper Rotation</title> 
+     <script type='text/javascript' src='https://www.x3dom.org/download/x3dom.js'></script> 
+     <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link>
+     <script type="text/javascript">
+        function loadX3DFile(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    var content = e.target.result;
+                    var parser = new DOMParser();
+                    x3dDoc = parser.parseFromString(content, "text/xml");
+console.log("x3dDoc=",x3dDoc)                    
+                    // Corregge i percorsi delle texture
+                    var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+                    imageTextures.forEach(function(texture) {
+                        var url = texture.getAttribute("url");
+                        if (!url || url === "") {
+                            texture.removeAttribute("url");
+                        }
+                    });
+                    
+                    var sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+ 					
+                    if (sourceScene) {
+let navigationInfo = sourceScene.querySelector("NavigationInfo");
+// Se non esiste, creane uno nuovo
+if (!navigationInfo) {
+navigationInfo = x3dDoc.createElement("NavigationInfo");
+sourceScene.appendChild(navigationInfo);
+}
+// Imposta l'attributo type per la modalità EXAMINE
+navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
+
+                        var targetScene = document.getElementById("modelScene");
+                        targetScene.innerHTML = '';  // Pulisci solo la scena del modello
+                        
+                        Array.from(sourceScene.children).forEach(function(child) {
+                            var importedNode = document.importNode(child, true);
+                            targetScene.appendChild(importedNode);
+                        });
+                        
+                        console.log("Scene content loaded:", targetScene.innerHTML.length);
+                        x3dom.reload();
+                    } else {
+                        console.error("Nessuna scena trovata nel file X3D");
+                    }
+                };
+                
+                reader.readAsText(input.files[0]);
+            }
+        }
+     </script>
+   </head> 
+   <body> 
+     <h1>X3DOM with Fixed Rotation Center</h1> 
+     <p>Select an X3D file to load:</p>
+     <input type="file" accept=".x3d" onchange="loadX3DFile(this)">
+     <br><br>
+     <x3d width='500px' height='400px'> 
+       <scene> 
+         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+         <Viewpoint 
+            position="0 0 10" 
+            centerOfRotation="0 0 0" 
+            orientation="0 1 0 0" 
+            fieldOfView="0.785" 
+            bind="true">
+         </Viewpoint>
+         
+         <!-- Assi persistenti -->
+         <Transform translation="0 0 0">
+            <!-- Asse X (Rosso) -->
+            <Shape>
+                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 5 0 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Y (Verde) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 5 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Z (Blu) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 0 5" />
+                </LineSet>
+            </Shape>
+         </Transform>
+
+         <!-- Area per il modello caricato -->
+         <Transform id="modelScene">
+           <!-- Modello di default per quando nessun file è caricato -->
+           <Shape> 
+             <Appearance> 
+               <Material diffuseColor='1 0 0'></Material> 
+             </Appearance> 
+             <Box></Box> 
+           </Shape>
+         </Transform>
+       </scene> 
+     </x3d> 
+   </body> 
+</html>
+
