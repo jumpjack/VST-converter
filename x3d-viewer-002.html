@@ -6,6 +6,7 @@
      <script type='text/javascript' src='https://www.x3dom.org/download/x3dom.js'></script> 
      <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link>
      <script type="text/javascript">
+	 navigationInfo = null;
         function loadX3DFile(input) {
             if (input.files && input.files[0]) {
                 var reader = new FileReader();
@@ -27,15 +28,23 @@ console.log("x3dDoc=",x3dDoc)
                     var sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
  					
                     if (sourceScene) {
-let navigationInfo = sourceScene.querySelector("NavigationInfo");
-// Se non esiste, creane uno nuovo
-if (!navigationInfo) {
-navigationInfo = x3dDoc.createElement("NavigationInfo");
-sourceScene.appendChild(navigationInfo);
-}
-// Imposta l'attributo type per la modalità EXAMINE
-navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
+						navigationInfo = sourceScene.querySelector("NavigationInfo");
+						// Se non esiste, creane uno nuovo
+						if (!navigationInfo) {
+						navigationInfo = x3dDoc.createElement("NavigationInfo");
+						sourceScene.appendChild(navigationInfo);
+						}
+						// Imposta l'attributo type per la modalità EXAMINE
+						navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
 
+viewpoint = sourceScene.querySelector("Viewpoint");
+
+
+// Imposta la posizione del viewpoint (cambia questi valori per regolare lo zoom)
+//navigationInfo.setAttribute("position", "0 0 20"); // Cambia il valore 10 per lo zoom (maggiore = più lontano)
+
+
+ 
                         var targetScene = document.getElementById("modelScene");
                         targetScene.innerHTML = '';  // Pulisci solo la scena del modello
                         
@@ -57,24 +66,14 @@ navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
      </script>
    </head> 
    <body> 
-     <h1>X3DOM with Fixed Rotation Center</h1> 
-	 <ul>
-	 <li>A = Full model view
-	 <li>W = Walk mode (with mouse)
-	 <li>E = Examine mode (rotate around origin)
-	 <li>I = "Look at" mode
-	 <li>R = Reset view
-	 <li>O = Strange view mode
-	 <li>D = Debug mode
-	 <li>G = Immediate pan mode
-	 <li>F = flight mode
-	 <li>U = Reset flight mode
-	 </ul>
-	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+
      <p>Select an X3D file to load (.PNG textures will be automatically searched in its folder):</p>
      <input type="file" accept=".x3d" onchange="loadX3DFile(this)">
      <br><br>
-     <x3d width='500px' height='400px'> 
+	 <table>
+	 <tr>
+	 <td>
+     <x3d width='800px' height='600px'> 
        <scene> 
          <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
          <Viewpoint 
@@ -117,11 +116,29 @@ navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
              <Appearance> 
                <Material diffuseColor='1 0 0'></Material> 
              </Appearance> 
-             <Box></Box> 
+
            </Shape>
          </Transform>
        </scene> 
      </x3d> 
+	 </td>
+	 <td valign="top">
+	 <ul>
+	 	 <li>A = Full model view
+	 <li>W = Walk mode (with mouse)
+	 <li>E = Examine mode (rotate around origin)
+	 <li>I = "Look at" mode
+	 <li>R = Reset view
+	 <li>O = Strange view mode
+	 <li>D = Debug mode
+	 <li>G = Immediate pan mode
+	 <li>F = flight mode
+	 <li>U = Reset flight mode
+	 </ul>
+	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+	 </td>
+	 </tr>
+	 </table>
    </body> 
 </html>
 
