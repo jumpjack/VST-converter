@@ -24,6 +24,8 @@ Other software to open/import PFB files:
 
 - OpenSceneGraph: it declares compatibility with PFB files, but only if it is compiled against original Performer libraries; a OSG version compatibile with PFB files should probably contain **osgdb_pfb.dll** file in plugins folder, but I can't find this file anywhere.
 - [Prefab3d](https://wiki.gamemaker3d.com/tools:prefab3d) declares compatibility with PFB files , nbut probably needs OSG plugin dll
+- Worldviz Vizard apparently supports all pòlugins supported by OSG, but distribution does not contain the needed osgb_pfb.dll file
+-  https://www.coin3d.org/ is compatible with SGI OpenInventor: possibly compatible with Pefrormer too?
 
 
 SGI opensource software:
