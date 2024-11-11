@@ -3,10 +3,8 @@ It should be possible to download a Windows version of this SW from archive.org,
 
 - [.iso files list](https://ia801603.us.archive.org/view_archive.php?archive=/21/items/twilight-dvd093/TWILIGHT_093_DVD2.iso&)
 - Files for Performer are in folder 0047:
-    - [Direct link to setup.exe](https://archive.org/download/twilight-dvd093/TWILIGHT_093_DVD2.iso/apps%2F0047%2Fsetup.exe) installer
-    - [Direct link to licence](https://archive.org/download/twilight-dvd093/TWILIGHT_093_DVD2.iso/apps%2F0047%2Fcrack.zip) (I cannot find anyywhere the free demo version; it was named OpenPerformer and available for download from http://oss.sgi.com/projects/performer , dead long time ago)
- 
-    - The serial is 1234554321 ; the license.dat file shall contain these data:
+    - [Direct link to setup.exe](https://archive.org/download/twilight-dvd093/TWILIGHT_093_DVD2.iso/apps%2F0047%2Fsetup.exe) installer; this will install the free demo version
+
  
 ```
 FEATURE performer_windows_sgi sgifd 3.2 permanent uncounted \ 7212DBE5A242
@@ -16,8 +14,8 @@ FEATURE performer_windows sgifd 3.2 permanent uncounted 73CACDBF4D9E \
 ```
 
 Local mirror
-- setup.exe
-- data1.cab contained in the installer
+- [setup.exe](http://windowsdraw.altervista.org/performer/setup.exe)
+
 
 
 Other software to open/import PFB files:
