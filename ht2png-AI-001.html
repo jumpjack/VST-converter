@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<!-- attempt to convert .IMG to visible image - not yet working  - 13/11/2024 -->
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elaborazione Immagine VICAR</title>
+    <script src="..\..\..\chart.js"></script>
+    <script src="VICAR-utils.js"></script>
+</head>
+<body>
+    <h1>Carica File .ht e Visualizza Immagine</h1>
+
+    <input type="file" id="fileInput" accept=".ht" />
+    <label>
+        <input type="checkbox" id="autoLevelCheckbox" />
+        Auto-Level
+    </label>
+    <button onclick="processFile()">Elabora Immagine</button>
+    <button onclick="generatePLYFile()">Genera Point Cloud (.ply)</button> <!-- Bottone per PLY -->
+
+    <div id="fileInfo"></div>
+    <canvas id="canvas"></canvas>
+    <canvas id="histogramCanvas" width="500" height="300"></canvas><br>
+Status:<span id="status"></span><br>
+    <script>
+        let NS, NL, LBLSIZE, numBande;
+        let pixels = null; // Variabile globale per i dati dell'immagine
+
+        async function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const autoLevel = document.getElementById('autoLevelCheckbox').checked;
+
+            if (!fileInput.files.length) {
+                alert("Seleziona un file .ht prima di procedere.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const buffer = await file.arrayBuffer();
+            const dataView = new DataView(buffer);
+
+            LBLSIZE = readVicarParameter(dataView, "LBLSIZE");
+            NS = readVicarParameter(dataView, "NS");
+            NL = readVicarParameter(dataView, "NL");
+            numBande = readVicarParameter(dataView, "NB") || 1;
+
+            document.getElementById('fileInfo').innerHTML = `
+                <p><strong>LBLSIZE:</strong> ${LBLSIZE}</p>
+                <p><strong>NS (Larghezza):</strong> ${NS}</p>
+                <p><strong>NL (Altezza):</strong> ${NL}</p>
+                <p><strong>Numero di Bande:</strong> ${numBande}</p>
+            `;
+
+            loadAndProcessImage(dataView, autoLevel);
+        }
+
+        function readVicarParameter(dataView, paramName) {
+            const label = new TextDecoder().decode(new Uint8Array(dataView.buffer, 0, 1024));
+            const regex = new RegExp(`${paramName}\\s*=\\s*(\\d+)`);
+            const match = label.match(regex);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        function loadAndProcessImage(dataView, autoLevel) {
+            const offset = LBLSIZE;
+            const width = NS;
+            const height = NL;
+            const numPixels = width * height;
+
+            pixels = new Float32Array(numPixels * numBande); // Inizializza come variabile globale
+
+            for (let band = 0; band < numBande; band++) {
+                for (let i = 0; i < numPixels; i++) {
+                    pixels[band * numPixels + i] = dataView.getFloat32(offset + (band * numPixels + i) * 4, false);
+                }
+            }
+
+            let min = Infinity;
+            let max = -Infinity;
+
+            for (let i = 0; i < pixels.length; i++) {
+                if (pixels[i] < min) min = pixels[i];
+                if (pixels[i] > max) max = pixels[i];
+            }
+
+            if (autoLevel) {
+                const range = max - min || 1;
+                for (let i = 0; i < pixels.length; i++) {
+                    pixels[i] = ((pixels[i] - min) / range) * 255;
+                }
+            } else {
+                for (let i = 0; i < pixels.length; i++) {
+                    pixels[i] = Math.min(Math.max(pixels[i], 0), 255);
+                }
+            }
+
+            drawImage(pixels, width, height);
+            drawHistogram(pixels);
+
+const label = new TextDecoder().decode(new Uint8Array(dataView.buffer, 0, dataView.buffer.length));
+readVicarHeaderData(label);
+loadVICAR_BSQ(label,0);  // DEBUG - not working
+        }
+
+        function drawImage(pixels, width, height) {
+            const canvas = document.getElementById("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            const imageData = ctx.createImageData(width, height);
+
+            const halfLength = pixels.length / 2;
+
+            for (let i = 0; i < halfLength; i++) {
+                let band1Value = Math.round(pixels[i]);
+                if (band1Value > 300) band1Value = Math.round(pixels[i + halfLength]);
+
+                imageData.data[i * 4] = band1Value;
+                imageData.data[i * 4 + 1] = band1Value;
+                imageData.data[i * 4 + 2] = band1Value;
+                imageData.data[i * 4 + 3] = 255;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function generatePLYFile() {
+            const width = NS;
+            const height = NL;
+            let plyContent = `ply\nformat ascii 1.0\nelement vertex ${width * height}\n`;
+            plyContent += "property float x\nproperty float y\nproperty float z\nend_header\n";
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const index = y * width + x;
+                    zValue = pixels[index]; // Usa il valore del pixel come Z
+					if ((zValue>=255) || isNaN(zValue) ) {
+                    	plyContent += `\n`;
+					} else {
+						zValue /=10;
+                    	plyContent += `${x} ${y} ${zValue}\n`;
+					}
+
+                }
+            }
+
+            const blob = new Blob([plyContent], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+
+            // Scarica il file .ply
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "pointcloud.ply";
+            link.click();
+
+            URL.revokeObjectURL(url); // Libera l'URL dopo il download
+        }
+
+        function drawHistogram(pixels) {
+            const numBins = 50;
+            const binWidth = 255 / numBins;
+            const histogramData = new Array(numBins).fill(0);
+
+            for (let i = 0; i < pixels.length; i++) {
+                const binIndex = Math.min(numBins - 1, Math.floor(pixels[i] / binWidth));
+                histogramData[binIndex]++;
+            }
+
+            const ctx = document.getElementById('histogramCanvas').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: numBins }, (_, i) => Math.round(i * binWidth)),
+                    datasets: [{
+                        label: 'Distribuzione dei Valori dei Pixel',
+                        data: histogramData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: { title: { display: true, text: 'Valore Pixel' }, ticks: { autoSkip: true, maxTicksLimit: 10 } },
+                        y: { title: { display: true, text: 'Conteggio Pixel' }, beginAtZero: true, min: 0, max: 1000 }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

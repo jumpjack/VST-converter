@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<!--
+Displays in 3d scene a schematic MER rover, the loaded images and their FOVs; images are automatically retrieved online, but they must be on github repo
+ to avoid CORS restrictions; else, you will need a proxy, or a manual user selection of local files to use.
+
+ -->
+
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Rappresentazione VICAR con Babylon.js</title>
+    <style>
+        #renderCanvas { width: 100%; height: 500px; }
+    </style>
+</head>
+<body>
+    <h1>Rappresentazione 3D della Pancam</h1>
+    <canvas id="renderCanvas"></canvas>
+   <div>
+        <input type="file" id="fileInput" accept=".img" style="display: none;" multiple>
+        <button onclick="document.getElementById('fileInput').click()">Carica file IMG</button>
+    </div>
+    <div id="tablesContainer"></div>
+    <!-- Include Babylon.js -->
+    <script src="..\..\..\babylon.js"></script>
+	<script src="..\..\..\earcut.min.js"></script>
+    <script>
+
+	// V. 0.0.3: Fixed various bugs in angles calculation; added support for multiple files selection; added automatic creation of download links for images
+	//	To do:
+	//  1) Extract textures links from a PFB file and automatically retrieve all textures
+	//	2) Add pointcloud
+	//	3) Add mesh
+	//	4) Add textures
+
+	// V. 0.0.2: First version properly loading PANCAM angles from VICAR label of selected .img file, but image shown is still a placeholder
+
+        //let originOffsetVector = { x: 0.45781, y: +1.09668 , z: 0.02779}; // Fixed position of PANCAM w.r.t. rover body?
+        let originOffsetVector = { x: 0, y: 1 , z: 0}; // Fixed position of PANCAM w.r.t. rover body?
+
+		// set debug values:
+        let pancamAzimuth = 111;
+        let pancamElevation = -11;
+        let azimuthFOV = 11;
+        let elevationFOV = 33;
+
+
+//////////// Codice per caricamento IMG  ///////////////
+
+        document.getElementById("fileInput").addEventListener("change", async function() {
+			for (let file of this.files) {
+	            if (!file) return;
+
+	            const text = await file.text();
+	            const vicarData = extractVicarData(text, file.name);
+			};
+        });
+
+
+        function extractVicarData(vicarLabelText, textureFileName) {
+			PMA_anglesValuesRaw =  readVicarParameter(vicarLabelText, "PMA_ARTICULATION_STATE", "ARTICULATION_DEVICE_ANGLE");
+			PMA_orientationValuesRaw = readVicarParameter(vicarLabelText, "PMA_ARTICULATION_STATE", "ARTICULATION_DEVICE_ANGLE")
+
+			PANCAM_azimuthRaw = PMA_orientationValuesRaw["AZIMUTH-MEASURED"];
+			PANCAM_elevationRaw = PMA_orientationValuesRaw["ELEVATION-MEASURED"];
+			PANCAM_azimuthFOV_Raw = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "AZIMUTH_FOV")["AZIMUTH_FOV"];
+			PANCAM_elevationFOV_Raw = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "ELEVATION_FOV")["ELEVATION_FOV"];
+
+			pancamAzimuthRad = parseFloat(PANCAM_azimuthRaw.replace("<rad>",""));
+			pancamElevationRad = parseFloat(PANCAM_elevationRaw.replace("<rad>",""));
+			azimuthFOVdeg = parseFloat(PANCAM_azimuthFOV_Raw.replace("<deg>",""));
+			elevationFOVdeg = parseFloat(PANCAM_elevationFOV_Raw.replace("<deg>",""));
+
+			console.log("PANCAM Azimuth degrees:", parseInt(pancamAzimuthRad*180/Math.PI));
+			console.log("PANCAM Elevation degrees:", parseInt(pancamElevationRad*180/Math.PI));
+			console.log("azimuthFOV degrees:", parseInt(azimuthFOVdeg));
+			console.log("elevationFOV degrees:", parseInt(elevationFOVdeg));
+
+			addElementsToScene(babylonScene, textureFileName)
+        }
+
+
+
+		function readVicarParameter(vicarLabel, groupName, paramName) {
+		    const data = vicarLabel;
+
+		    // Trova il gruppo con regex che include tutte le righe tra il gruppo iniziale e il successivo
+		    const groupRegex = new RegExp(`GROUP\\s*=\\s*${groupName}\\s*([\\s\\S]*?)(?:GROUP|$)`, 'i');
+		    const groupMatch = data.match(groupRegex);
+		    if (!groupMatch) return null;  // Gruppo non trovato
+
+		    const groupData = groupMatch[1];
+
+		    // Trova il parametro specificato nel gruppo
+		    const paramRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*(.*)`, 'm');
+		    const paramMatch = groupData.match(paramRegex);
+		    if (!paramMatch) return null;  // Parametro non trovato
+
+		    let value = paramMatch[1].trim();
+
+		    // Verifica se il valore è una lista
+		    if (value.startsWith("(")) {
+		        // Regex per estrarre correttamente tutti gli elementi tra parentesi tonde (compresi ritorni a capo)
+		        const listRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
+		        const listMatch = groupData.match(listRegex);
+
+		        if (listMatch) {
+		            value = listMatch[1].split(',').map(v => v.trim());  // Crea un array con ogni elemento
+		            const nameParam = paramName + "_NAME";               // Cerca un array di nomi associati
+		            const nameRegex = new RegExp(`^\\s*${nameParam}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
+		            const nameMatch = groupData.match(nameRegex);
+
+		            // Associa i nomi ai valori, se presente la lista di nomi
+		            if (nameMatch) {
+		                const names = nameMatch[1].split(',').map(name => name.trim().replace(/"/g, ''));
+		                const result = {};
+		                names.forEach((name, index) => {
+		                    result[name] = value[index];
+		                });
+		                return result;
+		            }
+		        }
+		    }
+
+		    // Restituisce un oggetto con chiave e valore singolo se non è una lista
+		    return { [paramName.trim()]: value };
+		}
+
+
+//////////// fine codice caricamento IMG //////////
+
+function create3d() {
+    const createScene = () => {
+        const scene = new BABYLON.Scene(engine);
+        const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 5, BABYLON.Vector3.Zero(), scene);
+        camera.attachControl(canvas, true);
+		camera.wheelDeltaPercentage = 0.01;
+        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+
+        // Piano di ground
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
+        const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+        groundMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+        groundMaterial.backFaceCulling = false;
+        groundMaterial.alpha = 0.2;
+        ground.material = groundMaterial;
+
+        // Assi cartesiani
+        createAxis(scene, "x", 2, new BABYLON.Color3(1, 0, 0));
+        createAxis(scene, "y", 2, new BABYLON.Color3(0, 1, 0));
+        createAxis(scene, "z", 2, new BABYLON.Color3(0, 0, 1));
+
+        return scene;
+    };
+
+    const createAxis = (scene, axis, length, color) => {
+        const points = [new BABYLON.Vector3.Zero(), new BABYLON.Vector3(...(axis === "x" ? [length, 0, 0] : axis === "y" ? [0, length, 0] : [0, 0, length]))];
+        const lines = BABYLON.MeshBuilder.CreateLines(`axis${axis}`, { points }, scene);
+        lines.color = color;
+    };
+
+    const canvas = document.getElementById("renderCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+    const scene = createScene();
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+
+    // Restituisci la scena per uso successivo
+    return scene;
+}
+
+function addRover(scene) {
+			// Pancam
+			pancamCylinder = BABYLON.MeshBuilder.CreateCylinder("pancam", { diameter: 0.05, height: 0.1 }, scene);
+			pancamCylinder.position = new BABYLON.Vector3(originOffsetVector.x, originOffsetVector.y, originOffsetVector.z);
+			pancamCylinder.rotation = new BABYLON.Vector3(Math.PI/2, 0, 0);
+
+			// Mast of pancam
+			const mastCylinder = BABYLON.MeshBuilder.CreateCylinder("mast", { diameter: 0.05, height: 0.5 }, scene);
+			mastCylinder.position = new BABYLON.Vector3(originOffsetVector.x, 0.75, originOffsetVector.z);
+
+
+			const roverBody = BABYLON.MeshBuilder.CreateBox("box", { width: 0.4, height: 0.2, depth: 0.8 }, scene);
+			roverBody.position = new BABYLON.Vector3(originOffsetVector.x, 0.4, -0.4);
+
+}
+
+// Funzione separata per posizionare gli altri elementi (come Pancam, Mast, Rover, etc.)
+function addElementsToScene(scene, textureFileName) {
+			// Orienta il cilindro verso azimuth/elevation della Pancam
+			const azimuthRad = pancamAzimuthRad;
+			const elevationRad = -pancamElevationRad;
+			pancamCylinder.rotation = new BABYLON.Vector3(elevationRad + Math.PI/2, azimuthRad, 0);
+
+			// Rappresentazione FOV come piramide
+			const fovHeight = 2; // Distanza della base FOV dalla Pancam
+			const fovBaseSizeX = 2 * Math.tan(BABYLON.Tools.ToRadians(azimuthFOVdeg / 2)) * fovHeight;
+			const fovBaseSizeY = 2 * Math.tan(BABYLON.Tools.ToRadians(elevationFOVdeg / 2)) * fovHeight;
+
+			// Creazione piramide FOV
+			const vertexDataPyramid = new BABYLON.VertexData();
+			const positionsPyramid = [
+			    0, 0, 0,                                      // Vertice della piramide (vertice del FOV)
+			    -fovBaseSizeX / 2, -fovBaseSizeY / 2, fovHeight,  // Vertice della base quadrata
+			    fovBaseSizeX / 2, -fovBaseSizeY / 2, fovHeight,
+			    fovBaseSizeX / 2, fovBaseSizeY / 2, fovHeight,
+			    -fovBaseSizeX / 2, fovBaseSizeY / 2, fovHeight
+			];
+			const indicesPyramid = [
+			    0, 1, 2,  // Lato 1
+			    0, 2, 3,  // Lato 2
+			    0, 3, 4,  // Lato 3
+			    0, 4, 1   // Lato 4
+			];
+
+			vertexDataPyramid.positions = positionsPyramid;
+			vertexDataPyramid.indices = indicesPyramid;
+
+			const fovPyramid = new BABYLON.Mesh("fovPyramid", scene);
+			vertexDataPyramid.applyToMesh(fovPyramid);
+
+			fovPyramid.position = pancamCylinder.position.clone();
+			fovPyramid.rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
+
+			// Materiale semitrasparente per il FOV
+			const fovMaterial = new BABYLON.StandardMaterial("fovMaterial", scene);
+			fovMaterial.backFaceCulling = false;
+			fovMaterial.alpha = 0.1; // Imposta la trasparenza al 30%
+			fovMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0); // Colore giallo semitrasparente
+			fovPyramid.material = fovMaterial;
+
+			// Creazione della base rettangolare per il FOV
+			const baseFov = BABYLON.MeshBuilder.CreatePlane("baseFov", {
+			    width: fovBaseSizeX,
+			    height: fovBaseSizeY
+			}, scene);
+
+
+			// Calcolo della direzione basata su azimuth e elevation
+			const direction = new BABYLON.Vector3(
+			    Math.sin(azimuthRad) * Math.cos(-elevationRad), // X
+			    Math.sin(-elevationRad),                        // Y
+			    Math.cos(azimuthRad) * Math.cos(-elevationRad)  // Z
+			).normalize();
+
+			// Posizionamento della base a 2 metri di distanza lungo la direzione
+			baseFov.position = pancamCylinder.position.add(direction.scale(fovHeight));
+			console.log("baseFov.position=",baseFov.position);
+			// Rotazione della base per allinearla correttamente
+			baseFov.rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
+
+			// Aggiunta della texture
+			const baseTexture = new BABYLON.StandardMaterial("baseTextureMaterial", scene);
+console.log("Downloading " + textureFileName + " ...");
+			baseTexture.diffuseTexture = new BABYLON.Texture("https://raw.githubusercontent.com/jumpjack/VST-converter/refs/heads/main/" + textureFileName + ".jpg", scene); // 2n292280938effb100p0703l0m1.img
+			baseTexture.backFaceCulling = false;
+			baseFov.material = baseTexture;
+
+	}
+
+babylonScene = create3d();
+addRover(babylonScene);
+    </script>
+</body>
+</html>

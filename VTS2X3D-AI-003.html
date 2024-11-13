@@ -74,12 +74,15 @@
             <input type="file" id="fileInput" accept=".vst" style="display: none">
         </div>
 
+		<input type="text" id = "txtProductId" name="txtProductId" value = "2n292378085vilb128f0006l0m1" style="width:250px;">
         <button id="convertBtn" class="button" >Convert to X3D</button>
         
         <div id="status" style="display: none;"></div>
     </div>
 
     <script>
+	
+
 //	           
 // JPG images                                 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/browse/sol1869/edr/
 // IMG images                                 https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/data/sol1869/edr/
@@ -87,29 +90,42 @@
 
 // JPG images   https://planetarydata.jpl.nasa.gov/img/data/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/browse/sol1869/rdr/
 // IMG images   https://planetarydata.jpl.nasa.gov/img/data/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/data/sol1869/rdr/
-// VST files    https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/navcam/site0137/ 
+				https://planetarydata.jpl.nasa.gov/w10n/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/data/sol1869/rdr/
+// VST files    https://planetarydata.jpl.nasa.gov/img/data/mer2-m-hazcam-5-mesh-ops-v1.0/mer2mw_0xxx/	
+// VST files    https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/
+// VST files    https://planetarydata.jpl.nasa.gov/w10n/mer2-m-hazcam-5-wedge-ops-v1.0/mer2mw_0xxx/
 
-
+// cassini/cassini_orbiter/coiss_2015/data/1503245366_1503271060/N1503245366_1.IMG
+// mer/mer2ho_0xxx/data/sol1869/rdr/
 /*
 Root folders nomenclature:
-mer2mw_0xxx	3d Meshes
+mer2mw_0xxx	3d Meshes and wedges
 mer2no_0xxx	Navigation Camera (EDR & RDR)  images (JPG and IMG)
 mer2om_0xxx	Mosaic images
 mer2po_0xxx	Panoromic Camera (EDR & RDR) images (JPG and IMG)
 mer2pc_0xxx	Panoromic Camera Science Products (EDRs) images (JPG and IMG)
+
+3d nomenclature:
+points = vertices
+triangle corner vertices = facets
+Wedge = NASA stereo pair?
 */
 
-BASE_IMG_URL = "https://pds-imaging.jpl.nasa.gov/data/mer/spirit/mer2no_0xxx/";
+BASE_IMG_URL = "https://planetarydata.jpl.nasa.gov/w10n/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/";
 IMG_RAW_FOLDER = "data/";
 IMG_JPG_FOLDER = "browse/";
-PRODUCT_FOLDER = "sol1870/rdr/"; // sol must be determined from VST?!?
+PRODUCT_FOLDER = "sol1869/rdr/"; // sol must be determined from VST?!?
 BASE_VST_URL = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/";
 VST_CAMERA_FOLDER = "data/navcam/"; // (navcam --> mer2no_0xxx for images)
 VST_FOLDER_SITE_NAME = "site0137/"; 
-product_name_no_ext = "2n292377885vilb126f0006l0m1"; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
-
+product_name_no_ext = "2n292378085vilb128f0006l0m1"; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
+// 	2n292377885vilb126f0006l0m1
+// 	2n292378085vilb128f0006l0m1
 base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext;
 base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
+
+
+ proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
 	
         // Strutture dati VST
         class VSTHeader {
@@ -274,7 +290,7 @@ base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
                 this.vertices = [];
             }
 
-            parse() {
+            async parse() {
 console.log("HEADER");			
                 // Parse header
                 const header = new VSTHeader(this.dataView, this.offset);
@@ -306,12 +322,16 @@ console.log("HEADER",header);
 
         // Ottieni il nome del file di texture e applica le modifiche necessarie
         let textureName = textureRef.substring(10, 37) + '.img.jpg';
-        textureName = base_texture_folder + textureName.substring(0, 11) + 'DN' + textureName.substring(13);
-		textureName = textureName.toLowerCase();
-console.log("HEADER - texture:", textureName);
+console.log("HEADER - textureName:", textureName);
+        let textureUrl = base_texture_folder + textureName.substring(0, 11) + 'FF' + textureName.substring(13); // DEBUG trovare immagine giusta FF, DN o altre
+console.log("HEADER - textureUrl1:", textureUrl);
+		textureUrl = textureUrl.toLowerCase();
+console.log("HEADER - textureUrl2:", textureUrl);
+		let textureBASE64 = await urlToBase64(textureUrl);
+console.log("HEADER - textureBASE64:", textureBASE64.length);
 
         // Aggiungi textureName all'array textureFiles
-        this.textureFiles.push(textureName);
+        this.textureFiles.push(textureBASE64);
 
         // Aggiorna l'offset per la prossima texture
         this.offset += 2048;
@@ -428,7 +448,7 @@ console.log("HEADER - LODs: ",header.lodNum);
             }
         }
 
-function generateX3D(vstData) {
+function generateX3D(vstData, whichLod) {
     const bbox = vstData.bbox;
     const vertices = vstData.vertices;
     const lods = vstData.lods;
@@ -461,65 +481,68 @@ function generateX3D(vstData) {
     };
 
     lods.forEach((lod, lodIndex) => {
-        x3d += `\n      <Shape bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
+		if (lodIndex >= whichLod) {
+	        x3d += `\n      <Shape bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
 
-        lod.patches.forEach(patch => {
-            if (patch.header.pointCloud === 1) {
-                // Handle point cloud
-                x3d += '\n          <PointSet>\n              <Coordinate point="';
-                
-                const points = [];
-                patch.arrays.forEach(array => {
-                    array.forEach(vertexIndex => {
-                        points.push(formatPoint(vertices[vertexIndex]));
-                    });
-                });
-                
-                x3d += points.join(', ');
-                x3d += '"/>\n          </PointSet>';
-            } else {
-                // Handle textured triangles
-                x3d += `\n          <Appearance>
-              <ImageTexture url="` + vstData.textureFiles[patch.header.texture]+ `"/>
-          </Appearance>
-          <IndexedTriangleStripSet index="`;
+	        lod.patches.forEach(patch => {
+	            if (patch.header.pointCloud === 1) {
+	                // Handle point cloud
+	                x3d += '\n          <PointSet>\n              <Coordinate point="';
+	                
+	                const points = [];
+	                patch.arrays.forEach(array => {
+	                    array.forEach(vertexIndex => {
+	                        points.push(formatPoint(vertices[vertexIndex]));
+	                    });
+	                });
+	                
+	                x3d += points.join(', ');
+	                x3d += '"/>\n          </PointSet>';
+	            } else {
+	finalUrl = /*proxyURL + encodeURIComponent(*/vstData.textureFiles[patch.header.texture]/*)*/;
+				
+	                // Handle textured triangles
+	                x3d += `\n          <Appearance>
+	              <ImageTexture url="` + finalUrl+ `"/>
+	          </Appearance>
+	          <IndexedTriangleStripSet index="`;
 
-                // Add indices with strip separators
-                const indices = [];
-                patch.arrays.forEach((array, arrayIndex) => {
-                    if (arrayIndex > 0) indices.push(-1);
-                    indices.push(...array);
-                });
-                x3d += indices.join(' ');
+	                // Add indices with strip separators
+	                const indices = [];
+	                patch.arrays.forEach((array, arrayIndex) => {
+	                    if (arrayIndex > 0) indices.push(-1);
+	                    indices.push(...array);
+	                });
+	                x3d += indices.join(' ');
 
-                // Add coordinates
-                x3d += `">\n              <Coordinate point="`;
-                const points = [];
-                for (let i = 0; i <= lod.header.vertMax; i++) {
-                    points.push(formatPoint(vertices[i]));
-                }
-                x3d += points.join(', ');
-                x3d += '"/>';
+	                // Add coordinates
+	                x3d += `">\n              <Coordinate point="`;
+	                const points = [];
+	                for (let i = 0; i <= lod.header.vertMax; i++) {
+	                    points.push(formatPoint(vertices[i]));
+	                }
+	                x3d += points.join(', ');
+	                x3d += '"/>';
 
-                // Add texture coordinates
-                x3d += `\n              <TextureCoordinate point="`;
-                const texCoords = [];
-                for (let i = 0; i <= lod.header.vertMax; i++) {
-                    texCoords.push(formatTexCoord(vertices[i]));
-                }
-                x3d += texCoords.join(', ');
-                x3d += '"/>\n          </IndexedTriangleStripSet>';
-            }
-        });
+	                // Add texture coordinates
+	                x3d += `\n              <TextureCoordinate point="`;
+	                const texCoords = [];
+	                for (let i = 0; i <= lod.header.vertMax; i++) {
+	                    texCoords.push(formatTexCoord(vertices[i]));
+	                }
+	                x3d += texCoords.join(', ');
+	                x3d += '"/>\n          </IndexedTriangleStripSet>';
+	            }
+	        });
 
-        x3d += '\n      </Shape>';
+	        x3d += '\n      </Shape>';
+		}		
     });
 
     x3d += '\n  </Scene>\n</X3D>';
     return x3d;
 }
 
-// Aggiungi questi event listener alla fine del file, dopo tutte le classi esistenti
 
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
@@ -567,55 +590,32 @@ function handleFile(file) {
     selectedFile = file;
     convertBtn.disabled = false;
     showStatus(`File selezionato: ${file.name}`, 'success');
+	alert("OK, local file selected.");
+	txtProductId.value = file.name.replace(".vst","").replace(".VST","");
 }
-
-// Handler per il pulsante di conversione
-/*convertBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
-
-    try {
-        const arrayBuffer = await selectedFile.arrayBuffer();
-        const parser = new VSTParser(arrayBuffer);
-        const vstData = parser.parse();
-        const x3dContent = generateX3D(vstData);
-
-        // Crea e scarica il file X3D
-        const blob = new Blob([x3dContent], { type: 'model/x3d+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = selectedFile.name.replace('.vst', '.x3d');
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showStatus('Conversione completata con successo!', 'success');
-    } catch (error) {
-        showStatus(`Errore durante la conversione: ${error.message}`, 'error');
-    }
-});*/
-
-
-txtVSTurl = base_VST_filename + ".vst"; // DEBUG
 
 
 convertBtn.addEventListener('click', async () => {
-    let arrayBuffer;
+product_name_no_ext = document.getElementById("txtProductId").value; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
+// 	2n292377885vilb126f0006l0m1
+// 	2n292378085vilb128f0006l0m1
+base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext.toLowerCase();
+		let txtVSTurl = base_VST_filename + ".vst"; // DEBUG
+    	let arrayBuffer;
 
-    try {
+   // try {
         if (selectedFile) {
-            // Se il file è selezionato dall'utente
+console.log("converting local file selected by user:", selectedFile);
+            // Se il file ï¿½ selezionato dall'utente
             arrayBuffer = await selectedFile.arrayBuffer();
         } else if (txtVSTurl) {
-console.log("url=",txtVSTurl);			
+console.log("Downloading from url and convertin:",txtVSTurl);
             // Se esiste un URL in txtVSTurl, scarica il file usando il proxy
             const proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
-            response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));
-console.log(response.length);			
+            response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));			
             if (!response.ok) throw new Error("Errore nel download del file da URL.");
             arrayBuffer = await response.arrayBuffer();
-console.log(arrayBuffer.length);			
+console.log("arrayBuffer",arrayBuffer);			
         } else {
             showStatus("Nessun file selezionato o URL fornito.", "error");
             return;
@@ -623,24 +623,26 @@ console.log(arrayBuffer.length);
 
         // Parsing e generazione del contenuto X3D
         const parser = new VSTParser(arrayBuffer);
-        const vstData = parser.parse();
-        const x3dContent = generateX3D(vstData);
+        const vstData = await parser.parse();
+console.log("vstData=",vstData);			
+        const x3dContent = generateX3D(vstData, 1); // DEBUG last lod = higher res
 
         // Crea e scarica il file X3D
         const blob = new Blob([x3dContent], { type: 'model/x3d+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = selectedFile ? selectedFile.name.replace('.vst', '.x3d') : 'file.x3d';
+console.log("Saving to ", product_name_no_ext + '.x3d');
+        a.download = selectedFile ? selectedFile.name.replace('.vst', '.x3d') : product_name_no_ext + '.x3d';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
         showStatus('Conversione completata con successo!', 'success');
-    } catch (error) {
-        showStatus(`Errore durante la conversione: ${error.message}`, 'error');
-    }
+    //} catch (error) {
+       // showStatus(`Errore durante la conversione: ${error.message}`, 'error');
+   // }
 });	
 
 // Funzione per mostrare lo status
@@ -648,6 +650,38 @@ function showStatus(message, type) {
     status.textContent = message;
     status.style.display = 'block';
     status.className = type;
+}
+
+async function urlToBase64(imageUrl) {
+	   finalUrl = proxyURL + encodeURIComponent(imageUrl);
+
+    try {
+        // Scarica l'immagine come blob
+        const response = await fetch(finalUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        
+        // Determina il tipo MIME corretto
+        const mimeType = 'image/jpeg'; 
+        
+        // Converti il blob in base64
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                // Se per qualche motivo il risultato ha un tipo MIME errato, lo correggiamo
+                const base64String = reader.result;
+                const base64Data = base64String.split(',')[1];
+                resolve(`data:${mimeType};base64,${base64Data}`);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        throw new Error(`Errore durante la conversione dell'immagine: ${error.message}`);
+    }
 }
 </script>
 </body>

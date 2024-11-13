@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!-- EXPERIMENTS with vicar labels -->
+
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VICAR Label Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.6;
+        }
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            margin: 1rem 0;
+        }
+        .drop-zone:hover {
+            background: #e9ecef;
+        }
+        .result {
+            margin-top: 1rem;
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 1rem;
+            display: none;
+        }
+        .data-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .data-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .data-card {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .data-card h4 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .orientation-data {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .orientation-value {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .value-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .value-number {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-top: 0.5rem;
+        }
+        .raw-data {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #f8f9fa;
+        }
+        .tab.active {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>VICAR Label Parser</h1>
+    <p>Carica un file IMG della NASA per analizzare tutti i dati dell'etichetta VICAR.</p>
+    
+    <div class="drop-zone" id="dropZone">
+        <p>Trascina qui il file IMG o clicca per selezionarlo</p>
+        <input type="file" id="fileInput" accept=".img" style="display: none">
+    </div>
+
+    <div class="error" id="error"></div>
+    
+    <div class="result" id="result">
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="summary">Riepilogo</button>
+            <button class="tab" data-tab="position">Posizione</button>
+            <button class="tab" data-tab="camera">Camera</button>
+            <button class="tab" data-tab="raw">Dati Grezzi</button>
+        </div>
+
+        <div id="summary" class="data-section">
+            <h3>Riepilogo Dati</h3>
+            <div id="summaryContent"></div>
+        </div>
+
+        <div id="position" class="data-section" style="display: none;">
+            <h3>Dati di Posizione</h3>
+            <div id="positionContent"></div>
+        </div>
+
+        <div id="camera" class="data-section" style="display: none;">
+            <h3>Orientamento della Camera</h3>
+            <div id="cameraOrientation" class="orientation-data"></div>
+            <h3>Parametri della Camera</h3>
+            <div id="cameraContent"></div>
+        </div>
+
+        <div id="raw" class="data-section" style="display: none;">
+            <h3>Dati Grezzi</h3>
+            <div id="rawContent" class="raw-data"></div>
+        </div>
+    </div>
+
+    <script>
+        function quaternionToEuler(q) {
+            const [w, x, y, z] = q;
+            
+            // Calcola yaw (rotazione intorno all'asse z)
+            const yaw = Math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z));
+            
+            // Calcola pitch (rotazione intorno all'asse y)
+            const pitch = Math.asin(2*(w*y - z*x));
+            
+            // Calcola roll (rotazione intorno all'asse x)
+            const roll = Math.atan2(2*(w*x + y*z), 1 - 2*(x*x + y*y));
+            
+            // Converti da radianti a gradi
+            return {
+                yaw: yaw * 180 / Math.PI,
+                pitch: pitch * 180 / Math.PI,
+                roll: roll * 180 / Math.PI
+            };
+        }
+
+        function parseVICARGroups(text) {
+            const groups = {};
+            const groupRegex = /GROUP\s*=\s*(\w+)([\s\S]*?)END_GROUP\s*=\s*\1/g;
+            let match;
+
+            while ((match = groupRegex.exec(text)) !== null) {
+                const groupName = match[1];
+                const groupContent = match[2];
+                
+                const parameters = {};
+                const paramRegex = /^\s*(\w+)\s*=\s*(.+)$/gm;
+                let paramMatch;
+
+                while ((paramMatch = paramRegex.exec(groupContent)) !== null) {
+                    let [, key, value] = paramMatch;
+                    // Rimuovi parentesi e virgolette se presenti
+                    value = value.replace(/^\s*[\("']*|[\)"']*\s*$/g, '');
+                    parameters[key] = value;
+                }
+
+                groups[groupName] = parameters;
+            }
+
+            // Estrai anche i parametri di livello superiore
+            const topLevelRegex = /^(?!GROUP)(\w+)\s*=\s*(.+)$/gm;
+            let topLevelMatch;
+            groups.TOP_LEVEL = {};
+            
+            while ((topLevelMatch = topLevelRegex.exec(text)) !== null) {
+                let [, key, value] = topLevelMatch;
+                value = value.replace(/^\s*[\("']*|[\)"']*\s*$/g, '');
+                groups.TOP_LEVEL[key] = value;
+            }
+
+            return groups;
+        }
+
+        function createOrientationCard(label, value, unit = "°") {
+            return `
+                <div class="orientation-value">
+                    <div class="value-label">${label}</div>
+                    <div class="value-number">${value}${unit}</div>
+                </div>
+            `;
+        }
+
+        function createDataCard(title, data) {
+            const card = document.createElement('div');
+            card.className = 'data-card';
+            card.innerHTML = `
+                <h4>${title}</h4>
+                ${Object.entries(data).map(([key, value]) => `
+                    <div>
+                        <span class="value-label">${key}:</span> 
+                        <span>${value}</span>
+                    </div>
+                `).join('')}
+            `;
+            return card;
+        }
+
+        function displayData(groups) {
+            // Riepilogo
+            const summaryContent = document.getElementById('summaryContent');
+            summaryContent.innerHTML = '';
+            
+            if (groups.IDENTIFICATION) {
+                summaryContent.appendChild(createDataCard('Identificazione', groups.IDENTIFICATION));
+            }
+            if (groups.TOP_LEVEL) {
+                summaryContent.appendChild(createDataCard('Parametri Generali', groups.TOP_LEVEL));
+            }
+
+            // Orientamento Camera
+            const cameraOrientation = document.getElementById('cameraOrientation');
+            if (groups.ROVER_COORDINATE_SYSTEM?.ORIGIN_ROTATION_QUATERNION) {
+                const quaternion = groups.ROVER_COORDINATE_SYSTEM.ORIGIN_ROTATION_QUATERNION.split(',').map(Number);
+                const angles = quaternionToEuler(quaternion);
+                
+                cameraOrientation.innerHTML = `
+                    ${createOrientationCard('Azimuth (Yaw)', angles.yaw)}
+                    ${createOrientationCard('Elevazione (Pitch)', angles.pitch)}
+                    ${createOrientationCard('Roll', angles.roll)}
+                    ${createOrientationCard('Quaternione', `[${quaternion.map(n => n.toFixed(6)).join(', ')}]`, '')}
+                `;
+            }
+
+            // Camera Parameters
+            const cameraContent = document.getElementById('cameraContent');
+            cameraContent.innerHTML = '';
+            if (groups.INSTRUMENT_STATE_PARMS) {
+                cameraContent.appendChild(createDataCard('Parametri Strumento', groups.INSTRUMENT_STATE_PARMS));
+            }
+
+            // Position
+            const positionContent = document.getElementById('positionContent');
+            positionContent.innerHTML = '';
+            if (groups.ROVER_COORDINATE_SYSTEM) {
+                positionContent.appendChild(createDataCard('Sistema di Coordinate del Rover', groups.ROVER_COORDINATE_SYSTEM));
+            }
+            if (groups.SITE_COORDINATE_SYSTEM) {
+                positionContent.appendChild(createDataCard('Sistema di Coordinate del Sito', groups.SITE_COORDINATE_SYSTEM));
+            }
+
+            // Raw Data
+            document.getElementById('rawContent').textContent = JSON.stringify(groups, null, 2);
+        }
+
+        async function processFile(file) {
+            try {
+                const content = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(e);
+                    reader.readAsText(file);
+                });
+
+                const groups = parseVICARGroups(content);
+                displayData(groups);
+
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+            } catch (err) {
+                document.getElementById('error').textContent = `Errore: ${err.message}`;
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('result').style.display = 'none';
+            }
+        }
+
+        // Gestione tabs
+        document.getElementById('tabs').addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab')) {
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                e.target.classList.add('active');
+                document.querySelectorAll('.data-section').forEach(section => section.style.display = 'none');
+                document.getElementById(e.target.dataset.tab).style.display = 'block';
+            }
+        });
+
+        // Setup event listeners per il drag and drop
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#e9ecef';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = '#f8f9fa';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#f8f9fa';
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+    </script>
+</body>
+</html>
