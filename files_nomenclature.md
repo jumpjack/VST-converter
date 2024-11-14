@@ -2,6 +2,7 @@ For MER missions, the filename has this structure:
 
 ![image](https://github.com/user-attachments/assets/f77f2ead-1cb8-4c26-954d-790b363c4f16)
 
+
 | Element | Offset | Length | Description                                                                                  |
 |---------|--------|--------|----------------------------------------------------------------------------------------------|
 | scid    | 1      | 1      | (1 integer) MER rover Spacecraft Identifier.                                                 |
@@ -32,6 +33,58 @@ For MER missions, the filename has this structure:
 total sites for Spirit: 138; from site 137 it is visible the final resting position in Troy, i.e. site 138; site 137 is also
 visible from above from site 132 (Sols 1363-1371 (see tab "map" in [notebook](https://an.rsl.wustl.edu/mera/AN/an3.aspx?))) 
 
+Example: 2n292378085xyxb128f0006r0m1.img
+
+- 2: MER2
+- n: Pancam
+- 292378085: clock
+- xyz : product "XYZ" RDR  (3d, pointcloud)        
+- **b1: site "B1"** (see below)
+- 28: pos "28"
+- f0006: sequenze "F0006"
+- r: right eye
+- 0: filter "0"
+- m: author = MIPS
+- 1: version = 1
+
+Site:
+Site location count.  Use of both integers and alphas allows for a total range of 0 thru 1295.
+ 
+The valid values, in their progression, are as follows: 
+- Range 0 thru 99            -  “00”, “01”, “02”… “99” 
+- Range 100 thru 1035    -  “A0”, “A1” … “A9”, “AA”, “AB”…“AZ”, “B0”, “B1”… “ZZ” 
+
+Javascript decoding algorithm (AI-generated):
+
+```
+function decodeAlphaNumeric(code) {
+    const firstChar = code[0];
+    const secondChar = code[1];
+
+    // Simple number 0..99
+    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+        return parseInt(code, 10);
+    }
+
+    // Alphanumeric couple ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset
+    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+
+    let secondValue;
+
+    if (isNaN(secondChar)) {
+        // Second char = letter
+        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+    } else {
+        // Second char = number
+        secondValue = parseInt(secondChar, 10);
+    }
+
+    // Final formula
+    return 100 + firstValue * 36 + secondValue;
+}
+```
+                                        
 **Products table**
 
 | Data Product Description                                                                                                  | Non-linearized (NOMINAL) | Linearized |
