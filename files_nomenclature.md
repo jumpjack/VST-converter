@@ -1,4 +1,4 @@
-These acronyms are used in filenames to distinguish products, i.e. type of contents of the files, which always have extension ".IMG"; for MER missions, the filename has this structure:
+For MER missions, the filename has this structure:
 
 ![image](https://github.com/user-attachments/assets/f77f2ead-1cb8-4c26-954d-790b363c4f16)
 
@@ -69,7 +69,7 @@ visible from above from site 132 (Sols 1363-1371 (see tab "map" in [notebook](ht
 | Disparity of Samples RDR (Thumbnail)                                                                                      | DST                      | DSN        |
 | Disparity of Lines RDR                                                                                                    | DLS                      | DLL        |
 | Disparity of Lines RDR (Thumbnail)                                                                                        | DLT                      | DLN        |
-| XYZ RDR                                                                                                                   | XYZ                      | XYL        |
+| **XYZ** RDR  (3d, pointcloud)                                                                                                                 | XYZ                      | XYL        |
 | XYZ RDR (Thumbnail)                                                                                                       | XYT                      | XYN        |
 | XYZ Rover Vol Exclusion Mask RDR                                                                                          | MSK                      | MSL        |
 | XYZ Rover Vol Exclusion Mask RDR (Thumbnail)                                                                              | MST                      | MSN        |
@@ -104,8 +104,8 @@ visible from above from site 132 (Sols 1363-1371 (see tab "map" in [notebook](ht
 | Solar Energy Product RDR (Thumbnail)                                                                                      | SET                      | SEN        |
 | IDD Reachability RDR                                                                                                      | IDD                      | IDL        |
 | IDD Reachability RDR (Thumbnail)                                                                                          | IDT                      | IDN        |
-| VISTA Terrain RDR                                                                                                         | VIS                      | VIL        |
-| VISTA Terrain RDR (Thumbnail)                                                                                             | VIT                      | VIN        |
+| VISTA Terrain RDR   (3d, mesh, ViSTA format)                                                                                                      | VIS                      | VIL        |
+| VISTA Terrain RDR (Thumbnail)  (3d, mesh, ViSTA format)                                                                              | VIT                      | VIN        |
 | ASD Terrain RDR                                                                                                           | ASD                      | ASL        |
 | ASD Terrain RDR (Thumbnail)                                                                                               | AST                      | ASN        |
 
