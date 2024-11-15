@@ -259,7 +259,7 @@ console.log("HEADER - Searching texture...");
 					let textureBASE64 = "error";
 					for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
 						let textureUrlProduct = graphicalProducts[productIndex];
-						base_texture_folderNew = base_texture_folder.replace("#SOLNUMBER#",solNumber);
+						let base_texture_folderNew = base_texture_folder.replace("#SOLNUMBER#",solNumber);
 				        let textureUrl = base_texture_folderNew + textureUrlLeft + textureUrlProduct + textureUrlRight;
 						textureUrl = textureUrl.toLowerCase();
 						textureBASE64 = await urlToBase64(textureUrl);
