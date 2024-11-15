@@ -15,7 +15,7 @@ base_texture_folderIMG = BASE_IMG_URL + IMG_RAW_FOLDER + PRODUCT_FOLDER;
 let angles = 0;
 let x3d = null;
 
- proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+ proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
 
 const graphicalProducts = [
  "RAD",
@@ -569,7 +569,7 @@ console.log("Local:", selectedFile.name);
         } else if (txtVSTurl) {
 console.log("Downloading:",txtVSTurl);
             // Se esiste un URL in txtVSTurl, scarica il file usando il proxy
-            const proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+            const proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
             response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));
             if (!response.ok) throw new Error("Errore nel download del file da URL.");
             arrayBuffer = await response.arrayBuffer();
@@ -721,7 +721,7 @@ console.log("Retrieving label:",lblUrl);
             reader.readAsText(blob);
         });
     } catch (error) {
-        throw new Error(`Errore durante la conversione dell'immagine: ${error.message}`);
+        throw new Error(`Errore durante il caricamento della label per leggere il Sol Number: ${error.message}`);
     }
 }
 
@@ -753,7 +753,7 @@ console.log("-------------------Product IMG for label:",imgUrl);
             reader.readAsText(blob);
         });
     } catch (error) {
-        throw new Error(`Errore durante la conversione dell'immagine: ${error.message}`);
+        throw new Error(`Errore durante la lettura di Altezza e Azimuth dal file ${imgFileName}: ${error.message}`);
     }
 }
 
