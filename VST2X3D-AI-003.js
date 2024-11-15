@@ -17,6 +17,7 @@ let x3d = null;
 
  proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
 
+
 const graphicalProducts = [
  "RAD",
  "RAL",
@@ -40,7 +41,9 @@ const graphicalProducts = [
  "CCD",
  "CCL",
  "CFD",
- "CFL"
+ "CFL",
+ "ITH",
+ "THN"
 ];
 
 
@@ -256,15 +259,15 @@ console.log("HEADER - Searching texture...");
 					let textureBASE64 = "error";
 					for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
 						let textureUrlProduct = graphicalProducts[productIndex];
-						base_texture_folder = base_texture_folder.replace("#SOLNUMBER#",solNumber);
-				        let textureUrl = base_texture_folder + textureUrlLeft + textureUrlProduct + textureUrlRight;
+						base_texture_folderNew = base_texture_folder.replace("#SOLNUMBER#",solNumber);
+				        let textureUrl = base_texture_folderNew + textureUrlLeft + textureUrlProduct + textureUrlRight;
 						textureUrl = textureUrl.toLowerCase();
 						textureBASE64 = await urlToBase64(textureUrl);
 						if (textureBASE64 !== "error") {
 						}
 					};
 					if (textureBASE64 === "error") {
-						console.log("WARNING! Could not found texture in folder " + base_texture_folder);
+						console.log("WARNING! Could not found texture '" + textureUrlProduct + "' in folder " + base_texture_folderNew);
 					        this.textureFiles.push(null);
 					} else {
 					        // Aggiungi textureName all'array textureFiles
