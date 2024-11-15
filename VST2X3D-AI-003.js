@@ -246,22 +246,21 @@ console.log("HEADER - textureName:", textureName);
 					let textureUrlRight = textureName.substring(14);
 					let siteNumberCoded = textureName.substr(14,2); // example: b1 = site 137, coded as "site037" in folder name
 					let siteNumberString = "site0" + siteCodeToString(siteNumberCoded);
-//console.log("HEADER - siteNumberString=", siteNumberString);
-					let solNumber = await getSolNumberFromLabel(textureRef.substring(10, 37), siteNumberString);
-//console.log("HEADER - solNumber=", solNumber);
+console.log("HEADER - siteNumberString=", siteNumberString);
+					let solNumber = await getSolNumberFromLabel(txtProductId.value + ".lbl", siteNumberString);
+console.log("HEADER - solNumber=", solNumber);
 
 					angles = await getAltAzFromImgProduct("dummy",siteNumberString, solNumber)
+console.log("HEADER - Searching texture...");
 
 					let textureBASE64 = "error";
 					for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
 						let textureUrlProduct = graphicalProducts[productIndex];
 						base_texture_folder = base_texture_folder.replace("#SOLNUMBER#",solNumber);
-console.log("HEADER - Looking for product ", textureUrlProduct);//, " in folder ", base_texture_folder);
 				        let textureUrl = base_texture_folder + textureUrlLeft + textureUrlProduct + textureUrlRight;
 						textureUrl = textureUrl.toLowerCase();
 						textureBASE64 = await urlToBase64(textureUrl);
 						if (textureBASE64 !== "error") {
-//console.log("HEADER - Texture found.");
 						}
 					};
 					if (textureBASE64 === "error") {
@@ -269,6 +268,7 @@ console.log("HEADER - Looking for product ", textureUrlProduct);//, " in folder 
 					        this.textureFiles.push(null);
 					} else {
 					        // Aggiungi textureName all'array textureFiles
+console.log("HEADER - Texture found.");
 					        this.textureFiles.push(textureBASE64);
 					}
 			        // Aggiorna l'offset per la prossima texture
@@ -279,7 +279,7 @@ console.log("HEADER - Looking for product ", textureUrlProduct);//, " in folder 
                 this.offset += 4096;
 
                 // Read vertices
-//console.log("HEADER - vertices: ",header.vertexNum);
+console.log("HEADER - Processing ",header.vertexNum, " vertices...");
                 for (let i = 0; i < header.vertexNum; i++) {
                     const vertex = new Vertex(this.dataView, this.offset, needsReverse);
                     this.vertices.push(vertex);
@@ -287,12 +287,13 @@ console.log("HEADER - Looking for product ", textureUrlProduct);//, " in folder 
                 }
 
                 // Process LODs
-//console.log("HEADER - LODs: ",header.lodNum);
+console.log("HEADER - Processing ",header.lodNum, " LODs...");
                 const lods = [];
                 for (let i = 0; i < header.lodNum; i++) {
                     const lod = this.parseLOD(needsReverse);
                     lods.push(lod);
                 }
+console.log("HEADER - done.");
 
                 return {
                     header,
@@ -416,6 +417,7 @@ function generateX3D(vstData, whichLod) {
     };
 
     lods.forEach((lod, lodIndex) => {
+console.log("Inserting LOD n. ", lodIndex);
 		if (lodIndex >= whichLod) {
 	        x3d += `\n      <Shape id = "PROD_${product_name_no_ext}_LOD_${lodIndex}" bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
 
@@ -539,12 +541,13 @@ function handleFile(file) {
     selectedFile = file;
     convertBtn.disabled = false;
     showStatus(`File selezionato: ${file.name}`, 'success');
-	alert("OK, local file selected.");
+//	alert("OK, local file selected.");
+	startConversion();
 	txtProductId.value = file.name.replace(".vst","").replace(".VST","");
 }
 
 
-convertBtn.addEventListener('click', async () => {
+async function startConversion () {
 showStatus("Conversion started", 'success');
 	product_name_no_ext = document.getElementById("txtProductId").value; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
 	base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext.toLowerCase();
@@ -586,6 +589,7 @@ console.log("Starting VST parsing...");
 		    z: -item.z
 		}));
 		vstData.vertices =  invertedVertices;
+console.log("Inserting model into scene....");
         x3dContent = generateX3D(vstData, 1); // DEBUG: LOD must be selected by user; // DEBUG: Get the x3d file as returned value to pass to viewer
 console.log("Conversion completed, now displaying...");
 
@@ -597,7 +601,10 @@ console.log("Conversion completed, now displaying...");
     //} catch (error) {
        // showStatus(`Errore durante la conversione: ${error.message}`, 'error');
    // }
-});
+};
+
+
+convertBtn.addEventListener('click', startConversion);
 
 
 function saveX3Dfile(x3dContent) { // DEBUG: add a caller button
@@ -691,11 +698,10 @@ function siteCodeToString(code) {
 
 
 
-async function getSolNumberFromLabel(textureName, siteNumberString) {
-	let lblFileName = txtProductId.value + ".lbl"
+async function getSolNumberFromLabel(lblFileName, siteNumberString) {
 	lblUrl = BASE_VST_URL + VST_CAMERA_FOLDER +  siteNumberString + "/" +  lblFileName ; // DEBUG: valid only up to site 0138, for Spirit!!
 	lblFinalUrl = proxyURL + encodeURIComponent(lblUrl);
-
+console.log("Retrieving label:",lblUrl);
     try {
         const response = await fetch(lblFinalUrl);
         if (!response.ok) {
@@ -758,6 +764,7 @@ function extractSol(labelContent) {
         return parseInt(match[1], 10);
     } else {
         throw new Error("PLANET_DAY_NUMBER non trovato nel contenuto fornito.");
+console.log("SOL NUMBER NOT FOUND: ",labelContent);
     }
 }
 
@@ -774,10 +781,8 @@ function parseQuaternion(quaternionString) {
 
 
 function calculatePancamAngles(roverQuaternion, pancamAzimuth, pancamElevation) {
-console.log("Ricevo:",roverQuaternion);
   // Estrazione componenti del quaternione
   const [x, y, z, w] = roverQuaternion;
-console.log("x, y, z, w:",x, y, z, w);
 
   // Calcolo azimuth della Pancam
   const azimuth = Math.atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z);
@@ -810,10 +815,7 @@ function extractVicarData(vicarLabelText) {
 	elevationFOVdeg = parseFloat(PANCAM_elevationFOV_Raw.replace("<deg>",""));
 
 	quaternionArray = readVicarParameter(vicarLabelText, "ROVER_COORDINATE_SYSTEM", "ORIGIN_ROTATION_QUATERNION").ORIGIN_ROTATION_QUATERNION;
-console.log("ROVER_quaternion string =",quaternionArray);
-console.log("Prima: ",pancamElevationRad);
 	result = calculatePancamAngles([quaternionArray[0],quaternionArray[1],quaternionArray[2],quaternionArray[3]], pancamAzimuthRad, pancamElevationRad);
-console.log("Dopo: ", result.finalElevation);
 
 	return  {pancamAzimuthRad: result.finalAzimuth, pancamElevationRad : result.finalElevation, azimuthFOVdeg: azimuthFOVdeg, elevationFOVdeg : elevationFOVdeg};
 }

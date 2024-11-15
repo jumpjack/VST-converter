@@ -68,7 +68,7 @@
     <div class="container">
         <h1>VST to X3D Converter</h1>
         <p>Upload a .vst file to convert it to X3D format.</p>
-        
+
         <div id="dropArea" class="upload-area">
             <p>Drag and drop a .vst file here or click to select</p>
             <input type="file" id="fileInput" accept=".vst" style="display: none">
@@ -76,7 +76,7 @@
 
 		<input type="text" id = "txtProductId" name="txtProductId" value = "2n292378085vilb128f0006l0m1" style="width:250px;">
         <button id="convertBtn" class="button" >Convert to X3D</button>
-        
+
         <div id="status" style="display: none;"></div>
     </div>
 
@@ -111,22 +111,51 @@ triangle corner vertices = facets
 Wedge = NASA stereo pair?
 */
 
+
+
 BASE_IMG_URL = "https://planetarydata.jpl.nasa.gov/w10n/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/";
 IMG_RAW_FOLDER = "data/";
 IMG_JPG_FOLDER = "browse/";
-PRODUCT_FOLDER = "sol1869/rdr/"; // sol must be determined from VST?!?
+PRODUCT_FOLDER = "sol1869/rdr/"; // sol must be determined from VST // DEBUG!!   (Sol number is in .lbl of .vst file)
 BASE_VST_URL = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/";
-VST_CAMERA_FOLDER = "data/navcam/"; // (navcam --> mer2no_0xxx for images)
-VST_FOLDER_SITE_NAME = "site0137/"; 
-product_name_no_ext = "2n292378085vilb128f0006l0m1"; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
+VST_CAMERA_FOLDER = "data/navcam/"; // (navcam --> mer2no_0xxx for images) // DEBUG: add other cameras!
+VST_FOLDER_SITE_NAME = "site0137/";  // DEBUG! Site number is in filename (137=B1)
+product_name_no_ext = "2n292378085vilb128f0006l0m1"; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870  // DEBUG
 // 	2n292377885vilb126f0006l0m1
 // 	2n292378085vilb128f0006l0m1
 base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext;
 base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
 
 
- proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
-	
+ proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+
+const graphicalProducts = [
+ "RAD",
+ "RAL",
+ "RSD",
+ "RSL",
+ "EFF",
+ "ESF",
+ "EDN",
+ "ILF",
+ "ILL",
+ "FFL",
+ "MRD",
+ "MRL",
+ "RFD",
+ "RFL",
+ "IOF",
+ "IOL",
+ "IFF",
+ "IFL",
+ "IFS",
+ "CCD",
+ "CCL",
+ "CFD",
+ "CFL"
+];
+
+
         // Strutture dati VST
         class VSTHeader {
             constructor(dataView, offset = 0) {
@@ -294,7 +323,7 @@ base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
 console.log("HEADER");			
                 // Parse header
                 const header = new VSTHeader(this.dataView, this.offset);
-console.log("HEADER",header);			
+console.log("HEADER",header);
                 this.offset += 40; // Size of VSTHeader
 
                 // Validate VST format
@@ -323,12 +352,29 @@ console.log("HEADER",header);
         // Ottieni il nome del file di texture e applica le modifiche necessarie
         let textureName = textureRef.substring(10, 37) + '.img.jpg';
 console.log("HEADER - textureName:", textureName);
-        let textureUrl = base_texture_folder + textureName.substring(0, 11) + 'FF' + textureName.substring(13); // DEBUG trovare immagine giusta FF, DN o altre
-console.log("HEADER - textureUrl1:", textureUrl);
-		textureUrl = textureUrl.toLowerCase();
-console.log("HEADER - textureUrl2:", textureUrl);
-		let textureBASE64 = await urlToBase64(textureUrl);
-console.log("HEADER - textureBASE64:", textureBASE64.length);
+
+		///// Found a suitable product, i.e. a real image:
+		let textureUrlLeft = textureName.substring(0, 11);
+		let textureUrlRight = textureName.substring(14);
+		let siteNumberCoded = textureName.substr(14,2); // example: b1 = site 137, coded as "site037" in folder name
+		let siteNumberString = siteCodeToString(siteNumberCoded);
+console.log("siteNumberString=", siteNumberString);
+		let solNumber = await getSolNumberFromLabel(textureRef.substring(10, 37), siteNumberString);
+console.log(siteNumberString, solNumber);
+		let textureBASE64 = "error";
+		for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
+			let textureUrlProduct = graphicalProducts[productIndex];
+console.log("Looking for product ", textureUrlProduct, " in folder ", base_texture_folder);
+	        let textureUrl = base_texture_folder + textureUrlLeft + textureUrlProduct + textureUrlRight;
+			textureUrl = textureUrl.toLowerCase();
+			textureBASE64 = await urlToBase64(textureUrl);
+if (textureBASE64 !== "error") {
+	console.log("FOUND!");
+}
+		};
+if (textureBASE64 === "error") {
+	console.log("Could not found texture in folder " + base_texture_folder);
+}
 
         // Aggiungi textureName all'array textureFiles
         this.textureFiles.push(textureBASE64);
@@ -495,7 +541,7 @@ function generateX3D(vstData, whichLod) {
 	                        points.push(formatPoint(vertices[vertexIndex]));
 	                    });
 	                });
-	                
+
 	                x3d += points.join(', ');
 	                x3d += '"/>\n          </PointSet>';
 	            } else {
@@ -596,35 +642,40 @@ function handleFile(file) {
 
 
 convertBtn.addEventListener('click', async () => {
-product_name_no_ext = document.getElementById("txtProductId").value; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
-// 	2n292377885vilb126f0006l0m1
-// 	2n292378085vilb128f0006l0m1
-base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext.toLowerCase();
-		let txtVSTurl = base_VST_filename + ".vst"; // DEBUG
-    	let arrayBuffer;
+	product_name_no_ext = document.getElementById("txtProductId").value; // 2n292377885vilb126f0006l0m1 = small vst for testing, sol 1870
+	base_VST_filename = BASE_VST_URL + VST_CAMERA_FOLDER + VST_FOLDER_SITE_NAME + product_name_no_ext.toLowerCase();
+	let txtVSTurl = base_VST_filename + ".vst"; // DEBUG
+  	let arrayBuffer;
 
    // try {
         if (selectedFile) {
-console.log("converting local file selected by user:", selectedFile);
+console.log("Converting selected file:", selectedFile);
             // Se il file � selezionato dall'utente
             arrayBuffer = await selectedFile.arrayBuffer();
         } else if (txtVSTurl) {
-console.log("Downloading from url and convertin:",txtVSTurl);
+console.log("Downloading file from url and converting:",txtVSTurl);
             // Se esiste un URL in txtVSTurl, scarica il file usando il proxy
             const proxyURL = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
-            response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));			
+            response = await fetch(proxyURL + encodeURIComponent(txtVSTurl));
             if (!response.ok) throw new Error("Errore nel download del file da URL.");
             arrayBuffer = await response.arrayBuffer();
-console.log("arrayBuffer",arrayBuffer);			
         } else {
             showStatus("Nessun file selezionato o URL fornito.", "error");
             return;
         }
 
+console.log("Starting VST parsing...");
         // Parsing e generazione del contenuto X3D
         const parser = new VSTParser(arrayBuffer);
         const vstData = await parser.parse();
-console.log("vstData=",vstData);			
+console.log("vstData=",vstData);
+console.log("textures=",vstData.textureFiles);
+		// Invert Z coordinate (in MER system the positive vertical axis points to ground):
+		const invertedVertices = vstData.vertices.map(item => ({
+		    ...item,
+		    z: -item.z
+		}));
+		vstData.vertices =  invertedVertices;
         const x3dContent = generateX3D(vstData, 1); // DEBUG last lod = higher res
 
         // Crea e scarica il file X3D
@@ -661,17 +712,21 @@ async function urlToBase64(imageUrl) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const blob = await response.blob();
-        
+
+        // Verifica che il MIME type sia JPEG
+        if (blob.type !== 'image/jpeg') {
+            return ("error");
+        }
+
         // Determina il tipo MIME corretto
-        const mimeType = 'image/jpeg'; 
+        const mimeType = blob.type;//'image/jpeg';
         
         // Converti il blob in base64
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => {
-                // Se per qualche motivo il risultato ha un tipo MIME errato, lo correggiamo
                 const base64String = reader.result;
                 const base64Data = base64String.split(',')[1];
                 resolve(`data:${mimeType};base64,${base64Data}`);
@@ -683,7 +738,90 @@ async function urlToBase64(imageUrl) {
         throw new Error(`Errore durante la conversione dell'immagine: ${error.message}`);
     }
 }
+
+function siteCodeToString(code) {
+console.log("Decoding site couple ", code);
+    if (code.length !== 2) {
+        throw new Error("Il codice deve essere una stringa di due caratteri.");
+    }
+
+    const firstChar = code[0];
+    const secondChar = code[1];
+
+    // Caso 1: numerico puro ("00" - "99")
+    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+        return parseInt(code, 10);
+    }
+
+    // Caso 2: alfanumerico ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare il valore delle lettere
+    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+    let secondValue;
+
+    if (isNaN(secondChar)) {
+        // Se il secondo carattere è una lettera
+        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+    } else {
+        // Se il secondo carattere è un numero
+        secondValue = parseInt(secondChar, 10);
+    }
+
+    // Formula per calcolare l'intervallo corretto (da 100 in poi)
+    return 100 + firstValue * 36 + secondValue;
+}
+
+
+
+
+async function getSolNumberFromLabel(textureName, siteNumberString) {
+		let fileName = txtProductId.value + ".lbl"
+
+	  VSTurl = BASE_VST_URL + VST_CAMERA_FOLDER + "site0" + siteNumberString + "/" +  fileName ; // DEBUG: valid only up to site 0138, for Spirit!!
+console.log("getSolNumberFromLabel -  looking for label: ", VSTurl);
+
+	   finalUrl = proxyURL + encodeURIComponent(VSTurl);
+
+    try {
+        // Scarica file come blob
+        const response = await fetch(finalUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        // Verifica che il MIME type sia JPEG
+      //  if (blob.type !== 'image/jpeg') {
+      //      return ("error");
+      //  }
+console.log("MIME:",blob.type);
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                VSTlabel =  reader.result;
+console.log(VSTlabel);
+				solNumber = extractSol(VSTlabel);
+				resolve(solNumber);
+            };
+            reader.onerror = reject;
+            reader.readAsText(blob);
+        });
+    } catch (error) {
+        throw new Error(`Errore durante la conversione dell'immagine: ${error.message}`);
+    }
+}
+
+function extractSol(labelContent) {
+    const match = labelContent.match(/PLANET_DAY_NUMBER\s*=\s*(\d+)/);
+    if (match) {
+        return parseInt(match[1], 10);
+    } else {
+        throw new Error("PLANET_DAY_NUMBER non trovato nel contenuto fornito.");
+    }
+}
+
 </script>
 </body>
-</hrml>
+</html>
 
