@@ -8,6 +8,10 @@
      <link rel='stylesheet' type='text/css' href='VST2X3D.css'></link>
      <script type="text/javascript">
 
+// 006: separate conversion function from convertBtn, to allow automatic call after loading.
+//      Fixed bug of models orientation, removed temporary debug sliders.
+//      Fixed bug of wrong sol in texture folder.
+
 // 005: Embedded VST2X3D conversion.
 //      Fixed VST/X3D orientation depending on rover frame orientation.
 //      Temporarily added sliders to manual rotate shapes in x3d model (for debugging).
@@ -28,12 +32,6 @@
 	 initialAzimuth = [];
 	 initialElevation = [];
 
-slidersTemplate = `
-        <label for="azimuthSlider#SHAPENUM#">Azimuth: <span id="azimuthValue#SHAPENUM#">0</span>°</label>
-        <input type="range" id="azimuthSlider#SHAPENUM#" min="-20" max="20" value="0" step="1">
-        <label for="elevationSlider#SHAPENUM#">Elevation: <span id="elevationValue#SHAPENUM#">0</span>°</label>
-        <input type="range" id="elevationSlider#SHAPENUM#" min="-20" max="20" value="0" step="1">
-`;
 
 
 	function loadX3DFile(inputX3D, azimuth, elevation) {
@@ -124,24 +122,12 @@ slidersTemplate = `
         </div>
 
 		Product id: <input type="text" id = "txtProductId" name="txtProductId" value = "2n292378085vilb128f0006l0m1" style="width:250px;"><br>
-		Azimuth: <input type="text" id="txtAzimuth" value = 0><br>
-		El: <input type="text" id="txtElevation" value = 45><br>
         <button id="convertBtn" class="button" >Convert to X3D</button>
         <div id="status" style="display: none;"></div>
     </div>
 <hr>
 
 
-
-<!--
-<h1>X3d viewer</h1>
-     <p>Select an X3D file to load (.PNG textures will be automatically searched in its folder):</p>
-     <input type="file" accept=".x3d" onchange="loadX3DFile(this, parseFloat(document.getElementById('txtAzimuth').value))">
-     <br><br>
-	 Azimuth: <input type="text" id="txtAzimuth" value = 30><br>
-	 <br>
-<hr>
--->
 	 <table>
 	 <tr>
 	 <td>
@@ -192,15 +178,12 @@ slidersTemplate = `
          </Transform>
        </scene> 
      </x3d>
-        <input type="text" id="txtShape" value = "1"><br>
-	 <span id="sliders">
-        <label for="azimuthSlider">Azimuth: <span id="azimuthValue">0</span>°</label>
-        <input type="range" id="azimuthSlider" min="-20" max="20" value="0" step="1">
-        <label for="elevationSlider">Elevation: <span id="elevationValue">0</span>°</label>
-        <input type="range" id="elevationSlider" min="-20" max="20" value="0" step="1">
-	</span>
+
 	 </td>
 	 <td valign="top">
+	 </td>
+	 </tr>
+	 </table>
 	 <ul>
 	 	 <li>A = Full model view
 	 <li>W = Walk mode (with mouse)
@@ -214,26 +197,10 @@ slidersTemplate = `
 	 <li>U = Reset flight mode
 	 </ul>
 	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
-	 </td>
-	 </tr>
-	 </table>
 
      <script type="text/javascript" src="VST2X3D-AI-003.js"></script>
 <script>
-    // Funzione per gestire i cambiamenti degli slider
-    document.getElementById('azimuthSlider').addEventListener('input', function(e) {
-        var angle = parseInt(e.target.value);
-console.log("Aggiungo " + angle + " gradi di Azimuth");
-        document.getElementById('azimuthValue').textContent = angle;
-        rotateShape(parseInt(document.getElementById("txtShape").value), 'azimuth', angle);
-    });
 
-    document.getElementById('elevationSlider').addEventListener('input', function(e) {
-        var angle = parseInt(e.target.value);
-console.log("Aggiungo " + angle + " gradi di Elevazione");
-        document.getElementById('elevationValue').textContent = angle;
-        rotateShape(parseInt(document.getElementById("txtShape").value), 'elevation', angle);
-    });
 	</script>
    </body> 
 </html>
