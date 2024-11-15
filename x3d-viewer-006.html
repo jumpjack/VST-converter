@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html> 
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+     <title>X3d viewer</title>
+     <script type='text/javascript' src='x3dom.js'></script>
+     <link rel='stylesheet' type='text/css' href='x3dom.css'></link>
+     <link rel='stylesheet' type='text/css' href='VST2X3D.css'></link>
+     <script type="text/javascript">
+
+// 005: Embedded VST2X3D conversion.
+//      Fixed VST/X3D orientation depending on rover frame orientation.
+//      Temporarily added sliders to manual rotate shapes in x3d model (for debugging).
+//		To do:
+//       - separate conversion function from convertBtn, to allow automatic call after loading
+//       - add support for multiple local files processing
+//		 - add local saving of downloaded files
+//       - add support for multiple product ids pasted in the textbox for downloading
+
+// 004: Added model azimuth support; vertical axis inverted
+
+// 003: Added multimodel support
+//      Note: probably vertical axis is reversed
+
+
+	 navigationInfo = null;
+	 modelsCount = 0;
+	 initialAzimuth = [];
+	 initialElevation = [];
+
+slidersTemplate = `
+        <label for="azimuthSlider#SHAPENUM#">Azimuth: <span id="azimuthValue#SHAPENUM#">0</span>°</label>
+        <input type="range" id="azimuthSlider#SHAPENUM#" min="-20" max="20" value="0" step="1">
+        <label for="elevationSlider#SHAPENUM#">Elevation: <span id="elevationValue#SHAPENUM#">0</span>°</label>
+        <input type="range" id="elevationSlider#SHAPENUM#" min="-20" max="20" value="0" step="1">
+`;
+
+
+	function loadX3DFile(inputX3D, azimuth, elevation) {
+	            var content = inputX3D; // e.target.result;
+	            var parser = new DOMParser();
+	            x3dDoc = parser.parseFromString(content, "text/xml"); // DOM element (HTML document)
+	            // Corregge i percorsi delle texture
+	            var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+	            imageTextures.forEach(function(texture) {
+	                var url = texture.getAttribute("url");
+	                if (!url || url === "") {
+	                    texture.removeAttribute("url");
+	                }
+	            });
+
+	            sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+
+	            if (sourceScene) {
+	                // Configura NavigationInfo per la modalità EXAMINE
+	                navigationInfo = sourceScene.querySelector("NavigationInfo");
+	                if (!navigationInfo) {
+	                    navigationInfo = x3dDoc.createElement("NavigationInfo");
+	                    sourceScene.appendChild(navigationInfo);
+	                }
+	                navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
+
+	                // Ottieni il riferimento alla scena esistente
+	                targetScene = document.getElementById("modelScene");
+
+	                // Mantieni il viewpoint esistente o creane uno nuovo se non esiste
+	                viewpoint = targetScene.querySelector("Viewpoint");
+	                if (!viewpoint) {
+	                    viewpoint = x3dDoc.createElement("Viewpoint");
+	                    targetScene.insertBefore(viewpoint, targetScene.firstChild);
+
+	                    // Imposta posizione e zoom solo se è un nuovo viewpoint
+	                    viewpoint.setAttribute("position", "20 20 0");
+	                    viewpoint.setAttribute("orientation", "0 1 0 0");
+	                    viewpoint.setAttribute("fieldOfView", "1.7");
+	                }
+
+					// Crea un nuovo Transform per il modello per impostare l'azimuth e successivamente l'elevazione (nidificata)
+					var altAzTransform = document.createElement("Transform");
+					altAzTransform.setAttribute("id","trfAzimuth");
+					altAzTransform.setAttribute("rotation", `0 1 0 ${azimuth}`);
+
+					// Crea un secondo Transform per l'elevazione
+					var elevationTransform = document.createElement("Transform");
+					elevationTransform.setAttribute("id","trfElevation");
+					elevationTransform.setAttribute("rotation", `1 0 0 ${elevation}`);
+
+					altAzTransform.appendChild(elevationTransform);
+
+	                // Aggiungi tutti gli elementi del nuovo modello al Transform
+	                Array.from(sourceScene.children).forEach(function(child) {
+	                    // Salta NavigationInfo e Viewpoint quando aggiungi gli elementi
+	                    if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
+	                        var importedNode = document.importNode(child, true);
+	                        elevationTransform.appendChild(importedNode);
+	                    }
+	                });
+
+	                // Aggiungi il nuovo Transform alla scena esistente
+	                targetScene.appendChild(altAzTransform);
+
+	                console.log("New model added to scene, now refreshing model...");
+					initialAzimuth[modelsCount] = azimuth;
+					initialElevation[modelsCount] = elevation;
+					modelsCount++;
+	                x3dom.reload(); // Ricarica x3dom per aggiornare la scena
+	            } else {
+	                console.error("Nessuna scena trovata nel file X3D");
+	            }
+	    }
+
+
+
+     </script>
+   </head> 
+   <body> 
+    <div class="container">
+        <h1>VST to X3D Converter</h1>
+        <p>Upload a .vst file to convert it to X3D format.</p>
+
+        <div id="dropArea" class="upload-area">
+            <p>Drag and drop a .vst file here or click to select</p>
+            <input type="file" id="fileInput" accept=".vst" style="display: none">
+        </div>
+
+		Product id: <input type="text" id = "txtProductId" name="txtProductId" value = "2n292378085vilb128f0006l0m1" style="width:250px;"><br>
+		Azimuth: <input type="text" id="txtAzimuth" value = 0><br>
+		El: <input type="text" id="txtElevation" value = 45><br>
+        <button id="convertBtn" class="button" >Convert to X3D</button>
+        <div id="status" style="display: none;"></div>
+    </div>
+<hr>
+
+
+
+<!--
+<h1>X3d viewer</h1>
+     <p>Select an X3D file to load (.PNG textures will be automatically searched in its folder):</p>
+     <input type="file" accept=".x3d" onchange="loadX3DFile(this, parseFloat(document.getElementById('txtAzimuth').value))">
+     <br><br>
+	 Azimuth: <input type="text" id="txtAzimuth" value = 30><br>
+	 <br>
+<hr>
+-->
+	 <table>
+	 <tr>
+	 <td>
+     <x3d width='800px' height='600px'> 
+       <scene> 
+         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+         <Viewpoint 
+            position="0 0 10" 
+            centerOfRotation="0 0 0"
+            orientation="0 1 0 0" 
+            fieldOfView="0.785" 
+            bind="true">
+         </Viewpoint>
+         
+         <!-- Assi persistenti -->
+         <Transform translation="0 0 0">
+            <!-- Asse X (Rosso) -->
+            <Shape>
+                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 5 0 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Y (Verde) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 5 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Z (Blu) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 0 5" />
+                </LineSet>
+            </Shape>
+         </Transform>
+
+         <!-- Area per il modello caricato -->
+         <Transform id="modelScene">
+           <!-- Modello di default per quando nessun file � caricato -->
+           <Shape> 
+             <Appearance>
+               <Material diffuseColor='1 0 0'></Material> 
+             </Appearance>
+           </Shape>
+         </Transform>
+       </scene> 
+     </x3d>
+        <input type="text" id="txtShape" value = "1"><br>
+	 <span id="sliders">
+        <label for="azimuthSlider">Azimuth: <span id="azimuthValue">0</span>°</label>
+        <input type="range" id="azimuthSlider" min="-20" max="20" value="0" step="1">
+        <label for="elevationSlider">Elevation: <span id="elevationValue">0</span>°</label>
+        <input type="range" id="elevationSlider" min="-20" max="20" value="0" step="1">
+	</span>
+	 </td>
+	 <td valign="top">
+	 <ul>
+	 	 <li>A = Full model view
+	 <li>W = Walk mode (with mouse)
+	 <li>E = Examine mode (rotate around origin)
+	 <li>I = "Look at" mode
+	 <li>R = Reset view
+	 <li>O = Strange view mode
+	 <li>D = Debug mode
+	 <li>G = Immediate pan mode
+	 <li>F = flight mode
+	 <li>U = Reset flight mode
+	 </ul>
+	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+	 </td>
+	 </tr>
+	 </table>
+
+     <script type="text/javascript" src="VST2X3D-AI-003.js"></script>
+<script>
+    // Funzione per gestire i cambiamenti degli slider
+    document.getElementById('azimuthSlider').addEventListener('input', function(e) {
+        var angle = parseInt(e.target.value);
+console.log("Aggiungo " + angle + " gradi di Azimuth");
+        document.getElementById('azimuthValue').textContent = angle;
+        rotateShape(parseInt(document.getElementById("txtShape").value), 'azimuth', angle);
+    });
+
+    document.getElementById('elevationSlider').addEventListener('input', function(e) {
+        var angle = parseInt(e.target.value);
+console.log("Aggiungo " + angle + " gradi di Elevazione");
+        document.getElementById('elevationValue').textContent = angle;
+        rotateShape(parseInt(document.getElementById("txtShape").value), 'elevation', angle);
+    });
+	</script>
+   </body> 
+</html>
+
