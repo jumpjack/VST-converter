@@ -594,7 +594,8 @@ console.log("Starting VST parsing...");
 		vstData.vertices =  invertedVertices;
 console.log("Inserting model into scene....");
         x3dContent = generateX3D(vstData, 1); // DEBUG: LOD must be selected by user; // DEBUG: Get the x3d file as returned value to pass to viewer
-console.log("Conversion completed, now displaying...");
+saveX3Dfile(x3dContent)
+	console.log("Conversion completed, now displaying...");
 
         showStatus('Conversione completata con successo!', 'success');
 
