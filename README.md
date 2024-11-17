@@ -1,7 +1,7 @@
 # VST-converter
 Converter for 3d mesh "VST" (ViSTa) files into modern 3d mesh files.
 
-Created to reconstruct the 3d model of "Troy sandtrap", the final location of NASA Spirit/MER2/MER-a rover
+Created to reconstruct the 3d model of "Troy sandtrap", the final location of NASA [Spirit/MER2/MER-a rover](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2010JE003633)
 
 ![troy](stuck2.png)
 
