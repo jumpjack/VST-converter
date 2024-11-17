@@ -7,6 +7,12 @@ Created to reconstruct the 3d model of "Troy sandtrap", the final location of NA
 
 (Image credits: https://www.planetary.org/space-images/spirit-a-monument-to-exploration)
 
+![troy](homeplate.png)
+
+![troy](traverse-homeplate.png)
+
+
+
 
 3 versions of the converter are **under development**:
 
