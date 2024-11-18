@@ -23,7 +23,6 @@ rotatedShapes = [];
 const graphicalProducts = [
  "RAD",
  "RAL",
- "RSD",
  "RSL",
  "EFF",
  "ESF",
@@ -801,7 +800,7 @@ console.log("Starting VST parsing...");
 console.log("Inserting model into scene....");
         x3dContent = generateX3D(vstData, 1,1); // DEBUG: LOD must be selected by user; // DEBUG: Get the x3d file as returned value to pass to viewer
 console.log("Conversion to x3d completed.");
-saveX3Dfile(x3dContent);
+//saveX3Dfile(x3dContent);
 //objContent = generateOBJ_AI(vstData, 1,1); // FUNZIONA!
 //saveOBJfile(objContent);		
 console.log("Conversion completed 2, now displaying...");

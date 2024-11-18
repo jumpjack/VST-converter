@@ -92,16 +92,18 @@ console.log(sourceScene);
 
 					// Crea un nuovo Transform per il modello per impostare l'azimuth e successivamente l'elevazione (nidificata)
 					altAzTransform = document.createElementNS(namespace, "Transform")
-cleanAttributes(altAzTransform);
+//cleanAttributes(altAzTransform);
 					altAzTransform.setAttribute("id","trfAzimuth");
 					altAzTransform.setAttribute("rotation", `0 1 0 ${azimuth}`);
+//altAzTransform.setAttribute("scale", "1 1 1"); // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
 
 					// Crea un secondo Transform per l'elevazione
 					var elevationTransform = document.createElementNS(namespace,"Transform");
-cleanAttributes(elevationTransform);
+//cleanAttributes(elevationTransform);
 
 					elevationTransform.setAttribute("id","trfElevation");
 					elevationTransform.setAttribute("rotation", `1 0 0 ${elevation}`);
+//altAzTransform.setAttribute("scale", "1 1 1");  // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
 
 
 					altAzTransform.appendChild(elevationTransform);
@@ -153,10 +155,28 @@ function saveShapesToX3D(shapes, filename = "output.x3d") {
     // Unisci header, contenuto delle shape e footer
     const x3dContent = x3dHeader + shapesContent + x3dFooter;
 
-console.log("x3dContent=",x3dContent);
+	// Parse la stringa X3D in un documento DOM
+	const parser = new DOMParser();
+	const xmlDoc = parser.parseFromString(x3dContent, "application/xml");
 
-    // Crea un Blob per il file
-    const blob = new Blob([x3dContent], { type: "application/xml" });
+	// Trova tutti gli elementi <Transform>
+	const transforms = xmlDoc.getElementsByTagName("Transform");
+
+	// Itera su ogni elemento e rimuove l'attributo "scale" (sennò non si vede in https://imagetostl.com/view-x3d-online#convert )
+	Array.from(transforms).forEach(transform => {
+	    if (transform.hasAttribute("scale")) {
+	        transform.removeAttribute("scale");
+	    }
+	});
+
+	// Converte il DOM modificato di nuovo in stringa
+	const serializer = new XMLSerializer();
+	const modifiedX3DContent = serializer.serializeToString(xmlDoc);
+
+
+	// Crea e scarica il file X3D
+	const blob = new Blob([modifiedX3DContent], { type: 'model/x3d+xml' });
+
 
     // Crea un link per il download
     const link = document.createElement("a");
