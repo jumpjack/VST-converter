@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+     <title>X3d local</title>
+     <script type='text/javascript' src='x3dom.js'></script>
+     <link rel='stylesheet' type='text/css' href='x3dom.css'></link>
+    <meta charset="UTF-8">
+    <title>Visualizzatore X3D</title>
+</head>
+<body>
+    <h1>Visualizzatore File X3D</h1>
+    <input type="file" id="file-input" accept=".x3d">
+    <div id="x3d-container"></div>
+
+    <x3d width='800px' height='600px'>
+       <scene>
+         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+         <Viewpoint
+            position="0 0 10"
+            centerOfRotation="0 0 0"
+            orientation="0 1 0 0"
+            fieldOfView="0.785"
+            bind="true">
+         </Viewpoint>
+
+			<Navigationinfo
+				headlight="false"
+				type="turntable"
+				typeparams="0.0 0.0 0.5 1.6"
+				explorationmode="all"
+				avatarsize="0.25,1.6,0.75"
+				walkdamping="2"
+				speed="-1"
+				transitiontime="1"
+				transitiontype="LINEAR ">
+			</Navigationinfo>
+
+         <!-- Assi persistenti -->
+         <Transform translation="0 0 0">
+            <!-- Asse X (Rosso) -->
+            <Shape>
+                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 5 0 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Y (Verde) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 5 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Z (Blu) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 0 5" />
+                </LineSet>
+            </Shape>
+         </Transform>
+
+         <!-- Area per il modello caricato -->
+         <Transform id="modelScene">
+           <!-- Modello di default per quando nessun file � caricato -->
+           <Shape>
+             <Appearance>
+               <Material diffuseColor='1 0 0'></Material>
+             </Appearance>
+           </Shape>
+         </Transform>
+       </scene>
+     </x3d>
+    <script>
+const namespace = "http://www.web3d.org/specifications/x3d-namespace"; // o il namespace appropriato per il tuo caso
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const x3dContainer = document.getElementById('x3d-container');
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+
+                    reader.onload = (e) => {
+                        // Rimuovi qualsiasi contenuto precedente
+                        x3dContainer.innerHTML = '';
+
+                        // Crea l'elemento X3D
+                        const x3dElement = document.createElement('x3d');
+                        x3dElement.style.width = '100%';
+                        x3dElement.style.height = '100%';
+
+                        // Crea la scena X3D
+                        const sceneElement = document.createElement('scene');
+                        /*sceneElement.innerHTML = e.target.result;
+
+                        x3dElement.appendChild(sceneElement);
+                        x3dContainer.appendChild(x3dElement);*/
+loadX3DFile(e.target.result,0,0);
+                    };
+
+                    reader.readAsText(file);
+                }
+            });
+        });
+
+	function loadX3DFile(inputX3D, azimuth, elevation) {
+	            var content = inputX3D; // e.target.result;
+	            var parser = new DOMParser();
+	            x3dDoc = parser.parseFromString(content, "text/xml"); // DOM element (HTML document)
+	            // Corregge i percorsi delle texture
+	            var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+	            imageTextures.forEach(function(texture) {
+	                var url = texture.getAttribute("url");
+	                if (!url || url === "") {
+	                    texture.removeAttribute("url");
+	                }
+	            });
+
+	            sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+
+console.log(sourceScene);
+
+	            if (sourceScene) {
+
+	                // Ottieni il riferimento alla scena esistente
+	                targetScene = document.getElementById("modelScene");
+
+	                // Mantieni il viewpoint esistente o creane uno nuovo se non esiste
+	                viewpoint = targetScene.querySelector("Viewpoint");
+	                if (!viewpoint) {
+	                    viewpoint = x3dDoc.createElementNS(namespace,"Viewpoint");
+	                    targetScene.insertBefore(viewpoint, targetScene.firstChild);
+
+	                    // Imposta posizione e zoom solo se è un nuovo viewpoint
+	                    viewpoint.setAttribute("position", "20 20 0");
+	                    viewpoint.setAttribute("orientation", "0 1 0 0");
+	                    viewpoint.setAttribute("fieldOfView", "1.7");
+	                }
+
+					// Crea un nuovo Transform per il modello per impostare l'azimuth e successivamente l'elevazione (nidificata)
+					altAzTransform = document.createElementNS(namespace, "Transform")
+//cleanAttributes(altAzTransform);
+					altAzTransform.setAttribute("id","trfAzimuth");
+					altAzTransform.setAttribute("rotation", `0 1 0 ${azimuth}`);
+//altAzTransform.setAttribute("scale", "1 1 1"); // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
+
+					// Crea un secondo Transform per l'elevazione
+					var elevationTransform = document.createElementNS(namespace,"Transform");
+//cleanAttributes(elevationTransform);
+
+					elevationTransform.setAttribute("id","trfElevation");
+					elevationTransform.setAttribute("rotation", `1 0 0 ${elevation}`);
+//altAzTransform.setAttribute("scale", "1 1 1");  // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
+
+
+					altAzTransform.appendChild(elevationTransform);
+//rotatedShapes.push(altAzTransform);
+
+	                // Aggiungi tutti gli elementi del nuovo modello al Transform
+	                Array.from(sourceScene.children).forEach(function(child) {
+	                    // Salta NavigationInfo e Viewpoint quando aggiungi gli elementi
+	                    if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
+	                        var importedNode = document.importNode(child, true);
+	                        elevationTransform.appendChild(importedNode);
+	                    }
+	                });
+
+	                // Aggiungi il nuovo Transform alla scena esistente
+	                targetScene.appendChild(altAzTransform);
+
+	                console.log("New model added to scene, now refreshing model...");
+					targetScene.setAttribute("scale","-1 1 1"); // due to Z axis inversion
+	                x3dom.reload(); // Ricarica x3dom per aggiornare la scena
+	            } else {
+	                console.error("Nessuna scena trovata nel file X3D");
+	            }
+	    }
+
+
+    </script>
+
+    <!-- Inclusione libreria X3DOM per rendering X3D -->
+</body>
+</html>
