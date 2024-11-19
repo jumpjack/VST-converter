@@ -719,6 +719,7 @@ async function handleFiles(files) {
             await processFile(vstFiles[i], i);
             progressBar.value = i + 1; // Aggiorna la barra di progresso
             showStatus(`Completato il file ${i + 1} di ${vstFiles.length}: ${vstFiles[i].name}`, 'success');
+			document.getElementById("spnLoaded").innerHTML += vstFiles[i].name+ "<br>";
         } catch (error) {
             showStatus(`Errore nel processare il file ${vstFiles[i].name}: ${error.message}`, 'error');
             // break; // Decommentare per fermarsi al primo errore

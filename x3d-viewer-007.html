@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html> 
+<html>
    <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
      <title>X3d viewer</title>
@@ -11,7 +11,7 @@
 // 007: Fixed flipped X axis
 //      Started implementation of full scene save:
 //        fixed wrong names of x3d tags
-//        implemened single shapes storage for future save; yet to incapsulate them into the alt/az transforms
+//        implemented single shapes storage for future save; yet to incapsulate them into the alt/az transforms
 //      Note: broken "click to load", only drag/drop working
 //      Added local saving of full .x3d model
 
@@ -193,7 +193,7 @@ function saveShapesToX3D(shapes, filename = "output.x3d") {
 }
 
      </script>
-   </head> 
+   </head>
    <body> 
     <div class="container">
         <h1>VST to X3D Converter</h1>
@@ -214,6 +214,8 @@ File
 		<div>
 		  Files: <progress id="progressBar" value="0" max="100" style="width: 80%;"></progress>
 		</div>
+Files list:<br>
+<span id="spnLoaded"></span><br>
         <div id="status" style="display: none;"></div>
 
     </div>
@@ -223,7 +225,7 @@ File
 	 <table>
 	 <tr>
 	 <td>
-     <x3d width='800px' height='600px'> 
+     <x3d width='800px' height='600px'>
        <scene> 
          <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
          <Viewpoint 
