@@ -68,7 +68,7 @@ ID: 2n292378085xyxb128f0006r0m1.img
 - n: Pancam
 - 292378085: clock
 - xyz : product "XYZ" RDR  (3d, pointcloud)        
-  b1: site "B1"  (=137)
+- b1: site "B1"  (=137)
 - 28: Position "28"
 - f0006: sequenze "F0006"
 - r: right eye
