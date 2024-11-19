@@ -19,8 +19,11 @@ For MER missions, the filename has this structure:
 | .       | 28     | 1      | "." separator character                                                                      |
 | ext     | 29     | 3      | (4 alpha characters) 3-character PDS product type extension following a "." character.       |
 
-- scid: Opportunity = 1, Spirit = 2
-- inst:
+## scid (SpaceCraft IDentifier)
+- Opportunity = 1
+- Spirit = 2
+
+## inst (instrument)
    - “P” - Panoramic camera
    - “N” - Navigation camera
    - “F” - Front Hazard Avoidance Camera
@@ -28,33 +31,55 @@ For MER missions, the filename has this structure:
    - “M” - Microscopic Imager
    - “E” - Descent camera
 
-- prod: see table of products below
-- site: position (site) in [traverse map](https://github.com/jumpjack/VST-converter/blob/main/MERA-MER2-Spirit_traverse_path.csv) ;
+## prod
+
+See table of products below
+
+## site
+
+Position (site) in [traverse map](https://github.com/jumpjack/VST-converter/blob/main/MERA-MER2-Spirit_traverse_path.csv) ;
 total sites for Spirit: 138; from site 137 it is visible the final resting position in Troy, i.e. site 138; site 137 is also
 visible from above from site 132 (Sols 1363-1371 (see tab "map" in [notebook](https://an.rsl.wustl.edu/mera/AN/an3.aspx?))) 
 
-Example: 2n292378085xyxb128f0006r0m1.img
+Use of both integers and alphas allows for a total range of 0 thru 1295.
+ 
+The valid values, in their progression, are as follows: 
+- Range 0 thru 99            -  “00”, “01”, “02”… “99” 
+- Range 100 thru 1035    -  “A0”, “A1” … “A9”, “AA”, “AB”…“AZ”, “B0”, “B1”… “ZZ”
+- Range 1036 thru 1295  -  “0A”, “0B”…”0Z”, “1A”, “1B”…“9Z” 
+- Range 1296 or greater -  “##” (2 pound signs) for Operations, or “__” (2 underscores) for Archive
+
+
+## Position
+
+Position-within-Site count.  Use of both integers and alphas allows for a total range of 0 thru 1295. A value greater than 1295 is denoted by “##“ (2 pound signs) for Operations and by “__“ (2 underscores) for Archive volumes, requiring the user to extract actual value from label. 
+ 
+The valid values, in their progression, are as follows: 
+- Range 0 thru 99            -  “00”, “01”, “02”… “99” 
+- Range 100 thru 1035    -  “A0”, “A1” … “A9”, “AA”, “AB”…“AZ”, “B0”, “B1”… “ZZ” 
+- Range 1036 thru 1295  -  “0A”, “0B”…”0Z”, “1A”, “1B”…“9Z” 
+- Range 1296 or greater -  “##” (2 pound signs) for Operations, or “__” (2 underscores) for Archive
+
+# Example
+
+ID: 2n292378085xyxb128f0006r0m1.img
 
 - 2: MER2
 - n: Pancam
 - 292378085: clock
 - xyz : product "XYZ" RDR  (3d, pointcloud)        
-- **b1: site "B1"** (see below)
-- 28: pos "28"
+  b1: site "B1"  (=137)
+- 28: Position "28"
 - f0006: sequenze "F0006"
 - r: right eye
 - 0: filter "0"
 - m: author = MIPS
 - 1: version = 1
 
-Site:
-Site location count.  Use of both integers and alphas allows for a total range of 0 thru 1295.
- 
-The valid values, in their progression, are as follows: 
-- Range 0 thru 99            -  “00”, “01”, “02”… “99” 
-- Range 100 thru 1035    -  “A0”, “A1” … “A9”, “AA”, “AB”…“AZ”, “B0”, “B1”… “ZZ” 
 
-Javascript decoding algorithm (AI-generated):
+
+
+# Javascript decoding algorithm (AI-generated)
 
 ```
 function decodeAlphaNumeric(code) {
@@ -122,7 +147,7 @@ function decodeAlphaNumeric(code) {
 | Disparity of Samples RDR (Thumbnail)                                                                                      | DST                      | DSN        |
 | Disparity of Lines RDR                                                                                                    | DLS                      | DLL        |
 | Disparity of Lines RDR (Thumbnail)                                                                                        | DLT                      | DLN        |
-| **XYZ** RDR  (3d, pointcloud)                                                                                                                 | XYZ                      | XYL        |
+| XYZ RDR  (3d, pointcloud)                                                                                                                 | XYZ                      | XYL        |
 | XYZ RDR (Thumbnail)                                                                                                       | XYT                      | XYN        |
 | XYZ Rover Vol Exclusion Mask RDR                                                                                          | MSK                      | MSL        |
 | XYZ Rover Vol Exclusion Mask RDR (Thumbnail)                                                                              | MST                      | MSN        |
