@@ -79,7 +79,7 @@ ID: 2n292378085xyxb128f0006r0m1.img
 
 
 
-# Javascript decoding algorithm (AI-generated)
+# Javascript decoding algorithm (AI-generated) for Site and Position
 
 ```
 function decodeAlphaNumeric(code) {
