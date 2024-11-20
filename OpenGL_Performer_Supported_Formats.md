@@ -36,3 +36,6 @@
 | 34    | SV                           | Modelli del Geometry Center dell’Università del Minnesota.                                       |   |
 | 35    | TRI                          | Modelli UNC per dati 3D.                                                                         |       |
 | 36    | UNC                          | University of North Carolina dataset per ricerca 3D.                                             |                     |
+
+
+Source: http://www.vis-sim.com/performer/pf_faq_1.htm#f19
