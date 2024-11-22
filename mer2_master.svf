@@ -1,0 +1,1249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rmc_file mission="MER2" variant="Master_SVF"> 
+ <priority> 
+ <entry solution_id="telemetry"/>
+    </priority> 
+
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-01-05T08:24:20Z" index1="1">
+        <reference_frame name="SITE_FRAME" index1="0"/>
+        <offset x="-0.0" y="0.0" z="0.0"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="0" index2="0" index3="1" index4="38"/>
+        <new index1="1"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-01-05T08:27:55Z" index1="2">
+        <reference_frame name="SITE_FRAME" index1="1"/>
+        <offset x="-0.0" y="0.0" z="0.0"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="1" index2="0" index3="0" index4="8" index5="8"/>
+        <new index1="2"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-01-15T10:17:32Z" index1="3">
+        <reference_frame name="SITE_FRAME" index1="2"/>
+        <offset x="1.002235" y="-2.902148" z="0.351141"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="2" index2="41"/>
+        <new index1="3"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-10T23:53:47Z" index1="4">
+        <reference_frame name="SITE_FRAME" index1="3"/>
+        <offset x="1.966298" y="18.769748" z="0.104623"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="3" index2="149" index3="0" index4="10"/>
+        <new index1="4"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-12T05:48:16Z" index1="5">
+        <reference_frame name="SITE_FRAME" index1="4"/>
+        <offset x="11.199608" y="19.788332" z="0.036419"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="4" index2="108"/>
+        <new index1="5"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-16T06:33:27Z" index1="6">
+        <reference_frame name="SITE_FRAME" index1="5"/>
+        <offset x="11.858838" y="9.084291" z="0.052772"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="5" index2="85" index3="0" index4="7"/>
+        <new index1="6"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-16T18:40:09Z" index1="7">
+        <reference_frame name="SITE_FRAME" index1="6"/>
+        <offset x="5.868726" y="6.123105" z="-0.190858"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="6" index2="38" index3="0" index4="7"/>
+        <new index1="7"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-17T10:44:17Z" index1="8">
+        <reference_frame name="SITE_FRAME" index1="7"/>
+        <offset x="18.085802" y="11.939690" z="-0.287535"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="7" index2="80" index3="0" index4="7"/>
+        <new index1="8"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-18T12:18:26Z" index1="9">
+        <reference_frame name="SITE_FRAME" index1="8"/>
+        <offset x="15.375918" y="13.458863" z="0.103501"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="8" index2="126"/>
+        <new index1="9"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-23T14:27:10Z" index1="10">
+        <reference_frame name="SITE_FRAME" index1="9"/>
+        <offset x="10.979261" y="9.575767" z="0.023585"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="9" index2="267" index3="0" index4="7"/>
+        <new index1="10"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-02-24T13:48:07Z" index1="11">
+        <reference_frame name="SITE_FRAME" index1="10"/>
+        <offset x="20.909666" y="16.711320" z="0.127432"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="10" index2="188"/>
+        <new index1="11"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-05T22:22:06Z" index1="12">
+        <reference_frame name="SITE_FRAME" index1="11"/>
+        <offset x="27.042223" y="22.579981" z="0.691900"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="11" index2="237"/>
+        <new index1="12"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-06T20:16:23Z" index1="13">
+        <reference_frame name="SITE_FRAME" index1="12"/>
+        <offset x="15.636024" y="16.513237" z="-0.079115"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="12" index2="166"/>
+        <new index1="13"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-07T21:43:44Z" index1="14">
+        <reference_frame name="SITE_FRAME" index1="13"/>
+        <offset x="21.449474" y="26.950740" z="-1.015689"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="13" index2="216"/>
+        <new index1="14"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-08T20:33:35Z" index1="15">
+        <reference_frame name="SITE_FRAME" index1="14"/>
+        <offset x="12.948951" y="17.788030" z="-1.098566"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="14" index2="182"/>
+        <new index1="15"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-10T00:11:04Z" index1="16">
+        <reference_frame name="SITE_FRAME" index1="15"/>
+        <offset x="21.263688" y="21.174821" z="-2.566828"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="15" index2="244"/>
+        <new index1="16"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-11T05:36:44Z" index1="17">
+        <reference_frame name="SITE_FRAME" index1="16"/>
+        <offset x="15.505100" y="10.196213" z="-1.484143"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="16" index2="128"/>
+        <new index1="17"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-12T03:28:30Z" index1="18">
+        <reference_frame name="SITE_FRAME" index1="17"/>
+        <offset x="3.180649" y="10.183612" z="0.025064"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="17" index2="150" index3="0" index4="29"/>
+        <new index1="18"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-16T04:35:08Z" index1="19">
+        <reference_frame name="SITE_FRAME" index1="18"/>
+        <offset x="-18.058035" y="0.620800" z="0.253454"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="18" index2="112"/>
+        <new index1="19"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-17T03:34:52Z" index1="20">
+        <reference_frame name="SITE_FRAME" index1="19"/>
+        <offset x="1.154231" y="1.399622" z="0.064546"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="19" index2="67"/>
+        <new index1="20"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-19T23:34:12Z" index1="21">
+        <reference_frame name="SITE_FRAME" index1="20"/>
+        <offset x="-20.091943" y="23.807341" z="0.520262"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="20" index2="292"/>
+        <new index1="21"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-03-20T08:25:22Z" index1="22">
+        <reference_frame name="SITE_FRAME" index1="21"/>
+        <offset x="-1.846051" y="22.132986" z="-0.591545"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="21" index2="190"/>
+        <new index1="22"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-01T16:10:59Z" index1="23">
+        <reference_frame name="SITE_FRAME" index1="22"/>
+        <offset x="-16.852510" y="-9.729462" z="0.886838"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="22" index2="302" index3="0" index4="5"/>
+        <new index1="23"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-02T20:20:08Z" index1="24">
+        <reference_frame name="SITE_FRAME" index1="23"/>
+        <offset x="-15.668278" y="-6.778129" z="0.057360"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="23" index2="254"/>
+        <new index1="24"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-03T15:50:54Z" index1="25">
+        <reference_frame name="SITE_FRAME" index1="24"/>
+        <offset x="-26.578925" y="27.874224" z="0.784314"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="24" index2="424"/>
+        <new index1="25"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-04T14:46:06Z" index1="26">
+        <reference_frame name="SITE_FRAME" index1="25"/>
+        <offset x="-6.056852" y="15.658944" z="0.602322"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="25" index2="106"/>
+        <new index1="26"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-05T16:02:46Z" index1="27">
+        <reference_frame name="SITE_FRAME" index1="26"/>
+        <offset x="-1.161693" y="1.804034" z="0.027135"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="26" index2="10"/>
+        <new index1="27"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-14T23:37:54Z" index1="28">
+        <reference_frame name="SITE_FRAME" index1="27"/>
+        <offset x="-29.358970" y="57.768900" z="1.572829"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="27" index2="548"/>
+        <new index1="28"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-18T15:15:46Z" index1="29">
+        <reference_frame name="SITE_FRAME" index1="28"/>
+        <offset x="-43.972583" y="60.376809" z="-0.012142"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-18T15:15:43Z" index1="30">
+        <reference_frame name="SITE_FRAME" index1="29"/>
+        <offset x="-50.344699" y="45.068357" z="-2.166288"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="29" index2="376"/>
+        <new index1="30"/>
+    </alias>
+<alias>
+        <old index1="28" index2="342"/>
+        <new index1="29"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-20T14:57:05Z" index1="31">
+        <reference_frame name="SITE_FRAME" index1="30"/>
+        <offset x="-22.908866" y="38.221563" z="-2.743531"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="30" index2="414"/>
+        <new index1="31"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-22T16:30:05Z" index1="32">
+        <reference_frame name="SITE_FRAME" index1="31"/>
+        <offset x="-7.293113" y="65.225731" z="0.325954"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="31" index2="530" index3="0" index4="5"/>
+        <new index1="32"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-23T14:56:14Z" index1="33">
+        <reference_frame name="SITE_FRAME" index1="32"/>
+        <offset x="4.290896" y="17.350114" z="1.629208"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="32" index2="262"/>
+        <new index1="33"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-24T14:26:06Z" index1="34">
+        <reference_frame name="SITE_FRAME" index1="33"/>
+        <offset x="-2.586403" y="53.168791" z="1.624145"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="33" index2="476"/>
+        <new index1="34"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-25T14:31:26Z" index1="35">
+        <reference_frame name="SITE_FRAME" index1="34"/>
+        <offset x="-44.753283" y="65.826175" z="-0.699437"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="34" index2="574"/>
+        <new index1="35"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-26T14:28:30Z" index1="36">
+        <reference_frame name="SITE_FRAME" index1="35"/>
+        <offset x="-27.356478" y="47.438715" z="-1.722985"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="35" index2="404"/>
+        <new index1="36"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-04-27T14:45:47Z" index1="37">
+        <reference_frame name="SITE_FRAME" index1="36"/>
+        <offset x="-43.919159" y="56.067058" z="-0.242647"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="36" index2="688"/>
+        <new index1="37"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-01T14:41:44Z" index1="38">
+        <reference_frame name="SITE_FRAME" index1="37"/>
+        <offset x="-25.953153" y="83.674457" z="-0.441720"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="37" index2="562"/>
+        <new index1="38"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-02T23:18:56Z" index1="39">
+        <reference_frame name="SITE_FRAME" index1="38"/>
+        <offset x="-8.379790" y="35.873422" z="-0.773086"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="38" index2="158"/>
+        <new index1="39"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-03T15:11:01Z" index1="40">
+        <reference_frame name="SITE_FRAME" index1="39"/>
+        <offset x="-49.602375" y="71.119048" z="-1.625520"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="39" index2="386"/>
+        <new index1="40"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-05T15:46:57Z" index1="41">
+        <reference_frame name="SITE_FRAME" index1="40"/>
+        <offset x="-4.980956" y="9.474888" z="-2.496822"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="40" index2="252"/>
+        <new index1="41"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-06T14:35:18Z" index1="42">
+        <reference_frame name="SITE_FRAME" index1="41"/>
+        <offset x="-82.846208" y="35.920753" z="-1.847613"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="41" index2="406"/>
+        <new index1="42"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-07T16:53:59Z" index1="43">
+        <reference_frame name="SITE_FRAME" index1="42"/>
+        <offset x="-35.043124" y="53.115736" z="-1.825474"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="42" index2="276" index3="0" index4="5"/>
+        <new index1="43"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-09T16:45:39Z" index1="44">
+        <reference_frame name="SITE_FRAME" index1="43"/>
+        <offset x="-38.525099" y="82.457625" z="-0.344699"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="43" index2="426"/>
+        <new index1="44"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-09T16:46:25Z" index1="45">
+        <reference_frame name="SITE_FRAME" index1="44"/>
+        <offset x="-30.783584" y="62.580620" z="-0.230698"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="44" index2="350"/>
+        <new index1="45"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-10T16:53:22Z" index1="46">
+        <reference_frame name="SITE_FRAME" index1="45"/>
+        <offset x="-86.728958" y="83.440126" z="-4.479473"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="45" index2="518"/>
+        <new index1="46"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-11T17:55:06Z" index1="47">
+        <reference_frame name="SITE_FRAME" index1="46"/>
+        <offset x="-20.779424" y="44.784031" z="-0.810796"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="46" index2="236" index3="0" index4="5"/>
+        <new index1="47"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-12T17:34:13Z" index1="48">
+        <reference_frame name="SITE_FRAME" index1="47"/>
+        <offset x="6.638129" y="61.288971" z="0.383256"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="47" index2="394"/>
+        <new index1="48"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-13T20:23:17Z" index1="49">
+        <reference_frame name="SITE_FRAME" index1="48"/>
+        <offset x="-39.620308" y="79.788359" z="-0.215332"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="48" index2="388"/>
+        <new index1="49"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-14T19:58:36Z" index1="50">
+        <reference_frame name="SITE_FRAME" index1="49"/>
+        <offset x="-13.135373" y="30.723465" z="-0.740662"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="49" index2="190"/>
+        <new index1="50"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-15T23:34:41Z" index1="51">
+        <reference_frame name="SITE_FRAME" index1="50"/>
+        <offset x="-18.554899" y="40.088011" z="-0.161563"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="50" index2="232"/>
+        <new index1="51"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-17T20:07:22Z" index1="52">
+        <reference_frame name="SITE_FRAME" index1="51"/>
+        <offset x="-7.001861" y="10.296007" z="0.072230"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="51" index2="76" index3="0" index4="5" index5="41"/>
+        <new index1="52"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-18T23:04:36Z" index1="53">
+        <reference_frame name="SITE_FRAME" index1="52"/>
+        <offset x="-53.500108" y="82.839561" z="-1.659646"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="52" index2="482"/>
+        <new index1="53"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-19T22:06:39Z" index1="54">
+        <reference_frame name="SITE_FRAME" index1="53"/>
+        <offset x="-53.711766" y="90.901182" z="-1.049782"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="53" index2="458"/>
+        <new index1="54"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-28T16:20:28Z" index1="55">
+        <reference_frame name="SITE_FRAME" index1="54"/>
+        <offset x="-34.199730" y="42.850011" z="-1.513167"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="54" index2="458" index3="0" index4="5"/>
+        <new index1="55"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-29T15:57:31Z" index1="56">
+        <reference_frame name="SITE_FRAME" index1="55"/>
+        <offset x="-31.439052" y="61.258934" z="-0.263381"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="55" index2="290"/>
+        <new index1="56"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-30T17:29:54Z" index1="57">
+        <reference_frame name="SITE_FRAME" index1="56"/>
+        <offset x="5.102756" y="23.957048" z="0.361790"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="56" index2="212"/>
+        <new index1="57"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-05-31T15:09:35Z" index1="58">
+        <reference_frame name="SITE_FRAME" index1="57"/>
+        <offset x="-56.284534" y="76.565743" z="-1.349406"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="57" index2="426"/>
+        <new index1="58"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-01T14:57:19Z" index1="59">
+        <reference_frame name="SITE_FRAME" index1="58"/>
+        <offset x="-23.915073" y="53.897489" z="-1.589559"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="58" index2="265"/>
+        <new index1="59"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-02T14:49:21Z" index1="60">
+        <reference_frame name="SITE_FRAME" index1="59"/>
+        <offset x="-22.819734" y="43.281581" z="-0.953365"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="59" index2="230"/>
+        <new index1="60"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-03T14:39:06Z" index1="61">
+        <reference_frame name="SITE_FRAME" index1="60"/>
+        <offset x="-32.307485" y="52.135535" z="-0.183666"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="60" index2="320"/>
+        <new index1="61"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-06T19:07:00Z" index1="62">
+        <reference_frame name="SITE_FRAME" index1="61"/>
+        <offset x="0.000000" y="0.000000" z="0.000000"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="61" index2="4" index3="49" index4="329" index5="80"/>
+        <new index1="62"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-06T19:09:17Z" index1="63">
+        <reference_frame name="SITE_FRAME" index1="62"/>
+        <offset x="-45.449624" y="57.072787" z="-0.723701"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="62" index2="308"/>
+        <new index1="63"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-07T16:04:11Z" index1="64">
+        <reference_frame name="SITE_FRAME" index1="63"/>
+        <offset x="-42.893766" y="68.680681" z="-2.948904"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="63" index2="346"/>
+        <new index1="64"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-08T14:19:44Z" index1="65">
+        <reference_frame name="SITE_FRAME" index1="64"/>
+        <offset x="-37.958768" y="47.939212" z="-1.170833"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="64" index2="314"/>
+        <new index1="65"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-09T19:17:26Z" index1="66">
+        <reference_frame name="SITE_FRAME" index1="65"/>
+        <offset x="-15.853280" y="40.735683" z="-0.519891"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="65" index2="242"/>
+        <new index1="66"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-10T15:28:56Z" index1="67">
+        <reference_frame name="SITE_FRAME" index1="66"/>
+        <offset x="-15.406836" y="16.633731" z="-0.031514"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="66" index2="106" index3="0" index4="5"/>
+        <new index1="67"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-11T17:23:16Z" index1="68">
+        <reference_frame name="SITE_FRAME" index1="67"/>
+        <offset x="-12.595846" y="35.788802" z="-1.794922"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="67" index2="400"/>
+        <new index1="68"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-06-14T22:27:29Z" index1="69">
+        <reference_frame name="SITE_FRAME" index1="68"/>
+        <offset x="-2.261365" y="3.531945" z="-0.727316"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="68" index2="34"/>
+        <new index1="69"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-08T15:29:01Z" index1="70">
+        <reference_frame name="SITE_FRAME" index1="69"/>
+        <offset x="5.905207" y="0.679079" z="-1.284247"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="69" index2="179"/>
+        <new index1="70"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-14T14:52:18Z" index1="71">
+        <reference_frame name="SITE_FRAME" index1="70"/>
+        <offset x="7.782509" y="-0.824698" z="-0.130849"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="70" index2="165"/>
+        <new index1="71"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-15T18:15:17Z" index1="72">
+        <reference_frame name="SITE_FRAME" index1="71"/>
+        <offset x="8.784580" y="1.196350" z="-0.306916"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="71" index2="68"/>
+        <new index1="72"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-16T20:26:43Z" index1="73">
+        <reference_frame name="SITE_FRAME" index1="72"/>
+        <offset x="12.161349" y="-0.049022" z="-0.042865"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="72" index2="72"/>
+        <new index1="73"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-19T23:38:55Z" index1="74">
+        <reference_frame name="SITE_FRAME" index1="73"/>
+        <offset x="6.865357" y="7.117039" z="-1.086206"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="73" index2="60"/>
+        <new index1="74"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-19T23:42:23Z" index1="75">
+        <reference_frame name="SITE_FRAME" index1="74"/>
+        <offset x="-9.483414" y="15.916768" z="-2.493627"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="74" index2="93"/>
+        <new index1="75"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-19T23:45:44Z" index1="76">
+        <reference_frame name="SITE_FRAME" index1="75"/>
+        <offset x="1.648827" y="-0.274480" z="0.060671"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="75" index2="14" index3="0" index4="5"/>
+        <new index1="76"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-28T19:09:43Z" index1="77">
+        <reference_frame name="SITE_FRAME" index1="76"/>
+        <offset x="-16.036491" y="3.979769" z="-0.631706"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="76" index2="82"/>
+        <new index1="77"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-28T19:10:20Z" index1="78">
+        <reference_frame name="SITE_FRAME" index1="77"/>
+        <offset x="-2.689783" y="0.466907" z="-0.067069"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="77" index2="8"/>
+        <new index1="78"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-28T19:14:07Z" index1="79">
+        <reference_frame name="SITE_FRAME" index1="78"/>
+        <offset x="-20.652255" y="12.036406" z="-2.318873"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="78" index2="132"/>
+        <new index1="79"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-31T22:57:02Z" index1="80">
+        <reference_frame name="SITE_FRAME" index1="79"/>
+        <offset x="-12.160344" y="9.902855" z="-4.127709"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="79" index2="96"/>
+        <new index1="80"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-31T23:03:20Z" index1="81">
+        <reference_frame name="SITE_FRAME" index1="80"/>
+        <offset x="-0.213519" y="-0.125960" z="0.047065"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="80" index2="4"/>
+        <new index1="81"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-07-31T23:15:18Z" index1="82">
+        <reference_frame name="SITE_FRAME" index1="81"/>
+        <offset x="-5.939853" y="4.86097" z="-2.311684"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="81" index2="158"/>
+        <new index1="82"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-08-01T23:40:22Z" index1="83">
+        <reference_frame name="SITE_FRAME" index1="82"/>
+        <offset x="0.535042" y="0.736292" z="-0.248814"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="82" index2="44"/>
+        <new index1="83"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-08-04T16:02:27Z" index1="84">
+        <reference_frame name="SITE_FRAME" index1="83"/>
+        <offset x="0.635430" y="3.070516" z="-0.916142"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="83" index2="78"/>
+        <new index1="84"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-08-06T15:03:47Z" index1="85">
+        <reference_frame name="SITE_FRAME" index1="84"/>
+        <offset x="-1.105438" y="0.485462" z="-0.370880"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="84" index2="22"/>
+        <new index1="85"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-08-23T15:23:13Z" index1="86">
+        <reference_frame name="SITE_FRAME" index1="85"/>
+        <offset x="0.122191" y="3.459280" z="-0.844558"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="85" index2="58" index3="0" index4="5"/>
+        <new index1="86"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-09-04T00:09:06Z" index1="87">
+        <reference_frame name="SITE_FRAME" index1="86"/>
+        <offset x="-1.367490" y="7.507295" z="-1.236319"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="86" index2="74"/>
+        <new index1="87"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-09-14T18:31:41Z" index1="88">
+        <reference_frame name="SITE_FRAME" index1="87"/>
+        <offset x="0.736009" y="1.293551" z="0.199445"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="87" index2="8" index3="0" index4="5"/>
+        <new index1="88"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-10-01T14:56:15Z" index1="89">
+        <reference_frame name="SITE_FRAME" index1="88"/>
+        <offset x="8.290168" y="2.326111" z="0.780924"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="88" index2="104" index3="0" index4="2"/>
+        <new index1="89"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-11-23T16:33:40Z" index1="90">
+        <reference_frame name="SITE_FRAME" index1="89"/>
+        <offset x="12.951274" y="23.176468" z="-2.823199"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="89" index2="246"/>
+        <new index1="90"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-11-23T16:34:17Z" index1="91">
+        <reference_frame name="SITE_FRAME" index1="90"/>
+        <offset x="-1.804847" y="14.971940" z="-1.574906"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="90" index2="130" index3="0" index4="4"/>
+        <new index1="91"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-11-23T16:34:55Z" index1="92">
+        <reference_frame name="SITE_FRAME" index1="91"/>
+        <offset x="15.388523" y="18.735846" z="3.505694"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="91" index2="264"/>
+        <new index1="92"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-11-23T16:35:08Z" index1="93">
+        <reference_frame name="SITE_FRAME" index1="92"/>
+        <offset x="7.618959" y="24.253276" z="0.770865"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="92" index2="142"/>
+        <new index1="93"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-11-29T17:38:41Z" index1="94">
+        <reference_frame name="SITE_FRAME" index1="93"/>
+        <offset x="8.047232" y="37.328395" z="-2.490015"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="93" index2="313"/>
+        <new index1="94"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-03T15:45:09Z" index1="95">
+        <reference_frame name="SITE_FRAME" index1="94"/>
+        <offset x="0.909480" y="33.567055" z="-2.779166"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="94" index2="268"/>
+        <new index1="95"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-03T15:49:09Z" index1="96">
+        <reference_frame name="SITE_FRAME" index1="95"/>
+        <offset x="14.600265" y="25.384035" z="-1.414593"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="95" index2="215"/>
+        <new index1="96"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-06T16:18:12Z" index1="97">
+        <reference_frame name="SITE_FRAME" index1="96"/>
+        <offset x="13.315064" y="22.505858" z="-1.101825"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="96" index2="192"/>
+        <new index1="97"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-09T19:05:59Z" index1="98">
+        <reference_frame name="SITE_FRAME" index1="97"/>
+        <offset x="8.512263" y="24.951997" z="-2.544095"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="97" index2="130"/>
+        <new index1="98"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-09T19:06:43Z" index1="99">
+        <reference_frame name="SITE_FRAME" index1="98"/>
+        <offset x="-2.735391" y="23.325621" z="-4.198197"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="98" index2="158"/>
+        <new index1="99"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-14T15:31:20Z" index1="100">
+        <reference_frame name="SITE_FRAME" index1="99"/>
+        <offset x="-2.546427" y="-4.148033" z="0.056627"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="99" index2="124" index3="0" index4="5"/>
+        <new index1="100"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-15T16:11:14Z" index1="101">
+        <reference_frame name="SITE_FRAME" index1="100"/>
+        <offset x="-2.574922" y="2.502587" z="-0.742162"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="100" index2="80"/>
+        <new index1="101"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2004-12-16T17:54:56Z" index1="102">
+        <reference_frame name="SITE_FRAME" index1="101"/>
+        <offset x="0.000000" y="0.000000" z="0.000000"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="101" index2="2"/>
+        <new index1="102"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-16T15:57:52Z" index1="103">
+        <reference_frame name="SITE_FRAME" index1="102"/>
+        <offset x="-21.738707" y="70.633739" z="-15.906212"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="102" index2="561" index3="0" index4="5"/>
+        <new index1="103"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-16T15:58:08Z" index1="104">
+        <reference_frame name="SITE_FRAME" index1="103"/>
+        <offset x="-7.314451" y="8.862632" z="-2.829560"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="103" index2="40"/>
+        <new index1="104"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-16T15:58:18Z" index1="105">
+        <reference_frame name="SITE_FRAME" index1="104"/>
+        <offset x="-8.271864" y="13.443821" z="-3.387863"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="104" index2="59"/>
+        <new index1="105"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-16T15:58:30Z" index1="106">
+        <reference_frame name="SITE_FRAME" index1="105"/>
+        <offset x="-0.201891" y="-0.359020" z="0.021210"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="105" index2="14" index3="0" index4="1"/>
+        <new index1="106"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-22T15:45:47Z" index1="107">
+        <reference_frame name="SITE_FRAME" index1="106"/>
+        <offset x="-5.206916" y="8.783963" z="-1.375807"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="106" index2="51"/>
+        <new index1="107"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-02-28T15:17:36Z" index1="108">
+        <reference_frame name="SITE_FRAME" index1="107"/>
+        <offset x="-9.409707" y="9.599790" z="-3.085737"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="107" index2="101"/>
+        <new index1="108"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-03-28T16:22:40Z" index1="109">
+        <reference_frame name="SITE_FRAME" index1="108"/>
+        <offset x="-20.903000" y="-9.041500" z="-1.802413"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="108" index2="365" index3="0" index4="39" index5="31"/>
+        <new index1="109"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-05-03T14:22:55Z" index1="110">
+        <reference_frame name="SITE_FRAME" index1="109"/>
+        <offset x="5.025173" y="-10.060804" z="-0.406294"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="109" index2="408" index3="0" index4="5"/>
+        <new index1="110"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-06-24T21:24:29Z" index1="111">
+        <reference_frame name="SITE_FRAME" index1="110"/>
+        <offset x="-7.243477" y="-21.617873" z="1.821009"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="110" index2="578"/>
+        <new index1="111"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-06-24T21:25:42Z" index1="112">
+        <reference_frame name="SITE_FRAME" index1="111"/>
+        <offset x="-96.307750" y="-23.876130" z="-7.255423"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="111" index2="469"/>
+        <new index1="112"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-09-29T23:32:10Z" index1="113">
+        <reference_frame name="SITE_FRAME" index1="112"/>
+        <offset x="-44.785817" y="81.535788" z="-18.362106"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="112" index2="515"/>
+        <new index1="113"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-09-29T23:35:42Z" index1="114">
+        <reference_frame name="SITE_FRAME" index1="113"/>
+        <offset x="-6.742420" y="122.278843" z="-13.282936"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="113" index2="657" index3="0" index4="2"/>
+        <new index1="114"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-10-17T14:08:55Z" index1="115">
+        <reference_frame name="SITE_FRAME" index1="114"/>
+        <offset x="34.851086" y="63.099232" z="1.276484"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="114" index2="1080"/>
+        <new index1="115"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-01-11T20:04:29Z" index1="116">
+        <reference_frame name="SITE_FRAME" index1="115"/>
+        <offset x="2.825181" y="18.474312" z="2.921695"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="115" index2="82"/>
+        <new index1="116"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-01-11T20:18:49Z" index1="117">
+        <reference_frame name="SITE_FRAME" index1="116"/>
+        <offset x="-2.104691" y="23.406715" z="4.723865"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="116" index2="126"/>
+        <new index1="117"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-10-20T22:18:51Z" index1="118">
+        <reference_frame name="SITE_FRAME" index1="117"/>
+        <offset x="0.584096" y="14.904800" z="3.227527"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="117" index2="78"/>
+        <new index1="118"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-11-07T15:58:26Z" index1="119">
+        <reference_frame name="SITE_FRAME" index1="118"/>
+        <offset x="-1.991208" y="114.384941" z="18.229771"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="118" index2="512"/>
+        <new index1="119"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-12-14T16:12:50Z" index1="120">
+        <reference_frame name="SITE_FRAME" index1="119"/>
+        <offset x="-193.022926" y="48.485618" z="20.854714"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="119" index2="1183" index3="0" index4="5"/>
+        <new index1="120"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2005-12-28T16:43:59Z" index1="121">
+        <reference_frame name="SITE_FRAME" index1="120"/>
+        <offset x="-89.436294" y="-150.282930" z="5.962048"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="120" index2="920" index3="0" index4="5"/>
+        <new index1="121"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-01-05T22:51:48Z" index1="122">
+        <reference_frame name="SITE_FRAME" index1="121"/>
+        <offset x="-134.587763" y="89.038074" z="5.257088"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="121" index2="589"/>
+        <new index1="122"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-01-23T16:44:01Z" index1="123">
+        <reference_frame name="SITE_FRAME" index1="122"/>
+        <offset x="-71.454791" y="-16.822468" z="-2.260006"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="122" index2="669"/>
+        <new index1="123"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-02-06T16:36:34Z" index1="124">
+        <reference_frame name="SITE_FRAME" index1="123"/>
+        <offset x="-265.277650" y="-76.555011" z="-2.606476"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="123" index2="1079" index3="0" index4="5"/>
+        <new index1="124"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-03-03T17:01:21Z" index1="125">
+        <reference_frame name="SITE_FRAME" index1="124"/>
+        <offset x="3.5716" y="33.8286" z="-4.01701"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="124" index2="429"/>
+        <new index1="125"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-03-13T18:29:44Z" index1="126">
+        <reference_frame name="SITE_FRAME" index1="125"/>
+        <offset x="-95.882418" y="61.297766" z="-5.869060"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="125" index2="401"/>
+        <new index1="126"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-04-11T18:24:59Z" index1="127">
+        <reference_frame name="SITE_FRAME" index1="126"/>
+        <offset x="8.623012" y="-12.013824" z="-0.358584"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="126" index2="482" index3="0" index4="54" index5="64"/>
+        <new index1="127"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2006-05-30T18:04:14Z" index1="128">
+        <reference_frame name="SITE_FRAME" index1="127"/>
+        <offset x="0" y="0" z="0"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="127" index2="0" index3="448" index4="1185" index5="1510"/>
+        <new index1="128"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2007-04-13T15:01:07Z" index1="129">
+        <reference_frame name="SITE_FRAME" index1="128"/>
+        <offset x="34.532491" y="2.483871" z="-0.193261"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="128" index2="1430" index3="0" index4="5"/>
+        <new index1="129"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2007-06-12T21:30:06Z" index1="130">
+        <reference_frame name="SITE_FRAME" index1="129"/>
+        <offset x="5.428706" y="7.744001" z="-0.168142"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="129" index2="414" index3="0" index4="6"/>
+        <new index1="130"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2007-09-12T13:22:33Z" index1="131">
+        <reference_frame name="SITE_FRAME" index1="130"/>
+        <offset x="-7.126644" y="-24.537378" z="0.914586"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="130" index2="522" index3="0" index4="1"/>
+        <new index1="131"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2007-10-30T14:34:53Z" index1="132">
+        <reference_frame name="SITE_FRAME" index1="131"/>
+        <offset x="-27.729032" y="-34.071639" z="0.306223"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="131" index2="725" index3="0" index4="5"/>
+        <new index1="132"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2007-12-18T22:20:55Z" index1="133">
+        <reference_frame name="SITE_FRAME" index1="132"/>
+        <offset x="71.610575" y="20.363484" z="0.397273"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="132" index2="1384" index3="0" index4="10" index5="31"/>
+        <new index1="133"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2008-02-19T14:13:39Z" index1="134">
+        <reference_frame name="SITE_FRAME" index1="133"/>
+        <offset x="0.477554" y="0.138386" z="0.158371"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="133" index2="27" index3="0" index4="44" index5="64"/>
+        <new index1="134"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2008-11-04T15:35:54Z" index1="135">
+        <reference_frame name="SITE_FRAME" index1="134"/>
+        <offset x="-0.194171" y="-0.202428" z="-0.069718"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="134" index2="31" index3="0" index4="27" index5="19"/>
+        <new index1="135"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2009-02-25T15:45:52Z" index1="136">
+        <reference_frame name="SITE_FRAME" index1="135"/>
+        <offset x="1.835202" y="11.023056" z="-1.086438"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="135" index2="962" index3="0" index4="5"/>
+        <new index1="136"/>
+    </alias>
+<solution solution_id="telemetry" name="SITE_FRAME" add_date="2009-04-06T15:04:29Z" index1="137">
+        <reference_frame name="SITE_FRAME" index1="136"/>
+        <offset x="-33.9025" y="-56.6548" z="7.36923"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="136" index2="748" index3="0" index4="5" index5="10"/>
+        <new index1="137"/>
+    </alias>
+    <solution solution_id="telemetry" name="SITE_FRAME" add_date="2009-11-01T03:45:07Z" index1="138">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.200870" y="2.685384" z="-0.733259"/>
+        <orientation s="1.0" v1="0.0" v2="0.0" v3="0.0"/>
+    </solution>
+    <alias>
+        <old index1="137" index2="249" index3="1343" index4="3133" index5="4364"/>
+        <new index1="138"/>
+    </alias>
+</rmc_file>

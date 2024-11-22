@@ -1,0 +1,807 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rmc_file mission="MER2" variant="Master_RVF" index1="137"> 
+  <priority> 
+  <entry solution_id="telemetry"/>
+    </priority> 
+
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-06T14:26:38Z" index1="137" index2="0" index3="0" index4="1" index5="7">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="0.0" y="0.0" z="0.0"/>
+        <orientation s="0.994261" v1="-0.095668" v2="-0.0233068" v3="0.0418276"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-06T13:57:45Z" index1="137" index2="0" index3="0" index4="12" index5="7">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="0.0" y="0.0" z="0.0"/>
+        <orientation s="0.994261" v1="-0.095668" v2="-0.0233068" v3="0.0418276"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T15:47:49Z" index1="137" index2="26" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-4.86047" y="-1.20379" z="0.0627362"/>
+        <orientation s="0.99818" v1="-0.0419613" v2="0.0226267" v3="0.0369425"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:51:44Z" index1="137" index2="26" index3="0" index4="1" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-4.86047" y="-1.20379" z="0.0627362"/>
+        <orientation s="0.99818" v1="-0.0419613" v2="0.0226267" v3="0.0369425"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:52:12Z" index1="137" index2="28" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-5.36101" y="-1.23685" z="0.0706138"/>
+        <orientation s="0.997998" v1="-0.053639" v2="0.0126683" v3="0.0310341"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:52:38Z" index1="137" index2="30" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-5.88435" y="-1.28789" z="0.0850022"/>
+        <orientation s="0.997954" v1="-0.057167" v2="0.0117805" v3="0.0260991"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:53:01Z" index1="137" index2="32" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-6.39279" y="-1.34089" z="0.0918178"/>
+        <orientation s="0.997554" v1="-0.0693146" v2="0.00775114" v3="0.00458688"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:53:24Z" index1="137" index2="34" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-6.90188" y="-1.37135" z="0.095176"/>
+        <orientation s="0.997391" v1="-0.0719607" v2="0.00200313" v3="0.00535695"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:53:47Z" index1="137" index2="36" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-7.41478" y="-1.40904" z="0.108757"/>
+        <orientation s="0.997651" v1="-0.0663618" v2="-0.0052602" v3="-0.0161307"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:54:11Z" index1="137" index2="38" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-7.93589" y="-1.43661" z="0.100541"/>
+        <orientation s="0.997242" v1="-0.0718842" v2="0.0107837" v3="0.0149665"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:54:37Z" index1="137" index2="40" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-8.43348" y="-1.48699" z="0.103073"/>
+        <orientation s="0.99824" v1="-0.0580288" v2="0.00323421" v3="0.011783"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:55:04Z" index1="137" index2="42" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-8.95815" y="-1.50329" z="0.0869266"/>
+        <orientation s="0.998554" v1="-0.0528861" v2="-0.00389766" v3="-0.00885848"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:55:28Z" index1="137" index2="44" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-9.44389" y="-1.49255" z="0.0544073"/>
+        <orientation s="0.998748" v1="-0.0483976" v2="-0.0123594" v3="-0.00278784"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T15:54:06Z" index1="137" index2="46" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-9.88596" y="-1.47826" z="0.024118"/>
+        <orientation s="0.997296" v1="-0.045721" v2="-0.0163632" v3="-0.0551585"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:55:39Z" index1="137" index2="48" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-10.2862" y="-1.41346" z="-0.0027184"/>
+        <orientation s="0.998367" v1="-0.0444357" v2="-0.0116381" v3="-0.0339683"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-17T21:00:37Z" index1="137" index2="50" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-10.68" y="-1.40867" z="-0.00875727"/>
+        <orientation s="0.996805" v1="-0.0450007" v2="-0.00326418" v3="-0.0659028"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-17T21:01:39Z" index1="137" index2="52" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-11.0659" y="-1.36839" z="-0.0386759"/>
+        <orientation s="0.998388" v1="-0.0401617" v2="-0.0116386" v3="-0.0383705"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-17T21:02:07Z" index1="137" index2="54" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-11.4762" y="-1.36979" z="-0.0649853"/>
+        <orientation s="0.998554" v1="-0.0393139" v2="-0.0150843" v3="-0.0334202"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-17T21:02:34Z" index1="137" index2="56" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-11.849" y="-1.37277" z="-0.0915236"/>
+        <orientation s="0.99894" v1="-0.0381001" v2="-0.0191298" v3="-0.0173563"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-17T21:03:04Z" index1="137" index2="58" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-12.222" y="-1.39725" z="-0.118045"/>
+        <orientation s="0.999107" v1="-0.0389675" v2="-0.0122238" v3="0.0108038"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-07T15:44:43Z" index1="137" index2="59" index3="0" index4="1" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-12.1064" y="-1.43075" z="-0.107982"/>
+        <orientation s="0.999117" v1="-0.0386709" v2="-0.011978" v3="0.0112234"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T16:06:05Z" index1="137" index2="61" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-12.6012" y="-1.38275" z="-0.137384"/>
+        <orientation s="0.990573" v1="-0.0342726" v2="-0.0398189" v3="-0.126514"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T16:06:43Z" index1="137" index2="63" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-12.9286" y="-1.11636" z="-0.214483"/>
+        <orientation s="0.971276" v1="-0.0336584" v2="-0.0164575" v3="-0.234986"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T16:07:15Z" index1="137" index2="65" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-13.3101" y="-0.830885" z="-0.206331"/>
+        <orientation s="0.966046" v1="-0.035123" v2="-0.010196" v3="-0.25577"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T16:07:59Z" index1="137" index2="67" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-13.729" y="-0.61429" z="-0.263162"/>
+        <orientation s="0.969453" v1="-0.0456092" v2="-0.0174888" v3="-0.240365"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T15:49:47Z" index1="137" index2="79" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-16.1332" y="1.13811" z="-0.542781"/>
+        <orientation s="0.922894" v1="-0.0474018" v2="-0.0436781" v3="-0.37962"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T16:08:35Z" index1="137" index2="88" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.4026" y="2.64045" z="-0.875872"/>
+        <orientation s="0.873893" v1="-0.0315146" v2="-0.0550912" v3="-0.481956"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T15:49:06Z" index1="137" index2="88" index3="0" index4="3" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.4026" y="2.64045" z="-0.875872"/>
+        <orientation s="0.873893" v1="-0.0315146" v2="-0.0550912" v3="-0.481956"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-08T15:46:30Z" index1="137" index2="88" index3="0" index4="11" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.4026" y="2.64045" z="-0.875872"/>
+        <orientation s="0.873893" v1="-0.0315146" v2="-0.0550912" v3="-0.481956"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:27:30Z" index1="137" index2="93" index3="0" index4="1" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.3566" y="2.56921" z="-0.862331"/>
+        <orientation s="0.9786" v1="-0.102535" v2="-0.0434711" v3="-0.17303"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:28:03Z" index1="137" index2="95" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.8153" y="2.75453" z="-0.943308"/>
+        <orientation s="0.967293" v1="-0.107321" v2="-0.0560522" v3="-0.222899"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:28:36Z" index1="137" index2="97" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.9821" y="2.85986" z="-0.972168"/>
+        <orientation s="0.962827" v1="-0.104478" v2="-0.0584266" v3="-0.242147"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:29:08Z" index1="137" index2="102" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.1027" y="2.79216" z="-0.933746"/>
+        <orientation s="0.985462" v1="-0.0900309" v2="-0.0252056" v3="-0.141857"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:29:39Z" index1="137" index2="104" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2065" y="2.75731" z="-0.878309"/>
+        <orientation s="0.981181" v1="-0.0944346" v2="-0.0197403" v3="-0.167259"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:30:07Z" index1="137" index2="106" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2438" y="2.8027" z="-0.878187"/>
+        <orientation s="0.978771" v1="-0.102854" v2="-0.0234519" v3="-0.175721"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:30:35Z" index1="137" index2="108" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2643" y="2.80846" z="-0.877588"/>
+        <orientation s="0.978931" v1="-0.0983659" v2="-0.0141139" v3="-0.178378"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:31:00Z" index1="137" index2="110" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2972" y="2.82476" z="-0.866022"/>
+        <orientation s="0.977525" v1="-0.101872" v2="-0.0145163" v3="-0.183999"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:31:31Z" index1="137" index2="112" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3132" y="2.83943" z="-0.86554"/>
+        <orientation s="0.976294" v1="-0.0982232" v2="-0.00562696" v3="-0.192799"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:32:06Z" index1="137" index2="114" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.344" y="2.86189" z="-0.855946"/>
+        <orientation s="0.975071" v1="-0.0939632" v2="-0.00122684" v3="-0.20101"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:32:38Z" index1="137" index2="116" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3749" y="2.88582" z="-0.85304"/>
+        <orientation s="0.97351" v1="-0.0940441" v2="0.000789884" v3="-0.208408"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:33:08Z" index1="137" index2="118" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3967" y="2.90419" z="-0.851811"/>
+        <orientation s="0.972029" v1="-0.0908234" v2="0.00431654" v3="-0.216546"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:33:39Z" index1="137" index2="120" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.4179" y="2.92714" z="-0.84862"/>
+        <orientation s="0.969611" v1="-0.0893545" v2="0.00531442" v3="-0.227689"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:34:09Z" index1="137" index2="122" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.4382" y="2.95109" z="-0.855547"/>
+        <orientation s="0.966517" v1="-0.0916919" v2="0.00261042" v3="-0.239648"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:34:42Z" index1="137" index2="127" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.5092" y="2.86529" z="-0.868991"/>
+        <orientation s="0.98233" v1="-0.101689" v2="-0.00855263" v3="-0.156891"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:35:16Z" index1="137" index2="130" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.9942" y="2.68977" z="-0.829304"/>
+        <orientation s="0.994544" v1="-0.0945623" v2="-0.0106131" v3="-0.0427441"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:15:03Z" index1="137" index2="130" index3="0" index4="3" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.9942" y="2.68977" z="-0.829304"/>
+        <orientation s="0.994544" v1="-0.0945623" v2="-0.0106131" v3="-0.0427441"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-24T01:13:20Z" index1="137" index2="130" index3="0" index4="12" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.9942" y="2.68977" z="-0.829304"/>
+        <orientation s="0.994544" v1="-0.0945623" v2="-0.0106131" v3="-0.0427441"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:27:59Z" index1="137" index2="132" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-17.9942" y="2.68977" z="-0.829304"/>
+        <orientation s="0.987646" v1="-0.0854854" v2="-0.0167841" v3="-0.13025"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:28:24Z" index1="137" index2="135" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.5272" y="2.88981" z="-0.873962"/>
+        <orientation s="0.983368" v1="-0.0915507" v2="-0.0143188" v3="-0.156205"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:28:48Z" index1="137" index2="137" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.5859" y="2.92093" z="-0.868448"/>
+        <orientation s="0.980711" v1="-0.0839515" v2="-0.00602634" v3="-0.176416"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:29:16Z" index1="137" index2="142" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.6556" y="2.85773" z="-0.853381"/>
+        <orientation s="0.990074" v1="-0.0903466" v2="-0.00560961" v3="-0.107519"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:29:40Z" index1="137" index2="144" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.6159" y="2.85202" z="-0.85037"/>
+        <orientation s="0.984958" v1="-0.0879391" v2="-0.00360475" v3="-0.1487"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:30:06Z" index1="137" index2="146" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.6675" y="2.90931" z="-0.851452"/>
+        <orientation s="0.981898" v1="-0.0890096" v2="-0.00264452" v3="-0.16717"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:30:38Z" index1="137" index2="148" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.6924" y="2.93144" z="-0.84948"/>
+        <orientation s="0.980432" v1="-0.0846815" v2="0.00234465" v3="-0.177696"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:31:27Z" index1="137" index2="153" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.7337" y="2.85236" z="-0.838436"/>
+        <orientation s="0.990397" v1="-0.0845378" v2="0.0014204" v3="-0.109388"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:31:56Z" index1="137" index2="155" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.6708" y="2.87425" z="-0.834595"/>
+        <orientation s="0.984311" v1="-0.0857428" v2="0.00256276" v3="-0.154189"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:32:24Z" index1="137" index2="157" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.7182" y="2.92672" z="-0.834662"/>
+        <orientation s="0.981541" v1="-0.0830336" v2="0.00577556" v3="-0.172188"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:32:45Z" index1="137" index2="159" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.7366" y="2.95023" z="-0.830958"/>
+        <orientation s="0.979735" v1="-0.0827843" v2="0.00802046" v3="-0.182215"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:33:14Z" index1="137" index2="164" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.771" y="2.87449" z="-0.825005"/>
+        <orientation s="0.988885" v1="-0.081383" v2="0.00453864" v3="-0.124348"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:33:47Z" index1="137" index2="166" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.7057" y="2.90339" z="-0.825466"/>
+        <orientation s="0.983176" v1="-0.082622" v2="0.00469029" v3="-0.162837"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:34:18Z" index1="137" index2="166" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2672" y="2.78152" z="-0.807368"/>
+        <orientation s="0.983176" v1="-0.082622" v2="0.00469029" v3="-0.162837"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:22:56Z" index1="137" index2="166" index3="0" index4="3" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2672" y="2.78152" z="-0.807368"/>
+        <orientation s="0.983176" v1="-0.082622" v2="0.00469029" v3="-0.162837"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-27T06:20:46Z" index1="137" index2="166" index3="0" index4="7" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2672" y="2.78152" z="-0.807368"/>
+        <orientation s="0.983176" v1="-0.082622" v2="0.00469029" v3="-0.162837"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:54:53Z" index1="137" index2="167" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2672" y="2.78152" z="-0.807368"/>
+        <orientation s="0.977423" v1="-0.0849685" v2="0.00791809" v3="-0.193292"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:55:21Z" index1="137" index2="168" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2973" y="2.79058" z="-0.803907"/>
+        <orientation s="0.974833" v1="-0.0862411" v2="0.0103548" v3="-0.205319"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:55:46Z" index1="137" index2="169" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3133" y="2.8011" z="-0.798142"/>
+        <orientation s="0.972516" v1="-0.0897719" v2="0.0101849" v3="-0.214593"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:56:10Z" index1="137" index2="170" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3241" y="2.80747" z="-0.796255"/>
+        <orientation s="0.970896" v1="-0.0925802" v2="0.0112413" v3="-0.220597"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:56:33Z" index1="137" index2="171" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3325" y="2.81342" z="-0.79306"/>
+        <orientation s="0.969546" v1="-0.0965165" v2="0.0114083" v3="-0.224798"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:57:01Z" index1="137" index2="172" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3396" y="2.81617" z="-0.791526"/>
+        <orientation s="0.968204" v1="-0.100398" v2="0.0114712" v3="-0.228842"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:57:24Z" index1="137" index2="173" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3494" y="2.82069" z="-0.788654"/>
+        <orientation s="0.966801" v1="-0.105215" v2="0.0111268" v3="-0.232597"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:57:54Z" index1="137" index2="174" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3562" y="2.82346" z="-0.787771"/>
+        <orientation s="0.966" v1="-0.107297" v2="0.0123764" v3="-0.234902"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:58:27Z" index1="137" index2="175" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3614" y="2.82602" z="-0.784507"/>
+        <orientation s="0.965095" v1="-0.110871" v2="0.0124182" v3="-0.236952"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:58:55Z" index1="137" index2="176" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3652" y="2.82661" z="-0.783033"/>
+        <orientation s="0.964474" v1="-0.112329" v2="0.0137644" v3="-0.238708"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:59:24Z" index1="137" index2="177" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3697" y="2.82956" z="-0.780705"/>
+        <orientation s="0.963708" v1="-0.114907" v2="0.0143493" v3="-0.240534"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:59:55Z" index1="137" index2="178" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3726" y="2.83147" z="-0.778825"/>
+        <orientation s="0.96324" v1="-0.115987" v2="0.0156909" v3="-0.241804"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:46:43Z" index1="137" index2="178" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.96324" v1="-0.115987" v2="0.0156909" v3="-0.241804"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:45:50Z" index1="137" index2="178" index3="0" index4="8" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.96324" v1="-0.115987" v2="0.0156909" v3="-0.241804"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-29T05:44:44Z" index1="137" index2="178" index3="0" index4="16" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.96324" v1="-0.115987" v2="0.0156909" v3="-0.241804"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-30T07:05:01Z" index1="137" index2="180" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.965683" v1="-0.106996" v2="0.0189844" v3="-0.235899"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-04-30T06:54:43Z" index1="137" index2="180" index3="0" index4="4" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.965683" v1="-0.106996" v2="0.0189844" v3="-0.235899"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-01T06:48:50Z" index1="137" index2="182" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.96539" v1="-0.107227" v2="0.0185396" v3="-0.237026"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:01:59Z" index1="137" index2="184" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3759" y="2.83468" z="-0.775996"/>
+        <orientation s="0.969082" v1="-0.106321" v2="0.00987029" v3="-0.222439"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:02:27Z" index1="137" index2="185" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3662" y="2.81867" z="-0.778128"/>
+        <orientation s="0.970657" v1="-0.107233" v2="0.00778398" v3="-0.215096"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:02:57Z" index1="137" index2="186" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3584" y="2.80478" z="-0.777822"/>
+        <orientation s="0.972252" v1="-0.107779" v2="0.00681197" v3="-0.207517"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:03:27Z" index1="137" index2="187" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3513" y="2.79227" z="-0.776096"/>
+        <orientation s="0.97338" v1="-0.109739" v2="0.00611751" v3="-0.201123"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:03:56Z" index1="137" index2="188" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3438" y="2.78279" z="-0.775879"/>
+        <orientation s="0.974514" v1="-0.110689" v2="0.00572043" v3="-0.195034"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:04:25Z" index1="137" index2="189" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.337" y="2.77124" z="-0.775277"/>
+        <orientation s="0.975673" v1="-0.110686" v2="0.00658873" v3="-0.189121"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:04:54Z" index1="137" index2="190" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3303" y="2.76049" z="-0.772031"/>
+        <orientation s="0.976348" v1="-0.111612" v2="0.00770027" v3="-0.185011"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:05:25Z" index1="137" index2="191" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3237" y="2.75294" z="-0.768584"/>
+        <orientation s="0.976812" v1="-0.113529" v2="0.00800999" v3="-0.181343"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:05:53Z" index1="137" index2="192" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3178" y="2.74657" z="-0.765927"/>
+        <orientation s="0.977221" v1="-0.114989" v2="0.00873514" v3="-0.178156"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:06:23Z" index1="137" index2="193" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3125" y="2.74107" z="-0.763175"/>
+        <orientation s="0.977504" v1="-0.117193" v2="0.00853264" v3="-0.175154"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:06:55Z" index1="137" index2="194" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3077" y="2.7358" z="-0.762241"/>
+        <orientation s="0.977771" v1="-0.12032" v2="0.00724949" v3="-0.171566"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T07:07:21Z" index1="137" index2="195" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.3013" y="2.72925" z="-0.760417"/>
+        <orientation s="0.97803" v1="-0.121241" v2="0.00755743" v3="-0.169412"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T06:57:38Z" index1="137" index2="195" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.295" y="2.72461" z="-0.759306"/>
+        <orientation s="0.97803" v1="-0.121241" v2="0.00755743" v3="-0.169412"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T06:52:00Z" index1="137" index2="195" index3="0" index4="3" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.295" y="2.72461" z="-0.759306"/>
+        <orientation s="0.97803" v1="-0.121241" v2="0.00755743" v3="-0.169412"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-02T06:34:29Z" index1="137" index2="195" index3="0" index4="5" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.295" y="2.72461" z="-0.759306"/>
+        <orientation s="0.97803" v1="-0.121241" v2="0.00755743" v3="-0.169412"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:40:57Z" index1="137" index2="197" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.295" y="2.72461" z="-0.759306"/>
+        <orientation s="0.978218" v1="-0.12298" v2="0.00731785" v3="-0.167066"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:41:33Z" index1="137" index2="198" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2871" y="2.7228" z="-0.75753"/>
+        <orientation s="0.978406" v1="-0.124451" v2="0.00756634" v3="-0.164851"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:42:03Z" index1="137" index2="199" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2807" y="2.71921" z="-0.754173"/>
+        <orientation s="0.978577" v1="-0.125105" v2="0.00792184" v3="-0.16332"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:42:36Z" index1="137" index2="200" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2738" y="2.71557" z="-0.75084"/>
+        <orientation s="0.978768" v1="-0.125326" v2="0.00860937" v3="-0.161966"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:43:05Z" index1="137" index2="201" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2671" y="2.71273" z="-0.748255"/>
+        <orientation s="0.978946" v1="-0.126406" v2="0.00876739" v3="-0.160028"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:43:37Z" index1="137" index2="202" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2624" y="2.70809" z="-0.748015"/>
+        <orientation s="0.97904" v1="-0.127472" v2="0.00885212" v3="-0.158596"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:44:09Z" index1="137" index2="202" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.256" y="2.70649" z="-0.745259"/>
+        <orientation s="0.97904" v1="-0.127472" v2="0.00885212" v3="-0.158596"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-05T09:51:50Z" index1="137" index2="202" index3="0" index4="3" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.256" y="2.70649" z="-0.745259"/>
+        <orientation s="0.97904" v1="-0.127472" v2="0.00885212" v3="-0.158596"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-05T09:31:41Z" index1="137" index2="202" index3="0" index4="5" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.256" y="2.70649" z="-0.745259"/>
+        <orientation s="0.97904" v1="-0.127472" v2="0.00885212" v3="-0.158596"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:50:59Z" index1="137" index2="204" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.256" y="2.70649" z="-0.745259"/>
+        <orientation s="0.979128" v1="-0.128441" v2="0.00900733" v3="-0.157258"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:51:33Z" index1="137" index2="205" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2503" y="2.70405" z="-0.743369"/>
+        <orientation s="0.979214" v1="-0.129307" v2="0.00918567" v3="-0.155996"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:52:06Z" index1="137" index2="206" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2438" y="2.70217" z="-0.741172"/>
+        <orientation s="0.979383" v1="-0.129752" v2="0.00952228" v3="-0.15454"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:52:37Z" index1="137" index2="207" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2376" y="2.69876" z="-0.739766"/>
+        <orientation s="0.979469" v1="-0.130532" v2="0.00966282" v3="-0.153324"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:53:09Z" index1="137" index2="208" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.234" y="2.69683" z="-0.737874"/>
+        <orientation s="0.979446" v1="-0.131332" v2="0.00998998" v3="-0.152765"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:13:27Z" index1="137" index2="209" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.228" y="2.69672" z="-0.732948"/>
+        <orientation s="0.979391" v1="-0.132221" v2="0.0104048" v3="-0.152323"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:54:11Z" index1="137" index2="210" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.228" y="2.69672" z="-0.732948"/>
+        <orientation s="0.979429" v1="-0.132556" v2="0.0107327" v3="-0.151764"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:54:44Z" index1="137" index2="211" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2254" y="2.69544" z="-0.732057"/>
+        <orientation s="0.979431" v1="-0.13273" v2="0.0112727" v3="-0.151563"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:55:15Z" index1="137" index2="212" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2224" y="2.69453" z="-0.731277"/>
+        <orientation s="0.979465" v1="-0.13306" v2="0.0117639" v3="-0.151011"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:55:49Z" index1="137" index2="213" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2195" y="2.69347" z="-0.73047"/>
+        <orientation s="0.979473" v1="-0.133436" v2="0.0120825" v3="-0.150604"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:56:21Z" index1="137" index2="214" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.217" y="2.69302" z="-0.729325"/>
+        <orientation s="0.97948" v1="-0.133872" v2="0.0125086" v3="-0.150139"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:16:56Z" index1="137" index2="215" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2134" y="2.68987" z="-0.72787"/>
+        <orientation s="0.97948" v1="-0.134386" v2="0.0127806" v3="-0.149655"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:58:00Z" index1="137" index2="216" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2134" y="2.68987" z="-0.72787"/>
+        <orientation s="0.979468" v1="-0.134899" v2="0.0130459" v3="-0.149245"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:58:32Z" index1="137" index2="217" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2123" y="2.68866" z="-0.727957"/>
+        <orientation s="0.979431" v1="-0.135388" v2="0.0133864" v3="-0.149014"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:59:04Z" index1="137" index2="218" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2122" y="2.68713" z="-0.728223"/>
+        <orientation s="0.979389" v1="-0.135918" v2="0.0135904" v3="-0.148789"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:59:38Z" index1="137" index2="219" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2116" y="2.68625" z="-0.728422"/>
+        <orientation s="0.979353" v1="-0.136424" v2="0.0138486" v3="-0.148542"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:00:06Z" index1="137" index2="220" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2106" y="2.68576" z="-0.728669"/>
+        <orientation s="0.979357" v1="-0.136703" v2="0.0141351" v3="-0.148234"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T11:20:15Z" index1="137" index2="221" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2086" y="2.68569" z="-0.728889"/>
+        <orientation s="0.979365" v1="-0.136832" v2="0.0144989" v3="-0.148021"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:01:06Z" index1="137" index2="222" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2086" y="2.68569" z="-0.728889"/>
+        <orientation s="0.979336" v1="-0.13714" v2="0.0146232" v3="-0.14792"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:01:36Z" index1="137" index2="223" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2078" y="2.68543" z="-0.729305"/>
+        <orientation s="0.979305" v1="-0.137449" v2="0.014853" v3="-0.147814"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:02:05Z" index1="137" index2="224" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2071" y="2.68574" z="-0.72957"/>
+        <orientation s="0.979279" v1="-0.137631" v2="0.0151541" v3="-0.147783"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:02:34Z" index1="137" index2="225" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2059" y="2.68627" z="-0.729584"/>
+        <orientation s="0.979269" v1="-0.137786" v2="0.0155319" v3="-0.147668"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:02:58Z" index1="137" index2="226" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.205" y="2.68604" z="-0.730139"/>
+        <orientation s="0.97926" v1="-0.137932" v2="0.0159242" v3="-0.147548"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T12:03:20Z" index1="137" index2="227" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2043" y="2.68576" z="-0.730453"/>
+        <orientation s="0.979252" v1="-0.138166" v2="0.0161907" v3="-0.147356"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-06T09:35:23Z" index1="137" index2="227" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2036" y="2.68554" z="-0.730769"/>
+        <orientation s="0.979252" v1="-0.138166" v2="0.0161907" v3="-0.147356"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-07T11:07:11Z" index1="137" index2="229" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2036" y="2.68554" z="-0.730769"/>
+        <orientation s="0.979188" v1="-0.138466" v2="0.0163139" v3="-0.147485"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-07T11:07:40Z" index1="137" index2="230" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2018" y="2.68646" z="-0.730306"/>
+        <orientation s="0.979148" v1="-0.138722" v2="0.0164865" v3="-0.147494"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-07T11:08:15Z" index1="137" index2="231" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2005" y="2.68639" z="-0.730412"/>
+        <orientation s="0.979111" v1="-0.138804" v2="0.016595" v3="-0.147647"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-07T09:35:34Z" index1="137" index2="231" index3="0" index4="2" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2" y="2.68595" z="-0.731151"/>
+        <orientation s="0.979111" v1="-0.138804" v2="0.016595" v3="-0.147647"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-16T16:51:05Z" index1="137" index2="232" index3="0" index4="1" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2" y="2.68595" z="-0.731151"/>
+        <orientation s="0.97911" v1="-0.138821" v2="0.016612" v3="-0.147633"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-16T17:03:26Z" index1="137" index2="232" index3="0" index4="5" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68532" z="-0.731517"/>
+        <orientation s="0.97911" v1="-0.138821" v2="0.016612" v3="-0.147633"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-16T16:24:23Z" index1="137" index2="232" index3="0" index4="36" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68532" z="-0.731517"/>
+        <orientation s="0.97911" v1="-0.138821" v2="0.016612" v3="-0.147633"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-21T20:56:50Z" index1="137" index2="233" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2015" y="2.68478" z="-0.731937"/>
+        <orientation s="0.979097" v1="-0.138844" v2="0.0166415" v3="-0.147701"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-21T20:58:02Z" index1="137" index2="233" index3="0" index4="4" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2007" y="2.68691" z="-0.731541"/>
+        <orientation s="0.979097" v1="-0.138844" v2="0.0166415" v3="-0.147701"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-21T19:05:25Z" index1="137" index2="233" index3="0" index4="15" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2007" y="2.68691" z="-0.731541"/>
+        <orientation s="0.979097" v1="-0.138844" v2="0.0166415" v3="-0.147701"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-24T20:04:54Z" index1="137" index2="234" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2007" y="2.68691" z="-0.731541"/>
+        <orientation s="0.979096" v1="-0.138852" v2="0.0166075" v3="-0.147703"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-05-24T20:07:02Z" index1="137" index2="234" index3="0" index4="12" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979096" v1="-0.138852" v2="0.0166075" v3="-0.147703"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:29:05Z" index1="137" index2="235" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979101" v1="-0.138838" v2="0.0165917" v3="-0.147684"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:29:21Z" index1="137" index2="236" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979102" v1="-0.138818" v2="0.0165431" v3="-0.147701"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:29:53Z" index1="137" index2="237" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979098" v1="-0.13881" v2="0.0165402" v3="-0.147737"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:29:36Z" index1="137" index2="238" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979092" v1="-0.13881" v2="0.0165406" v3="-0.147772"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:30:11Z" index1="137" index2="239" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979085" v1="-0.138849" v2="0.0165496" v3="-0.147781"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:30:32Z" index1="137" index2="240" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979082" v1="-0.13886" v2="0.0165559" v3="-0.147793"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:30:51Z" index1="137" index2="241" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.97908" v1="-0.138839" v2="0.0165611" v3="-0.147827"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:31:11Z" index1="137" index2="242" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979102" v1="-0.138757" v2="0.0164907" v3="-0.147763"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:31:26Z" index1="137" index2="243" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979111" v1="-0.138717" v2="0.0164671" v3="-0.14774"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:31:44Z" index1="137" index2="244" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.97911" v1="-0.138726" v2="0.0164469" v3="-0.147744"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:32:04Z" index1="137" index2="245" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.97911" v1="-0.138732" v2="0.0164405" v3="-0.147738"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:32:20Z" index1="137" index2="246" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979107" v1="-0.138745" v2="0.0164628" v3="-0.147743"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:32:38Z" index1="137" index2="247" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979108" v1="-0.138749" v2="0.0164442" v3="-0.147738"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:32:58Z" index1="137" index2="248" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979112" v1="-0.138716" v2="0.0164365" v3="-0.147742"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:33:16Z" index1="137" index2="249" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2011" y="2.68504" z="-0.732884"/>
+        <orientation s="0.979116" v1="-0.138701" v2="0.0164253" v3="-0.147733"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-06-11T08:17:21Z" index1="137" index2="249" index3="0" index4="26" index5="0">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2009" y="2.68538" z="-0.733258"/>
+        <orientation s="0.979116" v1="-0.138701" v2="0.0164253" v3="-0.147733"/>
+    </solution>
+<solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-07-12T04:25:28Z" index1="137" index2="249" index3="284" index4="926" index5="1098">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2009" y="2.68538" z="-0.733258"/>
+        <orientation s="0.979071" v1="-0.138608" v2="0.0150869" v3="-0.148255"/>
+    </solution>
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2009-07-12T04:14:44Z" index1="137" index2="249" index3="285" index4="927" index5="1098">
+        <reference_frame name="SITE_FRAME" index1="137"/>
+        <offset x="-18.2009" y="2.68538" z="-0.733258"/>
+        <orientation s="0.979071" v1="-0.138609" v2="0.0150976" v3="-0.148254"/>
+    </solution>
+</rmc_file>
