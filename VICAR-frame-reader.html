@@ -6,7 +6,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1000px;
+            max-width: 1600px;
             margin: 20px auto;
             padding: 0 15px;
         }
@@ -14,11 +14,11 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            font-size: 0.9em;
+            font-size: 0.7em;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 4px;
             text-align: left;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -29,27 +29,50 @@
     </style>
 </head>
 <body>
-    <h1>Caricamento Coordinate</h1>
+    <h1>Lettura coordinate da etichetta VICAR di file .IMG</h1>
+	<a href="https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2no_0xxx/data/sol1869/edr/">Example folder</a><br><br>
     <input type="file" id="fileInput" multiple accept=".img">
 
     <table id="coordinateTable">
         <thead>
             <tr>
                 <th>Nome File</th>
-                <th>MAST_FRAME</th>
+
+                <th>DAT_TIM 1</th>
+                <th>DAT_TIM 2</th>
+                <th>DAT_TIM 3</th>
+
+                <th>MAST X Offset</th>
+                <th>MAST Y Offset</th>
+                <th>MAST Z Offset</th>
                 <th>MAST Yaw</th>
                 <th>MAST Pitch</th>
                 <th>MAST Roll</th>
-                <th>ROVER_FRAME</th>
+
+                <th>ROVER X Offset</th>
+                <th>ROVER Y Offset</th>
+                <th>ROVER Z Offset</th>
                 <th>ROVER Yaw</th>
                 <th>ROVER Pitch</th>
                 <th>ROVER Roll</th>
-                <th>MAST Delta Yaw</th>
-                <th>MAST Delta Pitch</th>
-                <th>MAST Delta Roll</th>
-                <th>ROVER Delta Yaw</th>
-                <th>ROVER Delta Pitch</th>
-                <th>ROVER Delta Roll</th>
+
+                <th>MAST Offset X Delta</th>
+                <th>MAST Offset Y Delta</th>
+                <th>MAST Offset Z Delta</th>
+                <th>MAST Yaw Delta</th>
+                <th>MAST Pitch Delta</th>
+                <th>MAST Roll Delta</th>
+
+                <th>ROVER Offset X Delta</th>
+                <th>ROVER Offset Y Delta</th>
+                <th>ROVER Offset Z Delta</th>
+                <th>ROVER Yaw Delta</th>
+                <th>ROVER Pitch Delta</th>
+                <th>ROVER Roll Delta</th>
+
+                <th>DAT_TIM 1 Delta</th>
+                <th>DAT_TIM 2 Delta</th>
+                <th>DAT_TIM 3 Delta</th>
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -59,6 +82,7 @@
     <script>
         let previousMastFrame = null;
         let previousRoverFrame = null;
+        let previousDatTim = [null, null, null];
 
         document.getElementById('fileInput').addEventListener('change', handleFiles);
 
@@ -103,7 +127,10 @@
                 'ROVER_FRAME': { quaternion: null, offset: null }
             };
 
-            // Estrai tutti i dati per MAST_FRAME e ROVER_FRAME
+            // Estrazione DAT_TIM
+            const datTimMatches = content.match(/DAT_TIM='[^']+'/g) || [];
+            const datTims = datTimMatches.map(match => match.match(/'([^']+)'/)[1]);
+
             const coordinateSystemMatches = content.match(/COORDINATE_SYSTEM_NAME='([^']+)'/g) || [];
             const offsetVectorMatches = content.match(/ORIGIN_OFFSET_VECTOR=\(([^)]+)\)/g) || [];
             const rotationQuaternionMatches = content.match(/ORIGIN_ROTATION_QUATERNION=\(([^)]+)\)/g) || [];
@@ -124,74 +151,145 @@
             const fileNameCell = row.insertCell();
             fileNameCell.textContent = fileName;
 
-            // MAST_FRAME
-            const mastFrameCell = row.insertCell();
-            mastFrameCell.textContent = frames['MAST_FRAME'].offset || 'N/A';
+            // DAT_TIM
+            const datTimCells = [
+                row.insertCell(),
+                row.insertCell(),
+                row.insertCell()
+            ];
+            datTimCells.forEach((cell, index) => {
+                cell.textContent = datTims[index] || 'N/A';
+            });
+
+            // MAST Frame Offset
+            const mastOffsetParts = frames['MAST_FRAME'].offset
+                ? frames['MAST_FRAME'].offset.split(',').map(x => parseFloat(x).toFixed(2))
+                : ['N/A', 'N/A', 'N/A'];
+
+            row.insertCell().textContent = mastOffsetParts[0];
+            row.insertCell().textContent = mastOffsetParts[1];
+            row.insertCell().textContent = mastOffsetParts[2];
 
             // Calcolo angoli Eulero per MAST_FRAME
             const mastEuler = frames['MAST_FRAME'].quaternion
                 ? quaternionToEuler(frames['MAST_FRAME'].quaternion)
                 : { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
 
-            const mastYawCell = row.insertCell();
-            mastYawCell.textContent = mastEuler.yaw;
-            const mastPitchCell = row.insertCell();
-            mastPitchCell.textContent = mastEuler.pitch;
-            const mastRollCell = row.insertCell();
-            mastRollCell.textContent = mastEuler.roll;
+            row.insertCell().textContent = mastEuler.yaw;
+            row.insertCell().textContent = mastEuler.pitch;
+            row.insertCell().textContent = mastEuler.roll;
 
-            // ROVER_FRAME
-            const roverFrameCell = row.insertCell();
-            roverFrameCell.textContent = frames['ROVER_FRAME'].offset || 'N/A';
+            // ROVER Frame Offset
+            const roverOffsetParts = frames['ROVER_FRAME'].offset
+                ? frames['ROVER_FRAME'].offset.split(',').map(x => parseFloat(x).toFixed(2))
+                : ['N/A', 'N/A', 'N/A'];
+
+            row.insertCell().textContent = roverOffsetParts[0];
+            row.insertCell().textContent = roverOffsetParts[1];
+            row.insertCell().textContent = roverOffsetParts[2];
 
             // Calcolo angoli Eulero per ROVER_FRAME
             const roverEuler = frames['ROVER_FRAME'].quaternion
                 ? quaternionToEuler(frames['ROVER_FRAME'].quaternion)
                 : { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
 
-            const roverYawCell = row.insertCell();
-            roverYawCell.textContent = roverEuler.yaw;
-            const roverPitchCell = row.insertCell();
-            roverPitchCell.textContent = roverEuler.pitch;
-            const roverRollCell = row.insertCell();
-            roverRollCell.textContent = roverEuler.roll;
+            row.insertCell().textContent = roverEuler.yaw;
+            row.insertCell().textContent = roverEuler.pitch;
+            row.insertCell().textContent = roverEuler.roll;
 
             // Delta Calculations
-            const mastDeltaYawCell = row.insertCell();
-            const mastDeltaPitchCell = row.insertCell();
-            const mastDeltaRollCell = row.insertCell();
-            const roverDeltaYawCell = row.insertCell();
-            const roverDeltaPitchCell = row.insertCell();
-            const roverDeltaRollCell = row.insertCell();
+            const deltaCells = [
+                row.insertCell(), row.insertCell(), row.insertCell(),  // MAST Offset Deltas
+                row.insertCell(), row.insertCell(), row.insertCell(),  // MAST Angle Deltas
+                row.insertCell(), row.insertCell(), row.insertCell(),  // ROVER Offset Deltas
+                row.insertCell(), row.insertCell(), row.insertCell(),  // ROVER Angle Deltas
+                row.insertCell(), row.insertCell(), row.insertCell()   // DAT_TIM Deltas
+            ];
 
             // Calcolo delta MAST_FRAME
             if (previousMastFrame) {
-                const mastDelta = calculateDelta(previousMastFrame, mastEuler);
-                mastDeltaYawCell.textContent = mastDelta.yaw;
-                mastDeltaPitchCell.textContent = mastDelta.pitch;
-                mastDeltaRollCell.textContent = mastDelta.roll;
+                const mastOffsetDelta = calculateOffsetDelta(previousMastFrame.offset, mastOffsetParts);
+                const mastAngleDelta = calculateAngleDelta(previousMastFrame.euler, mastEuler);
+
+                deltaCells[0].textContent = mastOffsetDelta.x;
+                deltaCells[1].textContent = mastOffsetDelta.y;
+                deltaCells[2].textContent = mastOffsetDelta.z;
+                deltaCells[3].textContent = mastAngleDelta.yaw;
+                deltaCells[4].textContent = mastAngleDelta.pitch;
+                deltaCells[5].textContent = mastAngleDelta.roll;
             }
 
             // Calcolo delta ROVER_FRAME
             if (previousRoverFrame) {
-                const roverDelta = calculateDelta(previousRoverFrame, roverEuler);
-                roverDeltaYawCell.textContent = roverDelta.yaw;
-                roverDeltaPitchCell.textContent = roverDelta.pitch;
-                roverDeltaRollCell.textContent = roverDelta.roll;
+                const roverOffsetDelta = calculateOffsetDelta(previousRoverFrame.offset, roverOffsetParts);
+                const roverAngleDelta = calculateAngleDelta(previousRoverFrame.euler, roverEuler);
+
+                deltaCells[6].textContent = roverOffsetDelta.x;
+                deltaCells[7].textContent = roverOffsetDelta.y;
+                deltaCells[8].textContent = roverOffsetDelta.z;
+                deltaCells[9].textContent = roverAngleDelta.yaw;
+                deltaCells[10].textContent = roverAngleDelta.pitch;
+                deltaCells[11].textContent = roverAngleDelta.roll;
             }
 
-            // Aggiorna i frame precedenti
-            previousMastFrame = mastEuler;
-            previousRoverFrame = roverEuler;
+            // Calcolo delta DAT_TIM
+            const datTimDeltas = calculateDatTimDeltas(previousDatTim, datTims);
+            deltaCells[12].textContent = datTimDeltas[0];
+            deltaCells[13].textContent = datTimDeltas[1];
+            deltaCells[14].textContent = datTimDeltas[2];
+
+            // Aggiorna i frame e i tempi precedenti
+            previousMastFrame = {
+                offset: mastOffsetParts,
+                euler: mastEuler
+            };
+            previousRoverFrame = {
+                offset: roverOffsetParts,
+                euler: roverEuler
+            };
+            previousDatTim = datTims;
         }
 
-        function calculateDelta(prev, curr) {
-            if (prev.yaw === 'N/A' || curr.yaw === 'N/A') return { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
+        function calculateOffsetDelta(prev, curr) {
             return {
-                yaw: (Math.abs(parseFloat(curr.yaw) - parseFloat(prev.yaw))).toFixed(2),
-                pitch: (Math.abs(parseFloat(curr.pitch) - parseFloat(prev.pitch))).toFixed(2),
-                roll: (Math.abs(parseFloat(curr.roll) - parseFloat(prev.roll))).toFixed(2)
+                x: prev[0] === 'N/A' || curr[0] === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr[0]) - parseFloat(prev[0])).toFixed(2),
+                y: prev[1] === 'N/A' || curr[1] === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr[1]) - parseFloat(prev[1])).toFixed(2),
+                z: prev[2] === 'N/A' || curr[2] === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr[2]) - parseFloat(prev[2])).toFixed(2)
             };
+        }
+
+        function calculateAngleDelta(prev, curr) {
+            return {
+                yaw: prev.yaw === 'N/A' || curr.yaw === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr.yaw) - parseFloat(prev.yaw)).toFixed(2),
+                pitch: prev.pitch === 'N/A' || curr.pitch === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr.pitch) - parseFloat(prev.pitch)).toFixed(2),
+                roll: prev.roll === 'N/A' || curr.roll === 'N/A'
+                    ? 'N/A'
+                    : Math.abs(parseFloat(curr.roll) - parseFloat(prev.roll)).toFixed(2)
+            };
+        }
+
+        function calculateDatTimDeltas(prev, curr) {
+            return curr.map((time, index) => {
+                if (!prev || prev[index] === null || time === 'N/A') return 'N/A';
+
+                const prevDate = new Date(prev[index]);
+                const currDate = new Date(time);
+
+                const diffMs = currDate - prevDate;
+                const diffSeconds = (diffMs / 1000).toFixed(2);
+
+                return diffSeconds;
+            });
         }
     </script>
 </body>
