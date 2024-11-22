@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Coordinate System Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Caricamento Coordinate</h1>
+    <input type="file" id="fileInput" multiple accept=".img">
+
+    <table id="coordinateTable">
+        <thead>
+            <tr>
+                <th>Nome File</th>
+                <th>MAST_FRAME</th>
+                <th>MAST Yaw</th>
+                <th>MAST Pitch</th>
+                <th>MAST Roll</th>
+                <th>ROVER_FRAME</th>
+                <th>ROVER Yaw</th>
+                <th>ROVER Pitch</th>
+                <th>ROVER Roll</th>
+                <th>MAST Delta Yaw</th>
+                <th>MAST Delta Pitch</th>
+                <th>MAST Delta Roll</th>
+                <th>ROVER Delta Yaw</th>
+                <th>ROVER Delta Pitch</th>
+                <th>ROVER Delta Roll</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+    </table>
+
+    <script>
+        let previousMastFrame = null;
+        let previousRoverFrame = null;
+
+        document.getElementById('fileInput').addEventListener('change', handleFiles);
+
+        function quaternionToEuler(q) {
+            const [x, y, z, w] = q.split(',').map(parseFloat);
+            const sinr_cosp = 2 * (w * x + y * z);
+            const cosr_cosp = 1 - 2 * (x * x + y * y);
+            const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+            const sinp = 2 * (w * y - z * x);
+            const pitch = Math.abs(sinp) >= 1
+                ? Math.sign(sinp) * Math.PI / 2
+                : Math.asin(sinp);
+
+            const siny_cosp = 2 * (w * z + x * y);
+            const cosy_cosp = 1 - 2 * (y * y + z * z);
+            const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+            return {
+                yaw: (yaw * 180 / Math.PI).toFixed(2),
+                pitch: (pitch * 180 / Math.PI).toFixed(2),
+                roll: (roll * 180 / Math.PI).toFixed(2)
+            };
+        }
+
+        function handleFiles(event) {
+            const files = event.target.files;
+
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    parseCoordinateData(file.name, content);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function parseCoordinateData(fileName, content) {
+            const frames = {
+                'MAST_FRAME': { quaternion: null, offset: null },
+                'ROVER_FRAME': { quaternion: null, offset: null }
+            };
+
+            // Estrai tutti i dati per MAST_FRAME e ROVER_FRAME
+            const coordinateSystemMatches = content.match(/COORDINATE_SYSTEM_NAME='([^']+)'/g) || [];
+            const offsetVectorMatches = content.match(/ORIGIN_OFFSET_VECTOR=\(([^)]+)\)/g) || [];
+            const rotationQuaternionMatches = content.match(/ORIGIN_ROTATION_QUATERNION=\(([^)]+)\)/g) || [];
+
+            coordinateSystemMatches.forEach((match, index) => {
+                const systemName = match.match(/'([^']+)'/)[1];
+
+                if (systemName === 'MAST_FRAME' || systemName === 'ROVER_FRAME') {
+                    frames[systemName].quaternion = rotationQuaternionMatches[index].match(/\(([^)]+)\)/)[1];
+                    frames[systemName].offset = offsetVectorMatches[index].match(/\(([^)]+)\)/)[1];
+                }
+            });
+
+            const tableBody = document.getElementById('tableBody');
+            const row = tableBody.insertRow();
+
+            // Nome File
+            const fileNameCell = row.insertCell();
+            fileNameCell.textContent = fileName;
+
+            // MAST_FRAME
+            const mastFrameCell = row.insertCell();
+            mastFrameCell.textContent = frames['MAST_FRAME'].offset || 'N/A';
+
+            // Calcolo angoli Eulero per MAST_FRAME
+            const mastEuler = frames['MAST_FRAME'].quaternion
+                ? quaternionToEuler(frames['MAST_FRAME'].quaternion)
+                : { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
+
+            const mastYawCell = row.insertCell();
+            mastYawCell.textContent = mastEuler.yaw;
+            const mastPitchCell = row.insertCell();
+            mastPitchCell.textContent = mastEuler.pitch;
+            const mastRollCell = row.insertCell();
+            mastRollCell.textContent = mastEuler.roll;
+
+            // ROVER_FRAME
+            const roverFrameCell = row.insertCell();
+            roverFrameCell.textContent = frames['ROVER_FRAME'].offset || 'N/A';
+
+            // Calcolo angoli Eulero per ROVER_FRAME
+            const roverEuler = frames['ROVER_FRAME'].quaternion
+                ? quaternionToEuler(frames['ROVER_FRAME'].quaternion)
+                : { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
+
+            const roverYawCell = row.insertCell();
+            roverYawCell.textContent = roverEuler.yaw;
+            const roverPitchCell = row.insertCell();
+            roverPitchCell.textContent = roverEuler.pitch;
+            const roverRollCell = row.insertCell();
+            roverRollCell.textContent = roverEuler.roll;
+
+            // Delta Calculations
+            const mastDeltaYawCell = row.insertCell();
+            const mastDeltaPitchCell = row.insertCell();
+            const mastDeltaRollCell = row.insertCell();
+            const roverDeltaYawCell = row.insertCell();
+            const roverDeltaPitchCell = row.insertCell();
+            const roverDeltaRollCell = row.insertCell();
+
+            // Calcolo delta MAST_FRAME
+            if (previousMastFrame) {
+                const mastDelta = calculateDelta(previousMastFrame, mastEuler);
+                mastDeltaYawCell.textContent = mastDelta.yaw;
+                mastDeltaPitchCell.textContent = mastDelta.pitch;
+                mastDeltaRollCell.textContent = mastDelta.roll;
+            }
+
+            // Calcolo delta ROVER_FRAME
+            if (previousRoverFrame) {
+                const roverDelta = calculateDelta(previousRoverFrame, roverEuler);
+                roverDeltaYawCell.textContent = roverDelta.yaw;
+                roverDeltaPitchCell.textContent = roverDelta.pitch;
+                roverDeltaRollCell.textContent = roverDelta.roll;
+            }
+
+            // Aggiorna i frame precedenti
+            previousMastFrame = mastEuler;
+            previousRoverFrame = roverEuler;
+        }
+
+        function calculateDelta(prev, curr) {
+            if (prev.yaw === 'N/A' || curr.yaw === 'N/A') return { yaw: 'N/A', pitch: 'N/A', roll: 'N/A' };
+            return {
+                yaw: (Math.abs(parseFloat(curr.yaw) - parseFloat(prev.yaw))).toFixed(2),
+                pitch: (Math.abs(parseFloat(curr.pitch) - parseFloat(prev.pitch))).toFixed(2),
+                roll: (Math.abs(parseFloat(curr.roll) - parseFloat(prev.roll))).toFixed(2)
+            };
+        }
+    </script>
+</body>
+</html>
