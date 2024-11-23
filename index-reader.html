@@ -1,0 +1,160 @@
+<!--
+Loads index file rdrindex.tab from https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab 
+into an array for couning vst, pfb and ht
+files in traverse2d viewer
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Loader and Parser</title>
+</head>
+<body>
+  <h1>MER products index convertr</h1>
+  Please load index file rdrindex.tab from <a href="https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab">https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab</a><br><br>
+  <input type="file" id="fileInput" />
+  <button id="saveButton" style="margin-top: 20px;">Salva dati su file</button><br>
+  <pre id="output"></pre>
+  <script>	
+var filesData = {};
+
+    document.getElementById("fileInput").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert("Seleziona un file!");
+        return;
+      }
+
+      const reader = new FileReader();
+
+     reader.onload = function (e) {
+        const content = e.target.result;
+        const rows = content.trim().split("\n");
+
+        rows.forEach((row) => {
+          // Rimuove eventuali virgolette e divide la riga
+          const columns = row.replace(/"/g, "").split("\t");
+
+          // Estrae il valore del sito (es. "site0000")
+          const site = columns[4].match(/site\d+/)?.[0];
+          if (!site) return;
+
+          // Estrae i campi richiesti
+          const path = columns[4].trim();
+          const filename = columns[5].trim();
+          const date = columns[8].trim();
+          const sclk1 = columns[14].trim();
+          const sclk2 = columns[15].trim();
+
+           const ext = filename.slice(28,31); // Estensione file
+		  if (ext.toUpperCase() === "VST") { 
+				const sol = "n/a";
+				const cameras = "n/a";
+
+				const siteChars = filename.slice(14, 16); // Posizioni 14 e 15
+				const driveChars = filename.slice(16, 18); // Posizioni 16 e 17
+				const siteNum = siteCodeToString2(siteChars);
+				const driveNum = siteCodeToString2(driveChars);
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+		  } else if (ext.toUpperCase() === "PFB")
+//2mesh_1869_frnp_137_ffl_0_v1
+				const pieces = 	filename.split("_");
+				const sol = pieces[1]
+				const cameras = pieces[2];
+				const siteNum = pieces[3];
+				const driveNum = pieces[5];
+	            const siteChars = "debugPFB"
+	            const driveChars = "debugPFB"	  
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+		  } else (ext.substr(0,2).toUpperCase() === "HT")
+				const pieces = 	filename.split("_");
+				const sol = pieces[1]
+				const cameras = pieces[2];
+				const siteNum = pieces[3];
+				const driveNum = pieces[5];
+	            const siteChars = "debugPFB"
+	            const driveChars = "debugPFB"	  
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+		  }
+        });
+alert("Done");	
+
+      };
+
+      reader.onerror = function () {
+        alert("Errore nella lettura del file!");
+      };
+
+      reader.readAsText(file);
+    });
+	
+        function saveDataToFile(filename) {
+            // Converti i dati in una stringa JSON
+            const jsonData = "const filesAvailability = " + JSON.stringify(filesData, null, 2);
+
+            // Crea un blob con i dati
+            const blob = new Blob([jsonData], { type: "application/json" });
+
+            // Crea un URL per il download
+            const url = window.URL.createObjectURL(blob);
+
+            // Crea un elemento <a> per il download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+
+            // Attiva il download
+            a.click();
+
+            // Libera la memoria
+            window.URL.revokeObjectURL(url);
+        }
+		
+        document.getElementById("saveButton").addEventListener("click", () => {
+            saveDataToFile("files.js");
+        });
+		
+function siteCodeToString2(code) {
+    if (code.length !== 2) {
+        throw new Error("Il codice deve essere una stringa di due caratteri.");
+    }
+
+    const firstChar = code[0];
+    const secondChar = code[1];
+
+    // Caso 1: numerico puro ("00" - "99")
+    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+        return parseInt(code, 10);
+    }
+
+    // Caso 2: alfanumerico ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare il valore delle lettere
+    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+    let secondValue;
+
+    if (isNaN(secondChar)) {
+        // Se il secondo carattere è una lettera
+        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+    } else {
+        // Se il secondo carattere è un numero
+        secondValue = parseInt(secondChar, 10);
+    }
+
+    // Formula per calcolare l'intervallo corretto (da 100 in poi)
+    return 100 + firstValue * 36 + secondValue;
+}
+		
+  </script>
+</body>
+</html>
+

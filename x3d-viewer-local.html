@@ -2,187 +2,511 @@
 <html>
    <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-     <title>X3d local</title>
-     <script type='text/javascript' src='x3dom.js'></script>
-     <link rel='stylesheet' type='text/css' href='x3dom.css'></link>
+    <title>X3D Model Viewer</title>
+    <script type='text/javascript' src='x3dom.js'></script>
+    <link rel='stylesheet' type='text/css' href='x3dom.css'></link>
     <meta charset="UTF-8">
-    <title>Visualizzatore X3D</title>
+    <style>
+        .control-container {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .slider-group label {
+            width: 100px;
+            margin-right: 10px;
+        }
+        .slider-group input[type="range"] {
+            width: 500px; /* Larghezza fissa per gli slider */
+        }
+        .slider-group input[type="text"],
+        .slider-group input[type="number"] {
+            width: calc(0.6em * 8); /* Larghezza visiva di massimo 5 caratteri */
+            padding: 2px;
+            text-align: center;
+            font-family: monospace; /* Font a larghezza fissa */
+        }
+    </style>
 </head>
 <body>
-    <h1>Visualizzatore File X3D</h1>
-    <input type="file" id="file-input" accept=".x3d">
-    <div id="x3d-container"></div>
+    <h1>X3D Model Viewer</h1>
 
-    <x3d width='800px' height='600px'>
-       <scene>
-         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
-         <Viewpoint
-            position="0 0 10"
-            centerOfRotation="0 0 0"
-            orientation="0 1 0 0"
-            fieldOfView="0.785"
-            bind="true">
-         </Viewpoint>
+    <input type="file" id="file-input" accept=".x3d" multiple>
+<table border="1">
+<tr>
+<td>
+    <div class="control-container">
+        <div>
+            <label for="model-select">Select Model:</label>
+            <select id="model-select">
+                <option value="">-- Select a Model --</option>
+            </select>
+        </div>
 
-			<Navigationinfo
-				headlight="false"
-				type="turntable"
-				typeparams="0.0 0.0 0.5 1.6"
-				explorationmode="all"
-				avatarsize="0.25,1.6,0.75"
-				walkdamping="2"
-				speed="-1"
-				transitiontime="1"
-				transitiontype="LINEAR ">
-			</Navigationinfo>
+        <div class="slider-group">
+            <label>Translation X:</label>
+            <input type="range" id="translate-x" min="-100" max="100" step="1" value="0">
+            <input type="number" id="translate-x-value" value="0" step="10">
+        </div>
+        <div class="slider-group">
+            <label>Translation Y:</label>
+            <input type="range" id="translate-y" min="-100" max="100" step="0.11" value="-6">
+            <input type="number" id="translate-y-value" value="0" step="1">
+        </div>
+        <div class="slider-group">
+            <label>Translation Z:</label>
+            <input type="range" id="translate-z" min="-100" max="100" step="1" value="-18">
+            <input type="number" id="translate-z-value" value="0" step="1">
+        </div>
 
-         <!-- Assi persistenti -->
-         <Transform translation="0 0 0">
-            <!-- Asse X (Rosso) -->
-            <Shape>
-                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
-                <LineSet vertexCount="2">
-                    <Coordinate point="0 0 0 5 0 0" />
-                </LineSet>
-            </Shape>
-            <!-- Asse Y (Verde) -->
-            <Shape>
-                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
-                <LineSet vertexCount="2">
-                    <Coordinate point="0 0 0 0 5 0" />
-                </LineSet>
-            </Shape>
-            <!-- Asse Z (Blu) -->
-            <Shape>
-                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
-                <LineSet vertexCount="2">
-                    <Coordinate point="0 0 0 0 0 5" />
-                </LineSet>
-            </Shape>
-         </Transform>
+        <div class="slider-group">
+            <label>Rotation Yaw:</label>
+            <input type="range" id="rotate-yaw" min="-6.28" max="6.28" step="0.01" value="0">
+            <input type="number" id="rotate-yaw-value" value="0" step="0.1">
+        </div>
+        <div class="slider-group">
+            <label>Rotation Pitch:</label>
+            <input type="range" id="rotate-pitch" min="-6.28" max="6.28" step="0.01" value="0">
+            <input type="number" id="rotate-pitch-value" value="0" step="0.1">
+        </div>
+        <div class="slider-group">
+            <label>Rotation Roll:</label>
+            <input type="range" id="rotate-roll" min="-0.5" max="0.5" step="0.01" value="0">
+            <input type="number" id="rotate-roll-value" value="0" step="0.1">
+        </div>
 
-         <!-- Area per il modello caricato -->
-         <Transform id="modelScene">
-           <!-- Modello di default per quando nessun file � caricato -->
-           <Shape>
-             <Appearance>
-               <Material diffuseColor='1 0 0'></Material>
-             </Appearance>
-           </Shape>
-         </Transform>
-       </scene>
-     </x3d>
+<div class="slider-group">
+    <label>Transparency:</label>
+    <input type="range" id="transparency-slider" min="0" max="1" step="0.01" value="0" 	>
+    <input type="number" id="transparency-value" min="0" max="1" step="0.01" value="0" style="width:50px;">
+</div>
+
+<div class="slider-group">
+    <label>
+        <input type="checkbox" id="model-visibility" checked>
+        Model Visible
+    </label>
+</div>
+    </div>
+</td><td>
+    <div id="x3d-container">
+        <x3d width='800px' height='600px'>
+           <scene>
+             <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+             <Viewpoint
+                position="0 0 10"
+                centerOfRotation="0 0 0"
+                orientation="0 1 0 0"
+                fieldOfView="0.785"
+                bind="true">
+             </Viewpoint>
+
+             <Navigationinfo
+                headlight="false"
+                type="turntable"
+                typeparams="0.0 0.0 0.05 1.6"
+                explorationmode="all"
+                avatarsize="0.25,1.6,0.75"
+                walkdamping="2"
+                speed="-1"
+                transitiontime="1"
+                transitiontype="LINEAR ">
+             </Navigationinfo>
+
+             <!-- Assi persistenti -->
+             <Transform translation="0 0 0">
+                <!-- Asse X (Rosso) -->
+                <Shape>
+                    <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                    <LineSet vertexCount="2">
+                        <Coordinate point="0 0 0 5 0 0" />
+                    </LineSet>
+                </Shape>
+                <!-- Asse Y (Verde) -->
+                <Shape>
+                    <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                    <LineSet vertexCount="2">
+                        <Coordinate point="0 0 0 0 5 0" />
+                    </LineSet>
+                </Shape>
+                <!-- Asse Z (Blu) -->
+                <Shape>
+                    <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                    <LineSet vertexCount="2">
+                        <Coordinate point="0 0 0 0 0 5" />
+                    </LineSet>
+                </Shape>
+             </Transform>
+
+             <!-- Area per i modelli caricati -->
+             <Transform id="modelScene">
+             </Transform>
+           </scene>
+        </x3d>
+    </div>
+</td>
+</tr>
+</table>
     <script>
-const namespace = "http://www.web3d.org/specifications/x3d-namespace"; // o il namespace appropriato per il tuo caso
+const namespace = "http://www.web3d.org/specifications/x3d-namespace";
+let loadedModels = [];
+modelSelect = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const fileInput = document.getElementById('file-input');
-            const x3dContainer = document.getElementById('x3d-container');
+document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('file-input');
+    modelSelect = document.getElementById('model-select');
 
-            fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
+    // Transformation sliders and inputs
+     translateXSlider = document.getElementById('translate-x');
+    translateXInput = document.getElementById('translate-x-value');
+     translateYSlider = document.getElementById('translate-y');
+     translateYInput = document.getElementById('translate-y-value');
+     translateZSlider = document.getElementById('translate-z');
+     translateZInput = document.getElementById('translate-z-value');
 
-                    reader.onload = (e) => {
-                        // Rimuovi qualsiasi contenuto precedente
-                        x3dContainer.innerHTML = '';
+     rotateYawSlider = document.getElementById('rotate-yaw');
+     rotateYawInput = document.getElementById('rotate-yaw-value');
+     rotatePitchSlider = document.getElementById('rotate-pitch');
+     rotatePitchInput = document.getElementById('rotate-pitch-value');
+     rotateRollSlider = document.getElementById('rotate-roll');
+     rotateRollInput = document.getElementById('rotate-roll-value');
 
-                        // Crea l'elemento X3D
-                        const x3dElement = document.createElement('x3d');
-                        x3dElement.style.width = '100%';
-                        x3dElement.style.height = '100%';
+    transparencySlider = document.getElementById('transparency-slider');
+    	transparencyInput = document.getElementById('transparency-value');
 
-                        // Crea la scena X3D
-                        const sceneElement = document.createElement('scene');
-                        /*sceneElement.innerHTML = e.target.result;
+    // File input event
+    fileInput.addEventListener('change', (event) => {
+        Array.from(event.target.files).forEach((file, index) => {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const modelName = file.name;
+                    loadX3DFile(e.target.result, modelName);
 
-                        x3dElement.appendChild(sceneElement);
-                        x3dContainer.appendChild(x3dElement);*/
-loadX3DFile(e.target.result,0,0);
-                    };
+                    // Add option to model select
+                    const option = document.createElement('option');
+                    option.value = modelName;
+                    option.textContent = modelName;
+                    modelSelect.appendChild(option);
+                };
+                reader.readAsText(file);
+            }
+        });
+    });
 
-                    reader.readAsText(file);
+// Add event listener for visibility checkbox
+document.getElementById('model-visibility').addEventListener('change', updateModelVisibility);
+
+// Modify model selection to update visibility checkbox
+modelSelect.addEventListener('change', (event) => {
+    const selectedModel = event.target.value;
+    if (selectedModel) {
+        updateSlidersFromModel();
+        
+        // Set visibility checkbox to checked by default
+        const visibilityCheckbox = document.getElementById('model-visibility');
+        visibilityCheckbox.checked = true;
+    }
+});
+    // Slider event listeners for translation
+    [translateXSlider, translateXInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+    [translateYSlider, translateYInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+    [translateZSlider, translateZInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+
+    // Slider event listeners for rotation
+    [rotateYawSlider, rotateYawInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+    [rotatePitchSlider, rotatePitchInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+    [rotateRollSlider, rotateRollInput].forEach(el => {
+        el.addEventListener('input', () => updateModelTransform());
+    });
+
+    // Assicurati che gli event listener siano correttamente impostati
+    transparencySlider.addEventListener('input', updateModelTransparency);
+    transparencyInput.addEventListener('input', function() {
+        transparencySlider.value = this.value;
+        updateModelTransparency();
+    });
+
+
+
+ function updateModelTransparency() {
+        const selectedModel = modelSelect.value;
+        if (!selectedModel) return;
+
+        const targetScene = document.getElementById("modelScene");
+        const rollTransform = targetScene.querySelector(`[id="${selectedModel}-roll"]`);
+
+        if (!rollTransform) return;
+
+        const transparency = parseFloat(transparencySlider.value);
+
+        // Aggiorna il valore nell'input numerico
+        transparencyInput.value = transparency.toFixed(2);
+
+        // Trova e attraversa tutte le Shape all'interno di rollTransform
+        const shapes = rollTransform.querySelectorAll('Shape');
+        shapes.forEach(shape => {
+            // Trova o crea l'elemento Appearance
+            let appearance = shape.querySelector('Appearance');
+            if (!appearance) {
+                appearance = document.createElementNS(namespace, 'Appearance');
+                shape.appendChild(appearance);
+            }
+
+            // Trova o crea l'elemento Material
+            let material = appearance.querySelector('Material');
+            if (!material) {
+                material = document.createElementNS(namespace, 'Material');
+                appearance.appendChild(material);
+            }
+
+            // Usa la sintassi per impostare la trasparenza della Shape
+            material.setAttribute('transparency', transparency.toString());
+
+            // Per le texture, potrebbe essere necessario un approccio specifico
+            const imageTextures = appearance.querySelectorAll('ImageTexture');
+            imageTextures.forEach(texture => {
+                // Questo potrebbe non funzionare per tutti i tipi di texture
+                try {
+                    texture.setAttribute('alpha', (1 - transparency).toString());
+                } catch (error) {
+                    console.log('Impossibile impostare la trasparenza della texture', error);
                 }
+
+				texture.innerHTML = "";
             });
         });
 
-	function loadX3DFile(inputX3D, azimuth, elevation) {
-	            var content = inputX3D; // e.target.result;
-	            var parser = new DOMParser();
-	            x3dDoc = parser.parseFromString(content, "text/xml"); // DOM element (HTML document)
-	            // Corregge i percorsi delle texture
-	            var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
-	            imageTextures.forEach(function(texture) {
-	                var url = texture.getAttribute("url");
-	                if (!url || url === "") {
-	                    texture.removeAttribute("url");
-	                }
-	            });
-
-	            sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
-
-console.log(sourceScene);
-
-	            if (sourceScene) {
-
-	                // Ottieni il riferimento alla scena esistente
-	                targetScene = document.getElementById("modelScene");
-
-	                // Mantieni il viewpoint esistente o creane uno nuovo se non esiste
-	                viewpoint = targetScene.querySelector("Viewpoint");
-	                if (!viewpoint) {
-	                    viewpoint = x3dDoc.createElementNS(namespace,"Viewpoint");
-	                    targetScene.insertBefore(viewpoint, targetScene.firstChild);
-
-	                    // Imposta posizione e zoom solo se è un nuovo viewpoint
-	                    viewpoint.setAttribute("position", "20 20 0");
-	                    viewpoint.setAttribute("orientation", "0 1 0 0");
-	                    viewpoint.setAttribute("fieldOfView", "1.7");
-	                }
-
-					// Crea un nuovo Transform per il modello per impostare l'azimuth e successivamente l'elevazione (nidificata)
-					altAzTransform = document.createElementNS(namespace, "Transform")
-//cleanAttributes(altAzTransform);
-					altAzTransform.setAttribute("id","trfAzimuth");
-					altAzTransform.setAttribute("rotation", `0 1 0 ${azimuth}`);
-//altAzTransform.setAttribute("scale", "1 1 1"); // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
-
-					// Crea un secondo Transform per l'elevazione
-					var elevationTransform = document.createElementNS(namespace,"Transform");
-//cleanAttributes(elevationTransform);
-
-					elevationTransform.setAttribute("id","trfElevation");
-					elevationTransform.setAttribute("rotation", `1 0 0 ${elevation}`);
-//altAzTransform.setAttribute("scale", "1 1 1");  // Se lo metto, non si vede nella pagina; se non lo metto, il viewer online non lo carica
+        // Trigger X3DOM reload
+        x3dom.reload();
+    }
 
 
-					altAzTransform.appendChild(elevationTransform);
-//rotatedShapes.push(altAzTransform);
 
-	                // Aggiungi tutti gli elementi del nuovo modello al Transform
-	                Array.from(sourceScene.children).forEach(function(child) {
-	                    // Salta NavigationInfo e Viewpoint quando aggiungi gli elementi
-	                    if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
-	                        var importedNode = document.importNode(child, true);
-	                        elevationTransform.appendChild(importedNode);
-	                    }
-	                });
+function updateModelTransform() {
+    const selectedModel = modelSelect.value;
+    if (!selectedModel) return;
 
-	                // Aggiungi il nuovo Transform alla scena esistente
-	                targetScene.appendChild(altAzTransform);
+    const targetScene = document.getElementById("modelScene");
+    const yawTransform = targetScene.querySelector(`[id="${selectedModel}-yaw"]`);
+    const pitchTransform = targetScene.querySelector(`[id="${selectedModel}-pitch"]`);
+    const rollTransform = targetScene.querySelector(`[id="${selectedModel}-roll"]`);
 
-	                console.log("New model added to scene, now refreshing model...");
-					targetScene.setAttribute("scale","-1 1 1"); // due to Z axis inversion
-	                x3dom.reload(); // Ricarica x3dom per aggiornare la scena
-	            } else {
-	                console.error("Nessuna scena trovata nel file X3D");
-	            }
+    if (!yawTransform || !pitchTransform || !rollTransform) return;
+
+console.log(yawTransform.rotation, pitchTransform.rotation,rollTransform .rotation);
+
+    // Get current slider values
+    const translateX = parseFloat(translateXSlider.value);
+    const translateY = parseFloat(translateYSlider.value);
+    const translateZ = parseFloat(translateZSlider.value);
+
+    const rotateYaw = parseFloat(rotateYawSlider.value);
+    const rotatePitch = parseFloat(rotatePitchSlider.value);
+    const rotateRoll = parseFloat(rotateRollSlider.value);
+
+    const transparency = parseFloat(transparencySlider.value);
+
+    // Update transformation attributes
+    yawTransform.setAttribute('translation', `${translateX} ${translateY} ${translateZ}`);
+    yawTransform.setAttribute('rotation', `0 1 0 ${rotateYaw}`);
+    pitchTransform.setAttribute('rotation', `0 0 1 ${rotatePitch}`);
+    rollTransform.setAttribute('rotation', `1 0 0 ${rotateRoll}`);
+console.log("DOPO=",yawTransform.rotation, pitchTransform.rotation,rollTransform .rotation);
+
+    currentShape = rollTransform.children[0];
+	shapeMaterial = currentShape.querySelector('Material');
+	if (shapeMaterial) {
+	    shapeMaterial.setAttribute('transparency', transparency); // Imposta il valore desiderato
+	} else {
+	    // Se non esiste già un elemento Material, creane uno
+	    let appearance = currentShape.querySelector('Appearance');
+	    if (!appearance) {
+	        appearance = document.createElementNS(namespace, 'Appearance');
+	        currentShape.appendChild(appearance);
 	    }
+
+	    let newMaterial = document.createElementNS(namespace, 'Material');
+	    newMaterial.setAttribute('transparency', transparency);
+	    appearance.appendChild(newMaterial);
+	}
+
+    // Trigger X3DOM reload
+    x3dom.reload();
+}
+
+});
+
+
+
+
+
+function loadX3DFile(inputX3D, modelName) {
+    var content = inputX3D;
+    var parser = new DOMParser();
+    var x3dDoc = parser.parseFromString(content, "text/xml");
+
+    // Correct texture paths
+    var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+    imageTextures.forEach(function(texture) {
+        var url = texture.getAttribute("url");
+        if (!url || url === "") {
+            texture.removeAttribute("url");
+        }
+    });
+
+    var sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+
+    if (sourceScene) {
+        // Get existing scene
+        var targetScene = document.getElementById("modelScene");
+
+        // Create nested Transform structure
+        var yawTransform = document.createElementNS(namespace, "Transform");
+        yawTransform.setAttribute("id", `${modelName}-yaw`);
+        yawTransform.setAttribute("data-model-name", modelName);
+
+        var pitchTransform = document.createElementNS(namespace, "Transform");
+        pitchTransform.setAttribute("id", `${modelName}-pitch`);
+
+        var rollTransform = document.createElementNS(namespace, "Transform");
+        rollTransform.setAttribute("id", `${modelName}-roll`);
+        rollTransform.setAttribute("scale", "-1 1 1"); // due to Z axis inversion
+
+        // Import all children except NavigationInfo and Viewpoint
+        Array.from(sourceScene.children).forEach(function(child) {
+            if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
+                var importedNode = document.importNode(child, true);
+                rollTransform.appendChild(importedNode);
+            }
+        });
+
+        // Nest the transforms
+        pitchTransform.appendChild(rollTransform);
+        yawTransform.appendChild(pitchTransform);
+        targetScene.appendChild(yawTransform);
+
+        console.log(`Model ${modelName} added to scene`);
+        x3dom.reload(); // Reload x3dom to update the scene
+    } else {
+        console.error("No scene found in X3D file");
+    }
+}
+
+function syncSliderAndInput(slider, input) {
+    slider.addEventListener('input', () => {
+        input.value = slider.value;
+    });
+
+    input.addEventListener('input', () => {
+        slider.value = input.value;
+    });
+}
+
+// Synchronize translation sliders and inputs
+syncSliderAndInput(
+    document.getElementById('translate-x'), 
+    document.getElementById('translate-x-value')
+);
+syncSliderAndInput(
+    document.getElementById('translate-y'), 
+    document.getElementById('translate-y-value')
+);
+syncSliderAndInput(
+    document.getElementById('translate-z'), 
+    document.getElementById('translate-z-value')
+);
+
+// Synchronize rotation sliders and inputs
+syncSliderAndInput(
+    document.getElementById('rotate-yaw'), 
+    document.getElementById('rotate-yaw-value')
+);
+syncSliderAndInput(
+    document.getElementById('rotate-pitch'), 
+    document.getElementById('rotate-pitch-value')
+);
+syncSliderAndInput(
+    document.getElementById('rotate-roll'), 
+    document.getElementById('rotate-roll-value')
+);
+
+// Synchronize transparency slider and input
+syncSliderAndInput(
+    document.getElementById('transparency-slider'), 
+    document.getElementById('transparency-value')
+);
+
+function updateSlidersFromModel() {
+    const selectedModel = modelSelect.value;
+    if (!selectedModel) return;
+
+    const targetScene = document.getElementById("modelScene");
+    const yawTransform = targetScene.querySelector(`[id="${selectedModel}-yaw"]`);
+    const pitchTransform = targetScene.querySelector(`[id="${selectedModel}-pitch"]`);
+    const rollTransform = targetScene.querySelector(`[id="${selectedModel}-roll"]`);
+
+    if (!yawTransform || !pitchTransform || !rollTransform) return;
+
+    // Extract current transformations
+    const translation = yawTransform.getAttribute('translation')?.split(',') || [0, 0, 0];
+    const yawRotation = yawTransform.getAttribute('rotation')?.split(',')[3] || 0;
+    const pitchRotation = pitchTransform.getAttribute('rotation')?.split(',')[3] || 0;
+    const rollRotation = rollTransform.getAttribute('rotation')?.split(',')[3] || 0;
+
+console.log(translation);
+    // Update sliders and input values
+    translateXSlider.value = translateXInput.value = translation[0];
+    translateYSlider.value = translateYInput.value = translation[1];
+    translateZSlider.value = translateZInput.value = translation[2];
+
+    rotateYawSlider.value = rotateYawInput.value = yawRotation;
+    rotatePitchSlider.value = rotatePitchInput.value = pitchRotation;
+    rotateRollSlider.value = rotateRollInput.value = rollRotation;
+
+    // Try to get transparency
+    const currentShape = rollTransform.children[0];
+    const shapeMaterial = currentShape.querySelector('Material');
+    if (shapeMaterial) {
+        const transparency = shapeMaterial.getAttribute('transparency') || 0;
+        transparencySlider.value = transparencyInput.value = transparency;
+    }
+}
+
+function updateModelVisibility() {
+    const selectedModel = modelSelect.value;
+    if (!selectedModel) return;
+
+    const targetScene = document.getElementById("modelScene");
+    const rollTransform = targetScene.querySelector(`[id="${selectedModel}-roll"]`);
+    if (!rollTransform) return;
+
+    const isVisible = document.getElementById('model-visibility').checked;
+    
+    // Toggle visibility by setting render attribute
+    rollTransform.setAttribute('render', isVisible.toString());
+
+    // Trigger X3DOM reload
+    x3dom.reload();
+}
+
 
 
     </script>
-
-    <!-- Inclusione libreria X3DOM per rendering X3D -->
 </body>
 </html>
