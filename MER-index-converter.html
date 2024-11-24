@@ -1,0 +1,237 @@
+<!--
+	Loads index file rdrindex.tab from https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab 
+	into an array for couning vst, pfb and ht
+	files in traverse2d viewer
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Loader and Parser</title>
+</head>
+<body>
+  <h1>MER products index converter</h1>
+  Please load index file rdrindex.tab from <a href="https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab">https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab</a><br>
+  File will be processed to extract data about available 3d files per each site/drive (.PFB, .VST, .HT).<br>
+  Use filseAvailability["sitexxxx"][driveNumber] to get all available files.<br>
+  Use (filesAvailability["sitexxxx"][driveNumber] || []).filter(file => file.filename.endsWith(".YYY"); to get all available files with extension "YYY".<br>  
+  <br>
+  <input type="file" id="fileInput" />
+  <button id="saveButton" style="margin-top: 20px;" disabled>Save</button><br>
+  <pre id="output"></pre>
+  <script>	
+	var filesData = {};
+allFiles = [];
+    document.getElementById("fileInput").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert("Seleziona un file!");
+        return;
+      }
+
+      const reader = new FileReader();
+
+     reader.onload = function (e) {
+        const content = e.target.result;
+        const rows = content.trim().split("\n");
+
+        rows.forEach((row) => {
+          // Rimuove eventuali virgolette e divide la riga
+          const columns = row.replace(/"/g, "").split("\t");
+
+          // Estrae il valore del sito (es. "site0000")
+          const site = columns[4].match(/site\d+/)?.[0];
+          if (!site) return;
+
+          // Estrae i campi richiesti
+          const path = columns[4].trim();
+          var filename = columns[5].trim();
+          const date = columns[8].trim();
+          const sclk1 = columns[14].trim();
+          const sclk2 = columns[15].trim();
+allFiles.push(filename);
+			const justName = filename.split(".")[0];
+			const ext = filename.slice(filename.lastIndexOf('.') + 1);
+		  if (ext.toUpperCase().substr(0,1) === "V") { // An error in original data cuts many filenames and their extensions, so .VST becomes .VS or even .V
+				filename = justName + ".vst";
+				const sol = "n/a";
+				const cameras = "n/a";
+
+				const siteChars = filename.slice(14, 16).toUpperCase(); // Posizioni 14 e 15
+				const driveChars = filename.slice(16, 18).toUpperCase(); // Posizioni 16 e 17
+				const siteNum = siteCodeToString2(siteChars);
+				const driveNum = siteCodeToString2(driveChars);
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+//console.log("VST:",filename,siteChars,driveChars, siteNum,driveNum);			  
+		  } else if (ext.toUpperCase().substr(0,1) === "P") { // An error in original data cuts many filenames and their extensions, so .PFB becomes .PF or even .P
+		  		// 2mesh_1362_n_132_ffl_71_v1.pfb
+				filename = justName + ".pfb";
+				const pieces = 	filename.split("_");
+				const sol = pieces[1]
+				const cameras = pieces[2];
+				const siteNum = pieces[3];
+				const driveNum = pieces[5];
+	            const siteChars = siteNumToSiteCouple(siteNum);
+	            const driveChars = siteNumToSiteCouple(driveNum);
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+//console.log("PFB:",filename,siteChars,driveChars, siteNum,driveNum);			  
+		  } else if (ext.toUpperCase().substr(0,1) === "H") {  // An error in original data cuts many filenames and their extensions, so .HT becomes .H
+		  		// 2mesh_1362_n_132_ffl_71_v1.ht
+				filename = justName + ".ht";
+				const pieces = 	filename.split("_");
+				const sol = pieces[1]
+				const cameras = pieces[2];
+				const siteNum = pieces[3];
+				const driveNum = pieces[5];
+	            const siteChars = siteNumToSiteCouple(siteNum);
+	            const driveChars = siteNumToSiteCouple(driveNum);
+	          // Crea o aggiorna l'array per il sito e il drive specifici
+	          if (!filesData[site]) filesData[site] = {};
+	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
+	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
+//console.log("HT:",filename,siteChars,driveChars, siteNum,driveNum);			  
+		  }
+        });
+		alert("Done");
+		const er = countErrors();
+		if (er>0 )  alert ("WARNING! " + er + " truncation errors detected in database!"); 
+			
+		saveButton.disabled = false;
+
+      };
+
+      reader.onerror = function () {
+        alert("Errore nella lettura del file!");
+      };
+
+      reader.readAsText(file);
+    });
+	
+	
+	
+      function saveDataToFile(filename) {
+          // Converti i dati in una stringa JSON
+          const jsonData = "const filesAvailability = " + JSON.stringify(filesData, null, 2);
+
+          // Crea un blob con i dati
+          const blob = new Blob([jsonData], { type: "application/json" });
+
+          // Crea un URL per il download
+          const url = window.URL.createObjectURL(blob);
+
+          // Crea un elemento <a> per il download
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+
+          // Attiva il download
+          a.click();
+
+          // Libera la memoria
+          window.URL.revokeObjectURL(url);
+      }
+	
+		
+		document.getElementById("saveButton").addEventListener("click", () => {
+			saveDataToFile("files.js");
+		});
+
+	  
+	
+		function siteCodeToString2(code) {
+
+		    if (code.length !== 2) {
+		        return "ERR: 3 chars codes not supported"
+		    }
+
+			code = code.toUpperCase();
+		    const firstChar = code[0];
+		    const secondChar = code[1];
+
+		    // Caso 1: numerico puro ("00" - "99")
+		    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+		        return parseInt(code, 10);
+		    }
+
+		    // Caso 2: alfanumerico ("A0" - "ZZ")
+		    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare il valore delle lettere
+		    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+		    let secondValue;
+
+		    if (isNaN(secondChar)) {
+		        // Se il secondo carattere è una lettera
+		        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+		    } else {
+		        // Se il secondo carattere è un numero
+		        secondValue = parseInt(secondChar, 10);
+		    }
+
+		    // Formula per calcolare l'intervallo corretto (da 100 in poi)
+		    return 100 + firstValue * 36 + secondValue;
+		}
+			
+			
+			
+		function siteNumToSiteCouple(value) {
+		    if (value < 0 || value >= 36 * 26 + 100) {
+		        return("debug error");//throw new Error("Il valore è fuori intervallo.");
+		    }
+
+		    // Caso 1: numerico puro ("00" - "99")
+		    if (value < 100) {
+		        return value.toString().padStart(2, '0');
+		    }
+
+		    // Caso 2: alfanumerico ("A0" - "ZZ")
+		    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
+		    const adjustedValue = value - 100;
+
+		    // Calcola il primo carattere (lettera)
+		    const firstValue = Math.floor(adjustedValue / 36);
+		    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
+
+		    // Calcola il secondo carattere (lettera o numero)
+		    const secondValue = adjustedValue % 36;
+		    let secondChar;
+
+		    if (secondValue < 10) {
+		        // Numerico
+		        secondChar = secondValue.toString();
+		    } else {
+		        // Alfabetico
+		        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
+		    }
+
+		    return firstChar + secondChar;
+		}		
+
+
+		function countErrors() {
+			errors = 0;
+			allFiles.forEach((filename) => {
+				const pieces = filename.split(".");
+				if (pieces.length > 1){
+					const ext = pieces[1].toUpperCase();
+					// At least there is an extensiom, but now let's check it
+					if ((ext === "H") || (ext === "PF") || (ext === "P")) {
+						errors++;
+					}
+				} else {
+					errors++;
+				}
+			});
+			return errors;
+		} 
+
+  </script>
+</body>
+</html>
+

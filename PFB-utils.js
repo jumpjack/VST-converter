@@ -1066,8 +1066,12 @@ function getCameraFolder(productName) {
        return "navcam/";
     } else if (secondChar === 'p') {
        return "pancam/";
+    } else  if (secondChar === 'r') {
+       return "hazcam/";
+    } else  if (secondChar === 'f') {
+       return "hazcam/";
     } else {
-        throw new Error("Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
+        console.log("ERRORE: Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
     }
 }
 

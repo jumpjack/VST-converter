@@ -1,0 +1,264 @@
+<!--
+	Turns rover motion files (SVF and RVF) into JSON arrays.
+	Saves into JSON file.
+	To do: plot data with plotly, see traverse2d.html
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MER RVF/SVF File Processor</title>
+</head>
+<body>
+<h1>MER missions RVF/SVF File Processor</h1>
+Processor for <a href="https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/data/">Rover Vector Files  and Site Vector Files</a><br>
+See <a href="https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/document/rmc_sis.htm">Rover Motion Counter (RMC) Master File SIS</a> 
+for details about format and content (PDF <a href="https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/document/rmc_sis.pdf">here</a>)<br><br>
+    <div class="container">
+        <div class="controls">
+            <h2>File Input</h2>
+            <div class="file-input">
+                <label>Master SVF:</label><br>
+                <input type="file" id="masterFile" accept=".svf">
+            </div>
+            <div class="file-input">
+                <label>Secondary RVF Files:</label><br>
+                <input type="file" id="secondaryFiles" accept=".rvf" multiple>
+            </div>
+    		<button id="saveButton" style="margin-top: 20px;" disabled>Save</button><br>
+        </div>
+
+    </div>
+
+    <script>
+        let masterData = null;
+        let secondaryData = [];
+        let siteOffsets = [];
+        let drives = {};
+
+        // Funzione per convertire quaternione in Euler angles (yaw, pitch, roll)
+        function quaternionToEuler(q) {
+            let yaw = Math.atan2(2*(q.s*q.v3 + q.v1*q.v2), 1 - 2*(q.v2*q.v2 + q.v3*q.v3));
+            let pitch = Math.asin(2*(q.s*q.v2 - q.v3*q.v1));
+            let roll = Math.atan2(2*(q.s*q.v1 + q.v2*q.v3), 1 - 2*(q.v1*q.v1 + q.v2*q.v2));
+            return { yaw, pitch, roll };
+        }
+
+        // Event listeners per i file
+        document.getElementById('masterFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            const text = await file.text();
+            masterData = new DOMParser().parseFromString(text, 'text/xml');
+            updateButton();
+            processMasterFile();
+        });
+
+		// Event listener per i file secondari
+		document.getElementById('secondaryFiles').addEventListener('change', async (e) => {
+		    secondaryData = [];
+		    
+		    // Ordina i file in base al nome
+		    const files = Array.from(e.target.files).sort((a, b) => a.name.localeCompare(b.name));
+
+		    for (let file of files) {
+		        const text = await file.text();
+console.log(file.name); // Per verifica
+		        secondaryData.push(new DOMParser().parseFromString(text, 'text/xml'));
+		    }
+
+		    updateButton();
+		    processSecondaryFiles();
+		});
+
+
+        function updateButton() {
+            button = document.getElementById('saveButton');
+			saveButton.disabled = !(masterData && secondaryData.length > 0 );
+        }
+
+        function processMasterFile() {
+            siteOffsets = [];
+            const solutions = masterData.getElementsByTagName('solution');
+            let cumulativeOffset = { x: 0, y: 0, z: 0 };
+
+            for (let solution of solutions) {
+//console.log("solution", solution);			
+                if (solution.getAttribute('name') === 'SITE_FRAME') {
+                    const index1 = parseInt(solution.getAttribute('index1'));
+//console.log("     site found", index1);			
+                   const offset = solution.getElementsByTagName('offset')[0];
+//console.log("         offset=", offset);			
+                    const relativeOffset = {
+                        x: parseFloat(offset.getAttribute('x')),
+                        y: parseFloat(offset.getAttribute('y')),
+                        z: parseFloat(offset.getAttribute('z'))
+                    };
+//console.log("         relativeOffset=", relativeOffset);			
+                    
+                    cumulativeOffset = {
+                        x: cumulativeOffset.x + relativeOffset.x,
+                        y: cumulativeOffset.y + relativeOffset.y,
+                        z: cumulativeOffset.z + relativeOffset.z
+                    };
+
+//console.log("         cumulativeOffset=", cumulativeOffset);			
+                    siteOffsets.push({
+                        index1,
+                        relativeOffset,
+                        cumulativeOffset: {...cumulativeOffset}
+                    });
+                }
+            }
+        }
+
+function processSecondaryFiles() {
+    drives = {};
+    let lastSite = null;
+    let lastDrive = null;
+    
+    // Per ogni documento XML secondario
+    for (let doc of secondaryData) {
+        const solutions = doc.getElementsByTagName('solution');
+        // Per ogni solution nel documento
+        for (let solution of solutions) {    
+            if ((solution.getAttribute('name') === 'ROVER_FRAME') && (solution.getAttribute('solution_id') === 'telemetry')) {
+                const site = parseInt(solution.getAttribute('index1'));
+                const drive = parseInt(solution.getAttribute('index2'));    
+                // Salta se site e drive sono uguali all'ultima soluzione processata
+                if (lastSite === site && lastDrive === drive) {
+                    continue;
+                }
+console.log("    site, drive:", site, drive);                
+                
+                // Aggiorna gli ultimi site e drive processati
+                lastSite = site;
+                lastDrive = drive;
+                
+                // Ottieni offset e orientamento dalla solution
+                const offset = solution.getElementsByTagName('offset')[0];
+                const orientation = solution.getElementsByTagName('orientation')[0];
+                
+                // Crea oggetto quaternione dai dati
+                const quaternion = {
+                    s: parseFloat(orientation.getAttribute('s')),
+                    v1: parseFloat(orientation.getAttribute('v1')),
+                    v2: parseFloat(orientation.getAttribute('v2')),
+                    v3: parseFloat(orientation.getAttribute('v3'))
+                };    
+                
+                // Cerca l'offset cumulativo corrispondente al site
+                let siteOffset = { x: 0, y: 0, z: 0 }; // valore di default
+                if (site > 0) {
+                    siteOffset = siteOffsets[site-1].cumulativeOffset;
+                }
+                
+                // Crea oggetto con l'offset del drive
+                const driveOffset = {
+                    x: parseFloat(offset.getAttribute('x')),
+                    y: parseFloat(offset.getAttribute('y')),
+                    z: parseFloat(offset.getAttribute('z'))
+                };
+                
+                // Calcola l'offset totale sommando siteOffset e driveOffset
+                const totalOffset = {
+                    x: siteOffset.x + driveOffset.x,
+                    y: siteOffset.y + driveOffset.y,
+                    z: siteOffset.z + driveOffset.z
+                };
+                
+                // Inizializza l'oggetto per il site se non esiste
+                if (!drives[site]) {
+                    drives[site] = {};
+                }
+                
+                // Memorizza tutti i dati per questa combinazione site/drive
+                drives[site][drive] = {
+                    offset: driveOffset,
+                    quaternion: quaternion,
+                    euler: quaternionToEuler(quaternion),
+                    totalOffset: totalOffset
+                };
+            }
+        }
+    }
+}
+
+
+
+
+	/**
+	 * Calcola la differenza tra i campi euler e totalOffset di due elementi dell'array drives
+	 * @param {Object} drives - Array bidimensionale con indici site e drive
+	 * @param {string|number} site1 - Primo indice site
+	 * @param {string|number} drive1 - Primo indice drive
+	 * @param {string|number} site2 - Secondo indice site
+	 * @param {string|number} drive2 - Secondo indice drive
+	 * @returns {Object} Oggetto contenente le differenze calcolate
+	 */
+	function calculateDrivesDifferences(site1, drive1, site2, drive2) {
+	    // Costante per convertire da radianti a gradi
+	    const RAD_TO_DEG = 180 / Math.PI;
+	    
+	    // Ottieni i due elementi dall'array
+	    const element1 = drives[site1][drive1];
+	    const element2 = drives[site2][drive2];
+	    
+	    // Calcola le differenze per gli angoli di Euler e converti in gradi
+	    const eulerDiffRad = {
+	        yaw: (element1.euler.yaw - element2.euler.yaw),
+	        pitch: (element1.euler.pitch - element2.euler.pitch),
+	        roll: (element1.euler.roll - element2.euler.roll)
+	    };
+	    
+	    const eulerDiffDeg = {
+	        yaw: (element1.euler.yaw - element2.euler.yaw) * RAD_TO_DEG,
+	        pitch: (element1.euler.pitch - element2.euler.pitch) * RAD_TO_DEG,
+	        roll: (element1.euler.roll - element2.euler.roll) * RAD_TO_DEG
+	    };
+	    
+	    // Calcola le differenze per totalOffset
+	    const totalOffsetDiff = {
+	        x: element1.totalOffset.x - element2.totalOffset.x,
+	        y: element1.totalOffset.y - element2.totalOffset.y,
+	        z: element1.totalOffset.z - element2.totalOffset.z
+	    };
+	    
+	    return {
+	        eulerDiffRad,
+			eulerDiffDeg,
+	        totalOffsetDiff
+	    };
+	}
+
+
+        // Funzione per salvare i dati su un file JSON
+        function saveDataToFile(data, filename) {
+            // Converti i dati in una stringa JSON
+            const jsonData = "const drives = " + JSON.stringify(data, null, 2);
+
+            // Crea un blob con i dati
+            const blob = new Blob([jsonData], { type: "application/json" });
+
+            // Crea un URL per il download
+            const url = window.URL.createObjectURL(blob);
+
+            // Crea un elemento <a> per il download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+
+            // Attiva il download
+            a.click();
+
+            // Libera la memoria
+            window.URL.revokeObjectURL(url);
+        }
+		
+        document.getElementById("saveButton").addEventListener("click", () => {
+            saveDataToFile(drives, "drives.js");
+        });
+
+
+		
+    </script>
+</body>
+</html>

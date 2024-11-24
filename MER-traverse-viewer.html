@@ -1,0 +1,218 @@
+<!--
+	Plots data from drives.js and files.js, drawing all sites and drives;
+	drives markers size is proportional to number of available VST/PFB/HT (3d) files.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MER traverse viewer and 3d files analyzer</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+   <script src="drives.js"></script>
+   <script src="files.js"></script>
+</head>
+<body>
+<h1>MER traverse viewer and 3d files analyzer</h1>
+    <div id="plot" style="width: 100%; height: 600px;"></div>
+    <button id="saveButton" style="margin-top: 20px;">Salva dati su file</button>
+    <script>
+
+
+MINSIZE_WITHOUT = 8;
+MINSIZE = 15;
+MAXSIZE = 40;
+function placeMarkers() {
+
+    if (!drives || Object.keys(drives).length === 0) {
+        console.error("Nessun dato drives disponibile");
+        return;
+    }
+
+const xSecondary = [];
+const ySecondary = [];
+const textSecondary = []; // Tooltip blu
+const sizeSecondary = []; // Dimensioni blu
+const colorSecondary = [];
+
+const xPrimary = [];
+const yPrimary = [];
+const textPrimary = []; // Tooltip rosso
+const sizePrimary = []; // Dimensioni rosse
+
+
+// Itera sui dati
+Object.keys(drives).forEach(site => {
+    Object.keys(drives[site]).forEach(drive => {
+        const driveData = drives[site][drive];
+
+		const siteCode = siteNumToSiteCouple(site);
+		const driveCode = siteNumToSiteCouple(drive);
+		const couple = siteCode+driveCode;
+        // Verifica che i dati siano validi
+        if (!driveData.totalOffset || typeof driveData.totalOffset.x === "undefined" || typeof driveData.totalOffset.y === "undefined") {
+            console.warn(`Dati mancanti per ${site}_${drive}`);
+            return;
+        }
+
+        const siteNorm = `site${site.padStart(4, "0")}`;
+		
+        
+        // Conta i file .vst per il site corrente
+        const vstFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".vst")).length;
+        const pfbFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".pfb")).length;
+        const htFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".ht")).length;
+
+        // Estrai le coordinate
+        const x = driveData.totalOffset.y;
+        const y = driveData.totalOffset.x;
+
+        // Testo per il tooltip
+        const hoverText = `${couple}<br>Site: ${site}<br>Drive: ${drive}<br>VST files: ${vstFiles}<br>PFB files: ${pfbFiles}<br>HT files: ${htFiles}`;
+
+        // Organizza i dati 
+        if (drive === "0") {
+            xPrimary.push(x);
+            yPrimary.push(y);
+            textPrimary.push(hoverText);
+            sizePrimary.push( MAXSIZE + 5); 
+        } else {
+            xSecondary.push(x);
+            ySecondary.push(y);
+            textSecondary.push(hoverText);
+			
+			if ((vstFiles > 0) || (pfbFiles > 0) || (htFiles > 0)) {
+				sizeFinal = MINSIZE;
+			} else {
+				sizeFinal = MINSIZE_WITHOUT;
+			}
+			
+			sizeFinal += vstFiles + pfbFiles + htFiles;
+			if (sizeFinal > MAXSIZE) sizeFinal = MAXSIZE;
+            sizeSecondary.push(sizeFinal);
+			
+			if (pfbFiles>0) {
+				colorSecondary.push("yellow");
+			} else {
+				colorSecondary.push("blue");
+			}
+        }
+    });
+});
+
+
+// Crea i dati per Plotly
+const data = [
+    {
+        x: xPrimary,
+        y: yPrimary,
+        mode: "markers",
+        type: "scatter",
+        marker: { color: "red", size: sizePrimary }, // Dimensioni dinamiche
+        name: "Sites",
+        text: textPrimary, // Tooltip associato
+        hoverinfo: "text" // Mostra solo il testo specificato
+    },
+    {
+        x: xSecondary,
+        y: ySecondary,
+        mode: "lines+markers",
+        type: "scatter",
+        marker: { color: colorSecondary, size: sizeSecondary }, // Dimensioni dinamiche
+        line: { color: "blue", width: 1 },
+        name: "Drives",
+        text: textSecondary, // Tooltip associato
+        hoverinfo: "text" // Mostra solo il testo specificato
+    }
+];
+
+
+    // Configurazione del layout
+    const layout = {
+        title: "Drive Markers",
+        xaxis: { title: "X Coordinate" },
+        yaxis: { title: "Y Coordinate" },
+        dragmode: "zoom",
+        showlegend: true
+    };
+
+    // Disegna il grafico
+    Plotly.newPlot("plot", data, layout);
+    console.log(`Creati ${xPrimary.length + xSecondary.length} marker.`);
+}
+ 
+ 
+ 
+ 
+
+        // Funzione per salvare i dati su un file JSON
+        function saveDataToFile(data, filename) {
+            // Converti i dati in una stringa JSON
+            const jsonData = JSON.stringify(data, null, 2);
+
+            // Crea un blob con i dati
+            const blob = new Blob([jsonData], { type: "application/json" });
+
+            // Crea un URL per il download
+            const url = window.URL.createObjectURL(blob);
+
+            // Crea un elemento <a> per il download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+
+            // Attiva il download
+            a.click();
+
+            // Libera la memoria
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Aggiungi evento al pulsante
+        document.getElementById("saveButton").addEventListener("click", () => {
+            saveDataToFile(drives, "drives.json");
+        });
+
+        // Chiama la funzione per creare il grafico
+        placeMarkers();
+
+
+function siteNumToSiteCouple(value) {
+    if (value < 0 || value >= 36 * 26 + 100) {
+        return("debug error");//throw new Error("Il valore è fuori intervallo.");
+    }
+
+    // Caso 1: numerico puro ("00" - "99")
+    if (value < 100) {
+        return value.toString().padStart(2, '0');
+    }
+
+    // Caso 2: alfanumerico ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
+    const adjustedValue = value - 100;
+
+    // Calcola il primo carattere (lettera)
+    const firstValue = Math.floor(adjustedValue / 36);
+    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
+
+    // Calcola il secondo carattere (lettera o numero)
+    const secondValue = adjustedValue % 36;
+    let secondChar;
+
+    if (secondValue < 10) {
+        // Numerico
+        secondChar = secondValue.toString();
+    } else {
+        // Alfabetico
+        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
+    }
+
+    return firstChar + secondChar;
+}
+
+
+
+    </script>
+</body>
+</html>
+
