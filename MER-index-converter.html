@@ -101,8 +101,8 @@ allFiles.push(filename);
 		  }
         });
 		alert("Done");
-		const er = countErrors();
-		if (er>0 )  alert ("WARNING! " + er + " truncation errors detected in database!"); 
+		const er = countErrors().errorsTot;
+		if (er>0 )  alert ("WARNING! " + er + " truncation errors detected in database!\nMissing extensions:" + countErrors().errorsMissing + "\nTruncated extensions:" + countErrors().errorsTrunc); 
 			
 		saveButton.disabled = false;
 
@@ -215,20 +215,24 @@ allFiles.push(filename);
 
 
 		function countErrors() {
-			errors = 0;
+			errorsTrunc = 0;
+			errorsMissing = 0;
+			errorsTot = 0;
 			allFiles.forEach((filename) => {
 				const pieces = filename.split(".");
 				if (pieces.length > 1){
 					const ext = pieces[1].toUpperCase();
 					// At least there is an extensiom, but now let's check it
 					if ((ext === "H") || (ext === "PF") || (ext === "P")) {
-						errors++;
+						errorsTrunc++;
+						errorsTot++;
 					}
 				} else {
-					errors++;
+					errorsMissing++;
+					errorsTot++;
 				}
 			});
-			return errors;
+			return {errorsTrunc, errorsMissing, errorsTot};
 		} 
 
   </script>

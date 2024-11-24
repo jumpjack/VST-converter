@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RVF File Processor & 3D Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/6.37.1/babylon.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs-loaders/6.37.1/babylonjs.loaders.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs-gui/6.37.1/babylonjs.gui.min.js"></script>
+   <script src="drives.js"></script>
+
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .container { display: flex; gap: 20px; }
+        .controls { width: 300px; }
+        .viewer { flex-grow: 1; }
+        #renderCanvas { width: 100%; height: 600px; border: 1px solid #ccc; }
+        .file-input { margin: 10px 0; }
+        button { padding: 10px; margin: 5px 0; width: 100%; }
+        .model-info { 
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+ <!--      <div class="controls">
+             <h2>File Input</h2>
+            <div class="file-input">
+                <label>3D Model:</label><br>
+                <input type="file" id="modelFile" accept=".gltf,.glb,.obj">
+                <div class="model-info">
+                    Formati supportati:
+                    <ul>
+                        <li>glTF/GLB (.gltf, .glb) - Consigliato</li>
+                        <li>OBJ (.obj)</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="processButton">ELABORA</button>
+        </div>
+		-->
+        <div class="viewer">
+            <canvas id="renderCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let modelFile = null;
+
+        // Funzione per convertire quaternione in Euler angles (yaw, pitch, roll)
+        function quaternionToEuler(q) {
+            let yaw = Math.atan2(2*(q.s*q.v3 + q.v1*q.v2), 1 - 2*(q.v2*q.v2 + q.v3*q.v3));
+            let pitch = Math.asin(2*(q.s*q.v2 - q.v3*q.v1));
+            let roll = Math.atan2(2*(q.s*q.v1 + q.v2*q.v3), 1 - 2*(q.v1*q.v1 + q.v2*q.v2));
+            return { yaw, pitch, roll };
+        }
+
+
+/*	        document.getElementById('modelFile').addEventListener('change', (e) => {
+	            modelFile = e.target.files[0];
+	            updateProcessButton();
+	        });
+*/
+
+        function updateProcessButton() {
+            const button = document.getElementById('processButton');
+            button.disabled = !(modelFile);
+        }
+
+  
+
+		 // Inizializzazione BabylonJS
+		const canvas = document.getElementById('renderCanvas');
+		const engine = new BABYLON.Engine(canvas, true);
+
+		function createScene() {
+		    const scene = new BABYLON.Scene(engine);
+		    
+		    // Configurazione camera e luci
+		    camera = new BABYLON.ArcRotateCamera(
+		        "camera", 
+		        0,                  // alfa (rotazione orizzontale)
+		        Math.PI / 3,       // beta (rotazione verticale)
+		        30,                // raggio (distanza) - aumentato per vedere meglio la scena
+		        new BABYLON.Vector3(0, 0, 0), 
+		        scene
+		    );
+		    camera.attachControl(canvas, true);
+		    camera.wheelPrecision = 1;
+		    camera.panningSensibility  = 5;
+		    camera.lowerRadiusLimit = 2;
+		    camera.upperRadiusLimit = 10000;
+		    
+		    // Luci con intensità aumentata
+		    const hemLight = new BABYLON.HemisphericLight(
+		        "hemLight", 
+		        new BABYLON.Vector3(0, 1, 0), 
+		        scene
+		    );
+		    hemLight.intensity = 1.0;  // aumentata da 0.7
+		    
+		    const dirLight = new BABYLON.DirectionalLight(
+		        "dirLight", 
+		        new BABYLON.Vector3(-1, -2, -1), 
+		        scene
+		    );
+		    dirLight.intensity = 0.7;  // aumentata da 0.5
+		    
+		    // Griglia di riferimento più grande
+		    const gridSize = 10000;  
+		    const grid = BABYLON.MeshBuilder.CreateGround(
+		        "grid", 
+		        {
+		            width: gridSize,
+		            height: gridSize,
+		            subdivisions: 50  
+		        }, 
+		        scene
+		    );
+			grid.isPickable = true;
+
+		    // Aggiungiamo un materiale alla griglia per renderla visibile
+		    const gridMaterial = new BABYLON.StandardMaterial("gridMat", scene);
+		    gridMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+		    gridMaterial.wireframe = true;
+		    grid.material = gridMaterial;
+
+		    // Aggiungi assi di riferimento
+		    const showAxis = function(size) {
+		        const makeTextPlane = function(text, color, size) {
+		            const dynamicTexture = new BABYLON.DynamicTexture("DynamicTexture", 50, scene, true);
+		            dynamicTexture.hasAlpha = true;
+		            dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color , "transparent", true);
+		            const plane = BABYLON.MeshBuilder.CreatePlane("TextPlane", { size: size }, scene);
+		            plane.material = new BABYLON.StandardMaterial("TextPlaneMaterial", scene);
+		            plane.material.backFaceCulling = false;
+		            plane.material.specularColor = new BABYLON.Color3(0, 0, 0);
+		            plane.material.diffuseTexture = dynamicTexture;
+		            return plane;
+		        };
+
+		        const axisX = BABYLON.MeshBuilder.CreateLines("axisX", {
+		            points: [
+		                new BABYLON.Vector3(0, 0, 0), 
+		                new BABYLON.Vector3(size, 0, 0)
+		            ]
+		        }, scene);
+		        axisX.color = new BABYLON.Color3(1, 0, 0);
+		        const xChar = makeTextPlane("X", "red", size / 10);
+		        xChar.position = new BABYLON.Vector3(size * 0.9, 0.1, 0);
+		        
+		        const axisY = BABYLON.MeshBuilder.CreateLines("axisY", {
+		            points: [
+		                new BABYLON.Vector3(0, 0, 0), 
+		                new BABYLON.Vector3(0, size, 0)
+		            ]
+		        }, scene);
+		        axisY.color = new BABYLON.Color3(0, 1, 0);
+		        const yChar = makeTextPlane("Y", "green", size / 10);
+		        yChar.position = new BABYLON.Vector3(0, size * 0.9, 0);
+		        
+		        const axisZ = BABYLON.MeshBuilder.CreateLines("axisZ", {
+		            points: [
+		                new BABYLON.Vector3(0, 0, 0), 
+		                new BABYLON.Vector3(0, 0, size)
+		            ]
+		        }, scene);
+		        axisZ.color = new BABYLON.Color3(0, 0, 1);
+		        const zChar = makeTextPlane("Z", "blue", size / 10);
+		        zChar.position = new BABYLON.Vector3(0, 0.1, size * 0.9);
+		    };
+		    showAxis(200);
+
+		    return scene;
+		}
+
+
+
+
+		// Crea la scena
+		const scene = createScene();
+		//DEBUG
+		//document.getElementById('processButton').addEventListener('click', async () => {
+		    debugWithBoxes(scene);
+		//});
+
+canvas.addEventListener("dblclick", (event) => {
+    // Calcola il vettore di puntamento
+    const pickResult = scene.pick(event.clientX, event.clientY);
+console.log(pickResult);	
+    if (pickResult.hit) {
+        // Centra la telecamera sul punto cliccato
+        camera.setTarget(pickResult.pickedPoint);
+    }
+});
+
+// Parametri configurabili
+const minDistance = 5;      // Distanza minima
+const maxDistance = 500;    // Distanza massima
+const minSensitivity = 1;    // Sensibilità minima
+const maxSensitivity = 1000;   // Sensibilità massima
+
+
+// Funzione per regolare dinamicamente la sensibilità dello zoom
+function adjustZoomSensitivity() {
+    const distance = camera.radius; // Distanza attuale della telecamera dal target
+
+    // Calcola la sensibilità in base alla distanza
+    let zoomSensitivity;
+
+   if (distance <= minDistance) {
+        zoomSensitivity = minSensitivity; // Sensibilità minima quando molto vicino
+    } else if (distance >= maxDistance) {
+        zoomSensitivity = maxSensitivity; // Sensibilità massima quando molto lontano
+    } else {
+        // Interpolazione lineare tra sensibilità minima e massima
+        zoomSensitivity = distance/100
+    }
+
+    // Applica la sensibilità
+    camera.wheelPrecision = zoomSensitivity;
+
+    // Debug: stampa distanza e sensibilità
+    console.log(`Distanza: ${distance.toFixed(2)} | Sensibilità: ${zoomSensitivity.toFixed(2)}`);
+}
+
+// Monitorare la distanza e regolare la sensibilità ogni volta che la telecamera cambia posizione
+scene.onBeforeRenderObservable.add(() => {
+    adjustZoomSensitivity();
+});
+
+
+		// Renderizza continuamente
+		engine.runRenderLoop(() => {
+		    scene.render();
+		});
+
+
+
+        window.addEventListener('resize', () => {
+            engine.resize();
+        });
+				
+				
+function insertRovers() {
+
+            const modelUrl = URL.createObjectURL(modelFile);
+            const fileExtension = modelFile.name.split('.').pop().toLowerCase();
+
+            // Funzione per caricare e clonare i modelli
+            const loadAndPlaceModel = (meshes, particleSystems, skeletons) => {
+                const rootMesh = meshes[0];
+                
+                // Crea una copia del modello per ogni posizione
+                Object.keys(drives).forEach(site => {
+                    Object.keys(drives[site]).forEach(drive => {
+                        const driveData = drives[site][drive];
+                        const clone = rootMesh.clone("model_" + site + "_" + drive);
+                        
+                        // Posiziona il modello
+                        clone.position = new BABYLON.Vector3(
+                            driveData.totalOffset.x,
+                            driveData.totalOffset.y,
+                            driveData.totalOffset.z
+                        );
+                        
+                        // Applica la rotazione dal quaternione
+                        clone.rotationQuaternion = new BABYLON.Quaternion(
+                            driveData.quaternion.v1,
+                            driveData.quaternion.v2,
+                            driveData.quaternion.v3,
+                            driveData.quaternion.s
+                        );
+                    });
+                });
+
+                // Rimuovi il modello originale
+                rootMesh.dispose();
+            };
+
+            // Carica il modello in base al formato
+            if (fileExtension === 'obj') {
+                BABYLON.SceneLoader.ImportMesh("", "", modelUrl, scene, loadAndPlaceModel);
+            } else if (fileExtension === 'gltf' || fileExtension === 'glb') {
+                BABYLON.SceneLoader.ImportMesh("", "", modelUrl, scene, loadAndPlaceModel, null, null, ".gltf");
+            }
+
+            URL.revokeObjectURL(modelUrl);
+        };
+		
+						
+		// Funzione di debug che usa cubi al posto del modello 3D
+		function debugWithBoxes(scene) {
+		    console.log("Inizio debugWithBoxes");
+		    
+		    // Verifica che scene sia valido
+		    if (!scene) {
+		        console.error("Scene non valida");
+		        return;
+		    }
+
+		    // Verifica che drives sia definito e non vuoto
+		    if (!drives || Object.keys(drives).length === 0) {
+		        console.error("Nessun dato drives disponibile");
+		        return;
+		    }
+
+		    // Rimuovi modelli esistenti
+		    scene.meshes.slice().forEach(mesh => {
+		        if (mesh.name !== "grid") {
+		            mesh.dispose();
+		        }
+		    });
+
+		    // Crea un materiale per i cubi
+		    const boxMaterial = new BABYLON.StandardMaterial("boxMat", scene);
+		    boxMaterial.wireframe = true;
+		    boxMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0);
+		    boxMaterial.alpha = 1; // Assicurati che sia completamente opaco
+		    boxMaterial.backFaceCulling = false; // Mostra entrambi i lati
+
+		    // Contatore per debug
+		    let boxCount = 0;
+
+		    // Per ogni posizione nei drives, crea un cubo
+		    Object.keys(drives).forEach(site => {
+		        Object.keys(drives[site]).forEach(drive => {
+		            const driveData = drives[site][drive];
+		            
+		            // Verifica che i dati siano validi
+		            if (!driveData.totalOffset || !driveData.quaternion) {
+		                console.warn(`Dati mancanti per ${site}_${drive}`);
+		                return;
+		            }
+
+		            // Crea un cubo
+		            const box = BABYLON.MeshBuilder.CreateBox(
+		                `box_${site}_${drive}`, 
+		                { 
+		                    width: 0.8,  
+		                    height: 0.2, 
+		                    depth: 0.4     
+		                }, 
+		                scene
+		            );
+		            
+		            // Imposta il materiale
+		            box.material = boxMaterial;
+		            
+		            // Posiziona il cubo
+		            box.position = new BABYLON.Vector3(
+		                -driveData.totalOffset.x,
+		                -driveData.totalOffset.z,
+		                driveData.totalOffset.y
+		            );
+		            
+		            
+/*		            // Applica la rotazione dal quaternione
+box.rotationQuaternion = new BABYLON.Quaternion(
+    driveData.quaternion.v1, // Z al posto di X
+    driveData.quaternion.v2, // Y rimane invariato
+    driveData.quaternion.v3, // X al posto di Z
+    driveData.quaternion.s   // W
+);*/
+
+box.rotation = new BABYLON.Vector3(
+    driveData.euler.pitch,  
+    driveData.euler.yaw,   
+    driveData.euler.roll   
+);
+		            boxCount++;
+		        });
+		    });
+
+		    console.log(`Creati ${boxCount} cubi`);
+
+		    // Assicurati che la camera sia posizionata correttamente
+		    if (scene.activeCamera) {
+		        // Imposta la camera a una posizione da cui si vedono i cubi
+		        scene.activeCamera.position = new BABYLON.Vector3(0, 5, -10);
+		        scene.activeCamera.setTarget(BABYLON.Vector3.Zero());
+		    } else {
+		        console.error("Camera non trovata nella scena");
+		    }
+		}
+
+
+		/**
+		 * Calcola la differenza tra i campi euler e totalOffset di due elementi dell'array drives
+		 * @param {Object} drives - Array bidimensionale con indici site e drive
+		 * @param {string|number} site1 - Primo indice site
+		 * @param {string|number} drive1 - Primo indice drive
+		 * @param {string|number} site2 - Secondo indice site
+		 * @param {string|number} drive2 - Secondo indice drive
+		 * @returns {Object} Oggetto contenente le differenze calcolate
+		 */
+		function calculateDrivesDifferences(site1, drive1, site2, drive2) {
+		    // Costante per convertire da radianti a gradi
+		    const RAD_TO_DEG = 180 / Math.PI;
+		    
+		    // Ottieni i due elementi dall'array
+		    const element1 = drives[site1][drive1];
+		    const element2 = drives[site2][drive2];
+		    
+		    // Calcola le differenze per gli angoli di Euler e converti in gradi
+		    const eulerDiffRad = {
+		        yaw: (element1.euler.yaw - element2.euler.yaw),
+		        pitch: (element1.euler.pitch - element2.euler.pitch),
+		        roll: (element1.euler.roll - element2.euler.roll)
+		    };
+		    
+		    const eulerDiffDeg = {
+		        yaw: (element1.euler.yaw - element2.euler.yaw) * RAD_TO_DEG,
+		        pitch: (element1.euler.pitch - element2.euler.pitch) * RAD_TO_DEG,
+		        roll: (element1.euler.roll - element2.euler.roll) * RAD_TO_DEG
+		    };
+		    
+		    // Calcola le differenze per totalOffset
+		    const totalOffsetDiff = {
+		        x: element1.totalOffset.x - element2.totalOffset.x,
+		        y: element1.totalOffset.y - element2.totalOffset.y,
+		        z: element1.totalOffset.z - element2.totalOffset.z
+		    };
+		    
+		    return {
+		        eulerDiffRad,
+				eulerDiffDeg,
+		        totalOffsetDiff
+		    };
+		}
+
+
+		
+    </script>
+</body>
+</html>
