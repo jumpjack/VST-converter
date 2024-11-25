@@ -213,6 +213,7 @@ const graphicalProducts = [
 
 //////
 
+
 async parse() {
     console.log("HEADER - Started parsing...");
 
@@ -234,6 +235,7 @@ async parse() {
         const header = new VSTHeader(this.dataView, this.offset);
         this.offset += 40; // Size of VSTHeader
 
+
         // Validate VST format
         if (header.label !== 0x00545356) throw new Error('Invalid VST file format');
         if (header.implementation !== 0x0052454D) throw new Error('Implementation MER expected');
@@ -244,92 +246,194 @@ await advanceProgress("HEADER2 - Header parsed");
         // Parse bounding box
         const bbox = new BoundingBox(this.dataView, this.offset, needsReverse);
         this.offset += 24; // Size of BoundingBox
-
         // Parse texture references
         for (let i = 0; i < header.textureNum; i++) {
             const textureBytes = new Uint8Array(this.dataView.buffer, this.offset, 2048);
             const textureRef = String.fromCharCode.apply(null, textureBytes);
+console.log("PARSE REF=",textureRef);
 
-            let textureName = textureRef.substring(10, 37) + '.img.jpg';
+
+			let textureName = textureRef.substring(10, 37) + '.img.jpg';
+console.log("PARSE textureName=",textureName);
 			let textureUrlLeft = textureName.substring(0, 11);
 			let textureUrlRight = textureName.substring(14);
-            let siteNumberCoded = textureName.substr(14, 2);
-            let siteNumberString = "site0" + siteCodeToString(siteNumberCoded);
-            let solNumber = await getSolNumberFromLabel(txtProductId.value + ".lbl", siteNumberString);
+			let siteNumberCoded = textureName.substr(14, 2);
+			let siteNumberString = "site0" + siteCodeToString(siteNumberCoded);
+			let solNumber = await getSolNumberFromLabel(txtProductId.value + ".lbl", siteNumberString);
 console.log("SOLNUMBER=",solNumber);
-            angles = await getAltAzFromImgProduct("dummy", siteNumberString, solNumber);
+			angles = await getAltAzFromImgProduct(textureRef.substring(10, 37), siteNumberString, solNumber);
 
 			let textureBASE64 = "error";
 			for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
-				let textureUrlProduct = graphicalProducts[productIndex];
+				let textureVariant = graphicalProducts[productIndex];
 				textureName = textureName.substring(0, 26	) + "1" + textureName.substring(27); // Force version 1 for IMG product
+				textureName = textureName.substring(0, 23	) + "l" + textureName.substring(24); // Force left camera for texture
 
-			    const secondChar = textureName.charAt(1).toLowerCase();
-			    // Imposta VST_CAMERA_FOLDER in base al secondo carattere
-			    if (secondChar === 'n') {
-			        BASE_IMG_URL = BASE_IMG_URL_NAVCAM
-			    } else if (secondChar === 'p') {
-			        BASE_IMG_URL =  BASE_IMG_URL_PANCAM
-			    } else {
-			        throw new Error("Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
-			    }
-
+				const secondChar = textureName.charAt(1).toLowerCase();
+				// Imposta VST_CAMERA_FOLDER in base al secondo carattere
+				if (secondChar === 'n') {
+				  BASE_IMG_URL = BASE_IMG_URL_NAVCAM
+				} else if (secondChar === 'p') {
+				  BASE_IMG_URL =  BASE_IMG_URL_PANCAM
+				} else {
+				  throw new Error("Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
+				}
 
 				let base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
 				let base_texture_folderNew = base_texture_folder.replace("#SOLNUMBER#",solNumber);
-		        let textureUrl = base_texture_folderNew + textureUrlLeft + textureUrlProduct + textureUrlRight;
+				let textureUrl = base_texture_folderNew + textureUrlLeft + textureVariant + textureUrlRight;
 				textureUrl = textureUrl.toLowerCase();
 				textureBASE64 = await urlToBase64(textureUrl);
-				if (textureBASE64 !== "error") {
-					//
-				}
+
 			};
 
+			if (textureBASE64 !== "error") {
+				//return textureBASE64
+			//
+			} else {
+				//return "err"
+			}
+
             this.textureFiles.push(textureBASE64 || null);
+
 
             this.offset += 2048;
         }
 await  advanceProgress("HEADER2 - Textures loaded");
 
+
 		const coords = {
-		    // Memorizza come stringa
-		    coordString: (() => {
-		        const bytes = new Uint8Array(this.dataView.buffer, this.offset, 4096);
-		        return String.fromCharCode.apply(null, bytes);
-		    })(),
+		    //  in the VST file the coordinate system binary data is 12 64 bit floats (total 96 bytes used)
+			//  which are simply the C, A, H, V vectors of the camera model in the order
+			//  Cx, Cy, Cz, Ax, Ay, Az, Hx, Hy, Hz, Vx, Vy, Vz.
 
-		    // Memorizza come array di byte
-		    coordArray: new Uint8Array(this.dataView.buffer, this.offset, 4096),
+			/*
+			- C is a 3D vector that gives the location of the Center of projection of the left navcam camera as
+			  it was positioned by the pan/tilt mast relative to rover frame when that image was acquired.
+			- A is a 3D vector that gives the Axis of that camera which is the direction in which it was pointed.
+			- The other two are the Horizontal and Vertical 3D vectors in the plane of the image sensor.
 
-		    // Memorizza come array di float32
-		    coordFloat: (() => {
-		        const floatArray = [];
-		        const float32View = new Float32Array(1);
-		        const uint8View = new Uint8Array(float32View.buffer);
+			There is some nuance because the CAHV camera model doesn’t actually require A, H, and V to be orthonormal.
+			However, you can construct an orhonormal basis from them, see this code to do that:
 
-		        for (let i = 0; i < 4096; i += 4) {
-		            // Copia 4 byte alla volta nel buffer temporaneo
-		            for (let j = 0; j < 4; j++) {
+			https://github.com/NASA-AMMOS/VICAR/blob/8264ad382401a93224cbecb810796a0c0262d36b/vos/p2/sub/cahvor/cmod_cahv.c#L795
+			*/
+
+
+			/*
+				CAHV Camera Model
+				The CAHV camera model is equivalent to the standard
+				linear photogrammetric model for a pinhole camera. It
+				is useful for very small field of view cameras and as a
+				building block for more complex camera models. The
+				CAHV model consists of four 3-vectors: C, A, H, and
+				V. Vector C gives the location of the pinhole. Vector
+				A gives the camera axis, defined as the normal to the
+				image plane. Vector H encodes the horizontal axis of
+				the image plane (H’), the coordinate (Hc) of the image
+				column at the optical centre of the image plane, and the
+				horizontal focal length (Hs) of the camera, in pixels.
+				Vector V encodes corresponding information (V’, Vc,
+				Vs) in the vertical direction. The angle (theta) between
+				horizontal and vertical vectors H’ and V’ is about 90°.
+				Non-orthogonal H’ and V’ generally represent an
+				attempt to compensate for distortion that CAHV
+				vectors cannot directly model. Image dimensions are
+				supplied along with the CAHV model.
+
+				"CAMERA RESPONSE SIMULATION FOR PLANETARY EXPLORATION"
+				https://robotics.jpl.nasa.gov/media/documents/rmadison3.pdf
+			*/
+
+		    CAHV: (() => {
+		        const float64Array = [];
+		        const float64View = new Float64Array(1);
+		        const uint8View = new Uint8Array(float64View.buffer);
+
+		        for (let i = 0; i < 96; i += 8) { // 8 byte per ogni float64
+		            // Copia 8 byte alla volta nel buffer temporaneo
+		            for (let j = 0; j < 8; j++) {
 		                uint8View[j] = this.dataView.getUint8(this.offset + i + j);
 		            }
-		            // Aggiungi il float32 risultante all'array
-		            floatArray.push(float32View[0]);
+		            // Aggiungi il float64 risultante all'array
+		            float64Array.push(float64View[0]);
 		        }
-		        return floatArray;
-		    })(),
 
-		    // Memorizza come array di interi a 32 bit
-		    coordInt32: (() => {
-		        const int32Array = [];
+				const Cx = float64Array[0];
+				const Cy = float64Array[1];
+				const Cz = float64Array[2];
+				const Ax = float64Array[3];
+				const Ay = float64Array[4];
+				const Az = float64Array[5];
+				const Hx = float64Array[6];
+				const Hy = float64Array[7];
+				const Hz = float64Array[8];
+				const Vx = float64Array[9];
+				const Vy = float64Array[10];
+				const Vz = float64Array[11];
 
-		        for (let i = 0; i < 4096; i += 4) {
-		            // Leggi un intero a 32 bit
-		            const int32 = this.dataView.getInt32(this.offset + i, false); // false per big endian
-		            int32Array.push(int32);
-		        }
-		        return int32Array;
+
+	const  up = [0, 1, 0];
+
+    // Calcola il vettore direzione
+    const Dx = Ax - Cx;
+    const Dy = Ay - Cy;
+    const Dz = Az - Cz;
+
+    // Calcola la lunghezza del vettore
+    const magnitude = Math.sqrt(Dx * Dx + Dy * Dy + Dz * Dz);
+
+    // Normalizza il vettore direzione
+    const normDx = Dx / magnitude;
+    const normDy = Dy / magnitude;
+    const normDz = Dz / magnitude;
+
+    // Calcola gli angoli Yaw e Pitch
+    const yaw = Math.atan2(normDz, normDx); // Psi
+    const pitch = Math.asin(-normDy);       // Theta
+
+    // Vettore Up di riferimento
+    const Ux = up[0], Uy = up[1], Uz = up[2];
+
+    // Calcola il vettore Right tramite il prodotto vettoriale D x U
+    const Rx = normDy * Uz - normDz * Uy;
+    const Ry = normDz * Ux - normDx * Uz;
+    const Rz = normDx * Uy - normDy * Ux;
+
+    // Normalizza il vettore Right
+    const magnitudeR = Math.sqrt(Rx * Rx + Ry * Ry + Rz * Rz);
+    const normRx = Rx / magnitudeR;
+    const normRy = Ry / magnitudeR;
+    const normRz = Rz / magnitudeR;
+
+    // Calcola il Roll
+    const roll = Math.atan2(normRy * Uz - normRz * Uy, normDx * Ux + normDy * Uy + normDz * Uz); // Phi
+
+
+		        return {
+					Cx : Cx,
+					Cy : Cy,
+					Cz : Cz,
+					Ax : Ax,
+					Ay : Ay,
+					Az : Az,
+					Hx : Hx,
+					Hy : Hy,
+					Hz : Hz,
+					Vx : Vx,
+					Vy : Vy,
+					Vz : Vz,
+					yawRad : yaw,
+					pitchRad : pitch,
+					rollRad : roll,
+					yawDeg  : yaw * 180 / Math.PI,
+					pitchDeg  : pitch * 180 / Math.PI,
+					rollDeg  : roll * 180 / Math.PI,
+					description : "C = camera location, A = camera pointing vector"
+				};
 		    })()
 		};
+
         this.offset += 4096;
 
         // Read vertices
@@ -453,9 +557,9 @@ await advanceProgress("HEADER2 - LOD processed");
 function generateOBJ_AI(vstData, startLod, endLod) {
  const vertices = vstData.vertices;
  const lods = vstData.lods;
- 
+
  let obj = "";
- 
+
  // Write vertex data
  for (let vertex of vertices) {
    obj += `v ${vertex.x} ${-vertex.z} ${vertex.y}\n`;
@@ -694,6 +798,9 @@ const convertBtn = document.getElementById('convertBtn');
 const status = document.getElementById('status');
 
 let selectedFile = null;
+/*
+
+// moved to main
 
 // Handler per il click sull'area di drop
 dropArea.addEventListener('click', () => {
@@ -721,7 +828,7 @@ dropArea.addEventListener('drop', (e) => {
     const files = Array.from(e.dataTransfer.files);
     handleFiles(files);
 });
-
+*/
 // Funzione per gestire i file selezionati
 async function handleFiles(files) {
     if (!files || files.length === 0) return;
@@ -821,8 +928,8 @@ console.log("Starting VST parsing...");
         const parser = new VSTParser(arrayBuffer);
         vstData = await parser.parse();
 
-let temp = vstData.coordinateSystem.coordArray;
-console.log(temp[0],temp[1],temp[2],temp[3]);
+let temp = vstData.coordinateSystem;
+console.log("Coordinate system (CAHV):",temp);
 
 		// Invert Z coordinate (in MER system the positive vertical axis points to ground):
 		const invertedVertices = vstData.vertices.map(item => ({
@@ -850,8 +957,8 @@ console.log("Conversion to x3d completed.");
    // }
 };
 
-
-convertBtn.addEventListener('click', startConversion);
+// moved to main
+//convertBtn.addEventListener('click', startConversion);
 
 
 function saveX3Dfile(x3dContent) { // DEBUG: add a caller button
@@ -973,9 +1080,10 @@ async function getSolNumberFromLabel(lblFileName, siteNumberString) {
     } else {
         throw new Error("Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
     }
-	
+
 
 	lblUrl = BASE_VST_URL + VST_CAMERA_FOLDER +  siteNumberString + "/" +  lblFileName ; // DEBUG: valid only up to site 0138, for Spirit!!
+console.log("     getSolNumberFromLabel - Retrieving label:",lblUrl);
 	lblFinalUrl = proxyURL + encodeURIComponent(lblUrl);
     try {
         const response = await fetch(lblFinalUrl);
@@ -984,7 +1092,8 @@ async function getSolNumberFromLabel(lblFileName, siteNumberString) {
 console.log(`HTTP error! status: ${response.status}`);
             reject( new Error(`HTTP error! status: ${response.status}`));
         } else {
-//
+console.log(    "getSolNumberFromLabel - retrieved successfully label " + lblFileName)
+
 		}
 
         const blob = await response.blob();
@@ -996,9 +1105,9 @@ console.log(`HTTP error! status: ${response.status}`);
 				solNumber = extractSol(VSTlabel);
                // Verifica validita di solNumber
                 if (solNumber == null || isNaN(solNumber) || solNumber < 0) {
-					var solNumber = prompt("1 - Sol not valid in label; Sol?");
+					var solNumber = prompt("1 - Sol not valid in label for " + lblFileName + "; Sol?");
 			        if (solNumber == null || isNaN(solNumber) || solNumber < 0) {
-console.log(`>>Errore durante la lettura del Sol Number dalla label: ${error.message}`, "URL=", lblUrl);
+console.log(`>>Errore durante la lettura del Sol Number dalla label per ${lblFileName}`, "URL=", lblUrl);
 						reject(new Error("INVALID SOLNUMBER IN LABEL " ));
 			        } else {
 			            resolve(solNumber);
@@ -1023,11 +1132,13 @@ console.log(`>>Errore durante il caricamento della label per leggere il Sol Numb
 
 
 async function getAltAzFromImgProduct(textureName, siteNumberString, solNumber) {
-	let imgFileNameLeft = txtProductId.value.substring(0, 11);
-	let imgFileNameRight = txtProductId.value.substring(14);
+console.log("getAltAzFromImgProduct",textureName);
+	let imgFileNameLeft = textureName.substring(0, 11);
+	let imgFileNameRight = textureName.substring(14);
 	let imgFileName = imgFileNameLeft + "thn" + imgFileNameRight + ".img"; // thumbnail is the shorter one, and we need just the label
 	
 	imgFileName = imgFileName.substring(0, 26) + "1" + imgFileName.substring(27); // Force version 1 for IMG product
+	imgFileName = imgFileName.substring(0, 23	) + "l" + imgFileName.substring(24); // Force left camera for texture
 
    const secondChar = imgFileName.charAt(1).toLowerCase();
 
@@ -1044,7 +1155,8 @@ async function getAltAzFromImgProduct(textureName, siteNumberString, solNumber) 
 	base_texture_folderIMG = BASE_IMG_URL + IMG_RAW_FOLDER + PRODUCT_FOLDER;
 
 
-	imgUrl = base_texture_folderIMG.replace("#SOLNUMBER#",solNumber)  +  imgFileName ; // DEBUG: valid only up to site 0138, for Spirit!!
+	imgUrl = (base_texture_folderIMG.replace("#SOLNUMBER#",solNumber)  +  imgFileName).toLowerCase() ; // DEBUG: valid only up to site 0138, for Spirit!!
+console.log("Retrieving image for reading ALT, AZ:",imgUrl);
 	imgFinalUrl = proxyURL + encodeURIComponent(imgUrl);
 
     try {
@@ -1095,7 +1207,7 @@ function extractSol(labelContent) {
     if (match) {
         return parseInt(match[1], 10);
     } else {
-console.log("SOL NUMBER NOT FOUND: ",labelContent);
+console.log("SOL NUMBER NOT FOUND in this label: ",labelContent);
         return null;
     }
 }
@@ -1225,4 +1337,56 @@ function rotateShape(shapeIndex, rotationType, angleDegrees) {
     } else {
         console.error("Shape non trovata.");
     }
+}
+
+
+
+
+
+async function getTexture(textureName) {
+console.log("    getTexture - textureName=",textureName);
+	let textureUrlLeft = textureName.substring(0, 11);
+	let textureUrlRight = textureName.substring(14);
+	let siteNumberCoded = textureName.substr(14, 2).toUpperCase();
+	let siteNumberString = "site0" + siteCodeToString(siteNumberCoded);
+	let labelFileName = (textureUrlLeft + "vil" + textureUrlRight).split(".")[0] + ".lbl";
+	labelFileName = labelFileName.substring(0, 23	) + "l" + labelFileName.substring(24); // Force left camera for label
+console.log("    getTexture - getting sol number for ",labelFileName);
+	let solNumber = await getSolNumberFromLabel(labelFileName, siteNumberString);
+console.log("    getTexture - SOLNUMBER=",solNumber);
+
+textureName = textureName.substring(0, 26	) + "1" + textureName.substring(27); // Force version 1 for IMG product
+textureName = textureName.substring(0, 23	) + "l" + textureName.substring(24); // Force left camera for texture
+
+const secondChar = textureName.charAt(1).toLowerCase();
+// Imposta VST_CAMERA_FOLDER in base al secondo carattere
+if (secondChar === 'n') {
+  BASE_IMG_URL = BASE_IMG_URL_NAVCAM
+} else if (secondChar === 'p') {
+  BASE_IMG_URL =  BASE_IMG_URL_PANCAM
+} else {
+  throw new Error("Carattere non riconosciuto '" + secondChar  + "' per determinare la cartella della fotocamera."); // Gestione errore
+}
+
+let base_texture_folder = BASE_IMG_URL + IMG_JPG_FOLDER + PRODUCT_FOLDER;
+let base_texture_folderNew = base_texture_folder.replace("#SOLNUMBER#",solNumber);	
+console.log("    getTexture - ",base_texture_folderNew);
+		
+	let textureBASE64 = "error";
+	for (let productIndex = 0; (( productIndex < graphicalProducts.length) && (textureBASE64 === "error")); productIndex++) {
+		let textureVariant = graphicalProducts[productIndex];
+		let textureUrl = base_texture_folderNew + textureUrlLeft + textureVariant + textureUrlRight + ".jpg";
+console.log("    getTexture - Trying " + textureUrlLeft + textureVariant + textureUrlRight + "...");
+		textureUrl = textureUrl.toLowerCase();
+		textureBASE64 = await urlToBase64(textureUrl);
+
+	};
+
+		if (textureBASE64 !== "error") {
+console.log("    getTexture - FOUND " + textureUrlLeft + "***" + textureUrlRight);
+			return textureBASE64;
+		}
+
+console.log("    ***getTexture - **NOT FOUND** " + textureUrlLeft + "***" + textureUrlRight);
+
 }
