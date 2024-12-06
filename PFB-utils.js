@@ -255,18 +255,19 @@ Textures can have as many as four components. The following are example uses:
 
 
 
-function loadTextures(handler1) {
-  const canvas = document.getElementById('texture'); // assicurati di usare l'id corretto
+async function loadTextures(handler1) {
+  const canvas = document.getElementById('texture');
   const ctx = canvas.getContext('2d');
   const width = 1024;
   const height = 1024;
 
-  function processImage(imageData, imgData) {
-    const data = imageData.data;
+
+  function processImage(imageDataCanvas, imgDataFromFile) {
+    const data = imageDataCanvas.data;
 
     for (let y = 0; y < height-1; y++) {
       for (let x = 0; x < width-1; x++) {
-        const rgb = imgData.lines[y].samples[x] / 10;
+        const rgb = imgDataFromFile.lines[y].samples[x] / 10;
         const idx = (y * width + x) * 4;
 
         data[idx] = rgb;     // R
@@ -276,8 +277,10 @@ function loadTextures(handler1) {
       }
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    ctx.putImageData(imageDataCanvas, 0, 0);
   }
+
+
 
   function loadSingleTexture(handler) {
     return new Promise((resolve, reject) => {
@@ -287,10 +290,10 @@ function loadTextures(handler1) {
         const rawFileContents = event.target.result;
         const fileContentsUInt8 = new Uint8Array(rawFileContents);
         const st = new KaitaiStream(fileContentsUInt8);
-        const img = new ImgGray16(st);
-
-        const imageData = ctx.createImageData(width, height);
-        processImage(imageData, img);
+        const imgDataFromFile = new ImgGray16(st);
+console.log("LOADED IMG DATA:", imgDataFromFile);
+        const imageDataCanvas = ctx.createImageData(width, height);
+        processImage(imageDataCanvas, imgDataFromFile);
 
         resolve();
       };
@@ -299,6 +302,8 @@ function loadTextures(handler1) {
       reader.readAsArrayBuffer(handler);
     });
   }
+
+/*
 
   // Carica le texture in sequenza
   async function loadBothTextures() {
@@ -309,8 +314,9 @@ function loadTextures(handler1) {
       console.error("Errore durante il caricamento della texture:", error);
     }
   }
-
-  loadBothTextures();
+*/
+await loadSingleTexture(handler1);
+  //loadBothTextures();
 }
 
 
@@ -494,6 +500,9 @@ console.log("\n=================================\n");
 console.log("        TEXTURE: ", textureElement.filename.contents);
 					roverId = textureElement.filename.contents.substr(0,1);
 					cameraId = textureElement.filename.contents.substr(1,1)
+                    if ((cameraId.toLowerCase() === "r") || (cameraId.toLowerCase() === "f")) {
+                        cameraId = "h";
+                    }
 					sclk = textureElement.filename.contents.substr(2,9);
 					//sol = sclkToSol(sclk, roverId);
 					siteId = textureElement.filename.contents.substr(14,2);
@@ -511,7 +520,7 @@ console.log("        TEXTURE: ", textureElement.filename.contents);
 					textureBaseUrl = "https://pds-imaging.jpl.nasa.gov/data/mer/" + roverName[roverId*1] + "/mer" + roverId  + cameraId.toLowerCase() + "o_0xxx/browse/sol" + zeroes(sol,4) + "/rdr/";
 					XYZBaseUrl = "https://pds-imaging.jpl.nasa.gov/data/mer/" + roverName[roverId*1] + "/mer" + roverId  + cameraId.toLowerCase() + "o_0xxx/data/sol" + zeroes(sol,4) + "/rdr/";
 					VSTBaseUrl = "https://pds-imaging.jpl.nasa.gov/data/mer/" + roverName[roverId*1] + "/mer" + roverId  + "mw_0xxx/data/" + VSTcameraFolder + siteString;
-
+console.log(cameraId,textureBaseUrl);
 					blenderList += rawProductId + ",";
 					productsList += rawProductId + " - (clock: " + sclk +  ", sol: " + sol + ", site: " + siteId + ", drive: " + driveId + ", sequence: " +  sequenceId + ")<br>";
 
@@ -699,7 +708,7 @@ function addLinksToPage() {
     const tableHeader = document.createElement("tr");
 
     // Array degli header
-    const headers = ["Product ID", "RAW texture", "JPG texture", "JPG thumbnail", "VST file"];
+    const headers = ["Product ID", "JPG FFL texture",  "IMG FFL texture", "JPG RSN thumbnail","VST file"];
 
     // Creazione delle celle header
     headers.forEach(headerText => {
@@ -722,12 +731,12 @@ function addLinksToPage() {
     for (let i = 0; i < rowCount; i++) {
         const row = document.createElement("tr");
 
-        // Colonna Product ID (assumiamo che sia presente nell'oggetto)
+        // Colonna 1 - Product ID (assumiamo che sia presente nell'oggetto)
         const tdProductId = document.createElement("td");
         tdProductId.innerHTML = textureLinksArray[i]?.file.split('.')[0] || '';
         row.appendChild(tdProductId);
 
-        // Colonna RAW texture
+        // Colonna 2
         const tdRawTexture = document.createElement("td");
         if (textureLinksArray[i]) {
             tdRawTexture.innerHTML = `
@@ -739,11 +748,11 @@ function addLinksToPage() {
         }
         row.appendChild(tdRawTexture);
 
-        // Colonna JPG texture (XYZ links)
+        // Colonna 3 - IMG FFL texture
         const tdJpgTexture = document.createElement("td");
-        if (XYZlinksArray[i]) {
+        if (textureLinksArray[i]) {
             tdJpgTexture.innerHTML = `
-                <a href="${XYZlinksArray[i].folder}${XYZlinksArray[i].file}">
+                <a href="${XYZlinksArray[i].folder}${textureLinksArray[i].file.replace(".jpg","")}">
                     File
                 </a>,
                 <a href="${XYZfolderLinksArray[i]}">Folder</a>
@@ -751,7 +760,7 @@ function addLinksToPage() {
         }
         row.appendChild(tdJpgTexture);
 
-        // Colonna JPG thumbnail
+        // Colonna 4 - JPG thumbnail
         const tdThumbnail = document.createElement("td");
         if (thumbnailLinksArray[i]) {
             tdThumbnail.innerHTML = `<img src="${thumbnailLinksArray[i]}" alt="thumbnail">`;
@@ -906,7 +915,7 @@ async function downloadAndSaveFile(lblFileName, siteNumberString) {
         const lblUrl = BASE_VST_URL + VSTcameraFolder + siteNumberString + "/" + lblFileName;
         const lblFinalUrl = proxyURL + encodeURIComponent(lblUrl.toLowerCase());
 
-console.log("---- Attempting DOWNALOD of label to extract sol:", lblUrl);
+console.log("---- Attempting DOWNLOAD of label to extract sol:", lblUrl);
 
         const response = await fetch(lblFinalUrl);
         if (!response.ok) {

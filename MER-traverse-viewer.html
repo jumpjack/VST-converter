@@ -8,210 +8,377 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MER traverse viewer and 3d files analyzer</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="plotly-latest.min.js"></script>
    <script src="drives.js"></script>
-   <script src="files.js"></script>
+   <script src="IMGfiles.js"></script>
+   <script src="3dfiles.js"></script>
 </head>
 <body>
 <h1>MER traverse viewer and 3d files analyzer</h1>
-    <div id="plot" style="width: 100%; height: 600px;"></div>
-    <button id="saveButton" style="margin-top: 20px;">Salva dati su file</button>
+	<span id="status"></span><br>
+    <input type="checkbox" id = "chkFullFrame" checked>FFL<br>
+	<button id="btnPlot" onclick="placeMarkers(132,138)">Plot</button>
+    <div id="sitesPlot" style="height:500px; width:500px;"></div>
+	<span id="spnLinks"></span><br>
     <script>
 
+myPlot = null;
 
-MINSIZE_WITHOUT = 8;
-MINSIZE = 15;
-MAXSIZE = 40;
-function placeMarkers() {
+		MINSIZE_WITHOUT = 8;
+		MINSIZE = 15;
+		MAXSIZE = 40;
 
-    if (!drives || Object.keys(drives).length === 0) {
-        console.error("Nessun dato drives disponibile");
-        return;
+		function placeMarkers(startSite = 0, endSite = 138) {
+			const xSecondary = [];
+			const ySecondary = [];
+			const textSecondary = []; //  tip blu
+			const sizeSecondary = []; // Dimensioni blu
+			const colorSecondary = [];
+
+			const xPrimary = [];
+			const yPrimary = [];
+			const textPrimary = []; //  tip rosso
+			const sizePrimary = []; // Dimensioni rosse
+
+
+		    if (!drives || Object.keys(drives).length === 0) {
+		       	alert("Nessun dato drives disponibile");
+		        return;
+		    }
+
+			// Itera sui dati
+			siteIdx = 0;
+			Object.keys(drives).forEach(site => {
+				if ((startSite <= siteIdx) && (siteIdx <= endSite)) {
+				    Object.keys(drives[site]).forEach(drive => {
+				        const driveData = drives[site][drive];
+						const siteCode = siteNumToSiteCouple(site);
+						const driveCode = siteNumToSiteCouple(drive);
+						const couple = siteCode + driveCode;
+
+				        // Verifica che i dati siano validi
+				        if (!driveData.totalOffset || typeof driveData.totalOffset.x === "undefined" || typeof driveData.totalOffset.y === "undefined") {
+				            console.warn(`Dati mancanti per ${site}_${drive}`);
+				            return;
+				        }
+
+				        const siteNorm = `site${site.padStart(4, "0")}`;
+
+				        // Conta i file per il site corrente
+				        const vstFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "vst", "pn").length;
+				        const pfbFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "pfb", "pn").length;
+				        const htFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "ht", "pn").length;
+				        const IMGFiles = findIMGfile(filesAvailabilityIMG, null, null, siteCode, driveCode);
+						IMGFilesCount = 0;
+						solNumberNorm = "n/a";
+						if (IMGFiles) {
+							IMGFilesCount = IMGFiles.length;
+							if (IMGFiles[0]) {
+								if (IMGFiles[0].filepath) {
+									solNumberNorm = IMGFiles[0].filepath.substring(18,25); // "/mer2po_0xxx/data/sol1363/rdr"
+								} else {
+//console.log("no path", siteCode, driveCode);
+								}
+							} else {
+//console.log("no imagesint", siteCode, driveCode);
+							}
+						} else {
+//console.log("no imagesext", siteCode, driveCode);
+						}
+				        // Estrai le coordinate
+				        const x = driveData.totalOffset.y;
+				        const y = driveData.totalOffset.x;
+
+				        // Testo per il  tip
+				        const hoverText = `${couple}<br>Site: ${site}<br>Drive: ${drive}<br>Sol: ${solNumberNorm}<br>` +
+						`IMG files:${IMGFilesCount}<br>VST files: ${vstFilesCount}<br>` +
+						`PFB files: ${pfbFilesCount}<br>` +
+                        `HT files: ${htFilesCount}<br>` +
+                        "x, y:" + x.toFixed(0) + ", " + y.toFixed(0);
+
+				        // Organizza i dati 
+				        if (drive === "0") {
+				            xPrimary.push(x);
+				            yPrimary.push(y);
+				            textPrimary.push(hoverText);
+				            sizePrimary.push( MAXSIZE + 5);
+				        } else {
+				            xSecondary.push(x);
+				            ySecondary.push(y);
+				            textSecondary.push(hoverText);
+
+							if ((vstFilesCount > 0) || (pfbFilesCount > 0) || (htFilesCount > 0)) {
+								sizeFinal = MINSIZE;
+							} else {
+								sizeFinal = MINSIZE_WITHOUT;
+							}
+							
+							sizeFinal += vstFilesCount + pfbFilesCount + htFilesCount;
+							if (sizeFinal > MAXSIZE) sizeFinal = MAXSIZE;
+				            sizeSecondary.push(sizeFinal);
+
+							if (pfbFilesCount>0) {
+								colorSecondary.push("yellow");
+							} else {
+								colorSecondary.push("blue");
+							}
+				        }
+				    });
+				}
+				siteIdx++;
+			});
+
+
+			// Crea i dati per Plotly
+			const data = [
+			    {
+			        x: xPrimary,
+			        y: yPrimary,
+			        mode: "markers",
+			        type: "scatter",
+			        marker: { color: "red", size: sizePrimary }, // Dimensioni dinamiche
+			        name: "Sites",
+			        text: textPrimary, //  tip associato
+			        hoverinfo: "text" // Mostra solo il testo specificato
+			    },
+			    {
+			        x: xSecondary,
+			        y: ySecondary,
+			        mode: "lines+markers",
+			        type: "scatter",
+			        marker: { color: colorSecondary, size: sizeSecondary }, // Dimensioni dinamiche
+			        line: { color: "blue", width: 1 },
+			        name: "Drives",
+			        text: textSecondary, //  tip associato
+			        hoverinfo: "text" // Mostra solo il testo specificato
+			    }
+			];
+
+
+		    // Configurazione del layout
+		    const layout = {
+		        title: "Drive Markers",
+		        xaxis: {
+					title: "X Coordinate",
+					range: [3095, 3135],
+                    dtick: 5
+				 },
+		        yaxis: {
+					title: "Y Coordinate",
+					 range: [-2060, -2020],
+                     dtick: 5
+				},
+		        dragmode: "zoom",
+				hovermode: 'closest',
+		        showlegend: true
+		    };
+
+		    // Disegna il grafico
+		    Plotly.newPlot("sitesPlot", data, layout);
+console.log(`Creati ${xPrimary.length + xSecondary.length} marker.`);
+
+	        myPlot.on('plotly_click', function(eventData) {
+	            const point = eventData.points[0]; // Primo punto cliccato (se ce ne sono più di uno)
+	            const x = point.x;
+	            const y = point.y;
+
+				const xm = Math.trunc(x);
+				const xcm = ((x - xm)*100).toFixed(0);
+
+				const ym = Math.trunc(y);
+				const ycm = ((y - ym)*100).toFixed(0);
+
+	// alert(`Hai cliccato sul punto con coordinate (x: ${x}, y: ${y})`);
+	            console.log('Informazioni del punto cliccato:', point);
+				pointDataLines = point.text.split("<br>");
+				pointProduct = pointDataLines[0];
+				pointSite = pointDataLines[1].split(" ")[1];
+				pointDrive = pointDataLines[2].split(" ")[1];
+				const siteNorm = `site${pointSite.padStart(4, "0")}`;
+				const pointSol = pointDataLines[3].split(" ")[1];
+				const solNorm = `sol${pointSol.padStart(4, "0")}`;
+				const IMGFiles = findIMGfile(filesAvailabilityIMG, null, null, pointProduct.substring(0,2), pointProduct.substring(2,4));
+				const IMGFilesCount = IMGFiles.length;
+				const VSTfiles = find3Dfiles(filesAvailability3d, null, pointProduct.substring(0,2), pointProduct.substring(2,4), "vst", "pn");
+				const VSTfilesCount = VSTfiles.length;
+
+				document.getElementById("spnLinks").innerHTML = "<br><br>" +
+					`x: ${xm} m, ${xcm} cm<br>` +
+					`y: ${ym} m, ${ycm} cm<br><br>` +
+					"VST/PFB files for "+  siteNorm + "/drive" + pointDrive + " (look for products '" + pointProduct + "'):<br>" +
+					"<a href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/navcam/" + siteNorm + "'>Folder navcam</a><br>"+
+					"<a href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/pancam/" + siteNorm + "'>Folder pancam</a><br>"+
+					"<a href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/hazcam/" + siteNorm + "'>Folder hazcams</a><br>";
+
+				if (VSTfilesCount > 0) {
+					VSTfiles.forEach((VST) => {
+						spnLinks.innerHTML += "" +
+											"<a target = '_blank' href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" + VST.filepath + VST.filename + "'>" + VST.filename +  "</a><br>";
+					});
+				}
+
+
+				spnLinks.innerHTML += "<br>RAW IMG files for "  + pointSol +  ", " +  siteNorm + "/drive" + pointDrive + " (look for products '" + pointProduct + "'): " + IMGFilesCount + "<br>";
+
+addImage = false;
+				if (IMGFilesCount > 0) {
+					IMGFiles.forEach((IMG) => {
+                        if (chkFullFrame.checked) {
+                          if (IMG.filename.toUpperCase().indexOf("FFL") >= 0) addImage = true;
+                        } else {
+                            addImage = true;
+                        }
+                        if (addImage) {
+
+                          spnLinks.innerHTML += "" +
+                          "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
+                                                IMG.filepath +
+                                                IMG.filename + "'>" +
+                                                IMG.filename +  "</a>, " +
+
+                          "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
+                                                IMG.filepath.replace("data","browse") +
+                                                IMG.filename.replace(".img",".img.jpg") + "'>" +
+                                                IMG.filename.replace(".img",".img.jpg") +  "</a>" +
+                                                "<br>";
+                            addImage = false;
+                        }
+					});
+				}
+
+	        });
+		}
+
+
+
+		function siteNumToSiteCouple(value) {
+		    if (value < 0 || value >= 36 * 26 + 100) {
+		        return("debug error");//throw new Error("Il valore � fuori intervallo.");
+		    }
+
+		    // Caso 1: numerico puro ("00" - "99")
+		    if (value < 100) {
+		        return value.toString().padStart(2, '0');
+		    }
+
+		    // Caso 2: alfanumerico ("A0" - "ZZ")
+		    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
+		    const adjustedValue = value - 100;
+
+		    // Calcola il primo carattere (lettera)
+		    const firstValue = Math.floor(adjustedValue / 36);
+		    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
+
+		    // Calcola il secondo carattere (lettera o numero)
+		    const secondValue = adjustedValue % 36;
+		    let secondChar;
+
+		    if (secondValue < 10) {
+		        // Numerico
+		        secondChar = secondValue.toString();
+		    } else {
+		        // Alfabetico
+		        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
+		    }
+
+		    return firstChar + secondChar;
+		}
+
+
+
+ window.addEventListener("load", function() {
+        myPlot = document.getElementById('sitesPlot');
+		document.getElementById('status').innerHTML = "Ready, click on Plot";
+
+ });
+
+
+function findIMGfile(filesData, camera, solNorm, siteChars, driveChars) {
+    const matchingFiles = [];
+
+    for (const cam in filesData) {
+        if (camera && cam !== camera) continue; // Se `camera` è definito, filtriamo solo quel valore
+
+        const solData = filesData[cam];
+        if (!solData) continue;
+
+        for (const sol in solData) {
+            if (solNorm && sol !== solNorm) continue; // Se `solNorm` è definito, filtriamo solo quel valore
+
+            const siteData = solData[sol];
+            if (!siteData) continue;
+
+            for (const site in siteData) {
+                if (siteChars && site !== siteChars) continue; // Se `siteChars` è definito, filtriamo solo quel valore
+
+                const driveData = siteData[site];
+                if (!driveData) continue;
+
+                for (const drive in driveData) {
+                    if (driveChars && drive !== driveChars) continue; // Se `driveChars` è definito, filtriamo solo quel valore
+
+                    // Aggiungi i file trovati a `matchingFiles`
+                    matchingFiles.push(...driveData[drive]);
+                }
+            }
+        }
     }
 
-const xSecondary = [];
-const ySecondary = [];
-const textSecondary = []; // Tooltip blu
-const sizeSecondary = []; // Dimensioni blu
-const colorSecondary = [];
-
-const xPrimary = [];
-const yPrimary = [];
-const textPrimary = []; // Tooltip rosso
-const sizePrimary = []; // Dimensioni rosse
-
-
-// Itera sui dati
-Object.keys(drives).forEach(site => {
-    Object.keys(drives[site]).forEach(drive => {
-        const driveData = drives[site][drive];
-
-		const siteCode = siteNumToSiteCouple(site);
-		const driveCode = siteNumToSiteCouple(drive);
-		const couple = siteCode+driveCode;
-        // Verifica che i dati siano validi
-        if (!driveData.totalOffset || typeof driveData.totalOffset.x === "undefined" || typeof driveData.totalOffset.y === "undefined") {
-            console.warn(`Dati mancanti per ${site}_${drive}`);
-            return;
-        }
-
-        const siteNorm = `site${site.padStart(4, "0")}`;
-		
-        
-        // Conta i file .vst per il site corrente
-        const vstFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".vst")).length;
-        const pfbFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".pfb")).length;
-        const htFiles = (filesAvailability[siteNorm][drive] || []).filter(file => file.filename.endsWith(".ht")).length;
-
-        // Estrai le coordinate
-        const x = driveData.totalOffset.y;
-        const y = driveData.totalOffset.x;
-
-        // Testo per il tooltip
-        const hoverText = `${couple}<br>Site: ${site}<br>Drive: ${drive}<br>VST files: ${vstFiles}<br>PFB files: ${pfbFiles}<br>HT files: ${htFiles}`;
-
-        // Organizza i dati 
-        if (drive === "0") {
-            xPrimary.push(x);
-            yPrimary.push(y);
-            textPrimary.push(hoverText);
-            sizePrimary.push( MAXSIZE + 5); 
-        } else {
-            xSecondary.push(x);
-            ySecondary.push(y);
-            textSecondary.push(hoverText);
-			
-			if ((vstFiles > 0) || (pfbFiles > 0) || (htFiles > 0)) {
-				sizeFinal = MINSIZE;
-			} else {
-				sizeFinal = MINSIZE_WITHOUT;
-			}
-			
-			sizeFinal += vstFiles + pfbFiles + htFiles;
-			if (sizeFinal > MAXSIZE) sizeFinal = MAXSIZE;
-            sizeSecondary.push(sizeFinal);
-			
-			if (pfbFiles>0) {
-				colorSecondary.push("yellow");
-			} else {
-				colorSecondary.push("blue");
-			}
-        }
-    });
-});
-
-
-// Crea i dati per Plotly
-const data = [
-    {
-        x: xPrimary,
-        y: yPrimary,
-        mode: "markers",
-        type: "scatter",
-        marker: { color: "red", size: sizePrimary }, // Dimensioni dinamiche
-        name: "Sites",
-        text: textPrimary, // Tooltip associato
-        hoverinfo: "text" // Mostra solo il testo specificato
-    },
-    {
-        x: xSecondary,
-        y: ySecondary,
-        mode: "lines+markers",
-        type: "scatter",
-        marker: { color: colorSecondary, size: sizeSecondary }, // Dimensioni dinamiche
-        line: { color: "blue", width: 1 },
-        name: "Drives",
-        text: textSecondary, // Tooltip associato
-        hoverinfo: "text" // Mostra solo il testo specificato
-    }
-];
-
-
-    // Configurazione del layout
-    const layout = {
-        title: "Drive Markers",
-        xaxis: { title: "X Coordinate" },
-        yaxis: { title: "Y Coordinate" },
-        dragmode: "zoom",
-        showlegend: true
-    };
-
-    // Disegna il grafico
-    Plotly.newPlot("plot", data, layout);
-    console.log(`Creati ${xPrimary.length + xSecondary.length} marker.`);
+    return matchingFiles;
 }
- 
- 
- 
- 
 
-        // Funzione per salvare i dati su un file JSON
-        function saveDataToFile(data, filename) {
-            // Converti i dati in una stringa JSON
-            const jsonData = JSON.stringify(data, null, 2);
 
-            // Crea un blob con i dati
-            const blob = new Blob([jsonData], { type: "application/json" });
 
-            // Crea un URL per il download
-            const url = window.URL.createObjectURL(blob);
+function find3Dfiles(filesData, solNorm, siteChars, driveChars, extension, allowedCameras) {
+    const matchingFiles = [];
+    const solData = filesData;
 
-            // Crea un elemento <a> per il download
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename;
+    for (const sol in solData) {
+        if (solNorm && sol !== solNorm) continue; // Se `solNorm` è definito, filtriamo solo quel valore
+        const siteData = solData[sol];
+        if (!siteData) continue;
 
-            // Attiva il download
-            a.click();
+        for (const site in siteData) {
+            if (siteChars && site !== siteChars) continue; // Se `siteChars` è definito, filtriamo solo quel valore
+            const driveData = siteData[site];
+            if (!driveData) continue;
 
-            // Libera la memoria
-            window.URL.revokeObjectURL(url);
+            for (const drive in driveData) {
+                if (driveChars && drive !== driveChars) continue; // Se `driveChars` è definito, filtriamo solo quel valore
+                const extData = driveData[drive];
+                if (!extData) continue;
+
+                for (const ext in extData) {
+                    if (extension && ext !== extension) continue; // Se `extension` è definito, filtriamo solo quel valore
+
+
+					if (extension === "vst") {
+                       // console.log("Searching vst", extData[ext])
+						if (allowedCameras) {
+		                    // Filtra i file in base al secondo carattere della telecamera
+		                    filteredFiles = extData[ext].filter(obj => {
+		                        // Estrai il secondo carattere del nome del file (dopo il primo underscore)
+		                        const cameraPart = obj.filename[1];
+                                 //console.log( cameraPart ,allowedCameras.includes(cameraPart));
+		                        return cameraPart && allowedCameras.includes(cameraPart);
+		                    });
+                            //console.log(filteredFiles);
+						} else {
+							filteredFiles = extData[ext];
+						}
+					} else {
+						filteredFiles = extData[ext];
+					}
+
+                    // Aggiungi i file filtrati a `matchingFiles`
+                    matchingFiles.push(...filteredFiles);
+                }
+            }
         }
-
-        // Aggiungi evento al pulsante
-        document.getElementById("saveButton").addEventListener("click", () => {
-            saveDataToFile(drives, "drives.json");
-        });
-
-        // Chiama la funzione per creare il grafico
-        placeMarkers();
-
-
-function siteNumToSiteCouple(value) {
-    if (value < 0 || value >= 36 * 26 + 100) {
-        return("debug error");//throw new Error("Il valore � fuori intervallo.");
     }
 
-    // Caso 1: numerico puro ("00" - "99")
-    if (value < 100) {
-        return value.toString().padStart(2, '0');
-    }
-
-    // Caso 2: alfanumerico ("A0" - "ZZ")
-    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
-    const adjustedValue = value - 100;
-
-    // Calcola il primo carattere (lettera)
-    const firstValue = Math.floor(adjustedValue / 36);
-    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
-
-    // Calcola il secondo carattere (lettera o numero)
-    const secondValue = adjustedValue % 36;
-    let secondChar;
-
-    if (secondValue < 10) {
-        // Numerico
-        secondChar = secondValue.toString();
-    } else {
-        // Alfabetico
-        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
-    }
-
-    return firstChar + secondChar;
+    return matchingFiles;
 }
-
-
-
     </script>
 </body>
 </html>

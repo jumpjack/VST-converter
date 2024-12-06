@@ -12,187 +12,864 @@ Displays in 3d scene a schematic MER rover, the loaded images and their FOVs; im
     <style>
         #renderCanvas { width: 100%; height: 500px; }
     </style>
-	<script src="VST2X3D-AI.js"></script>
+    <script src="VST2X3D-AI.js"></script>
+    <script src="camera-calc.js"></script>
+    <script src="KaitaiStream.js"></script>
+    <script src="img_gray16.js"></script>
+    <script src="drives.js"></script>
+
 </head>
 <body>
     <h1>Rappresentazione 3D della Pancam</h1>
     <canvas id="renderCanvas"></canvas>
    <div>
-        <input type="file" id="fileInput" accept=".img" style="display: none;" multiple>
+       <input type="file" id="fileInput" accept=".img" style="display: none;" multiple>
         <button onclick="document.getElementById('fileInput').click()">Carica file IMG</button>
     </div>
-    <!-- Input per il caricamento del file -->
-    <input type="file" id="imageInput" accept=".jpg,.png" style="margin: 10px;">
-    <button id="loadTextureButton" style="margin: 10px;">Load Texture</button>
-    <button id="btnShowTexture" style="margin: 10px;">Apply Texture</button>
-
 
     <div id="tablesContainer"></div>
     <!-- Include Babylon.js -->
     <script src="..\..\..\babylon.js"></script>
-	<script src="..\..\..\earcut.min.js"></script>
+    <script src="..\..\..\earcut.min.js"></script>
     <script>
 
-	// V. 0.0.3: Fixed various bugs in angles calculation; added support for multiple files selection; added automatic creation of download links for images
-	//	To do:
-	//  1) Extract textures links from a PFB file and automatically retrieve all textures
-	//	2) Add pointcloud
-	//	3) Add mesh
-	//	4) Add textures
+    // V. 1.0.0 First working version:
+        // rover clones placed in right positions
+        // pancam properly oriented
+        // all cameras implemented: nav, pan, haz
+        // textures extracted from images (but only FFL, to be implemented other products)
+        // added axes on each rover position
+        // coordinates converted from NASA (Z down) to Babylon (Y up)
 
-	// V. 0.0.2: First version properly loading PANCAM angles from VICAR label of selected .img file, but image shown is still a placeholder
+    // V. 0.0.3: Fixed various bugs in angles calculation; added support for multiple files selection; added automatic creation of download links for images
+    //    To do:
+    //  1) Extract textures links from a PFB file and automatically retrieve all textures
+    //    2) Add pointcloud
+    //    3) Add mesh
+    //    4) Add textures
+
+    // V. 0.0.2: First version properly loading PANCAM angles from VICAR label of selected .img file, but image shown is still a placeholder
 
         //let originOffsetVector = { x: 0.45781, y: +1.09668 , z: 0.02779}; // Fixed position of PANCAM w.r.t. rover body?
-        let originOffsetVector = { x: 0, y: 1 , z: 0}; // Fixed position of PANCAM w.r.t. rover body?
+        //let originOffsetVector = { x: 0, y: 1 , z: 0}; // Fixed position of PANCAM w.r.t. rover body?
 
-		// set debug values:
+        // set debug values:
         let pancamAzimuth = -11;
         let pancamElevation = -22;
         let azimuthFOV = -33;
         let elevationFOV = -44;
+        let prevIndex = 0;
+        let imgFiles = [];
+        let newFiles = [];
+        let jpgFiles = [];
+		let mat = null; // material holder
+		let matNav = null;
+		let matPan = null;
+		let matHaz = null;
+        let roverDriveIndex = 0;
+        let roverDrives = [];
+        let roverClones = [];
 
-		let vicarData = [];
-		let baseTexturesLocal = [];
-			var baseFovs = [];
-			var baseTextures = [];
-		
+        let vicarData = [];
+        let baseTexturesLocal = [];
+        var baseFovs = [];
+        var baseTextures = [];
+        result = null;
+
+
 //////////// Codice per caricamento IMG  ///////////////
 
         document.getElementById("fileInput").addEventListener("change", async function() {
-    		// Array per separare i file per estensione
-		    const imgFiles = [];
-		    const jpgFiles = [];
+            // Array per separare i file per estensione
+            newFiles = [];
 
-			///// preload IMG and JPG files
-		    for (let file of this.files) {
-		        if (!file) return;
 
-		        // Suddivisione in base all'estensione
-		        if (file.name.endsWith(".img")) {
-		            imgFiles.push(file);
+            ///// preload IMG and JPG files
+            for (let file of this.files) {
+                if (!file) return;
 
-		            // Leggi il contenuto del file .img
-		            const text = await file.text();
-					var dat = extractVicarData(text, file.name);
-		            vicarData.push(dat);
+                // Suddivisione in base all'estensione
+                if (file.name.toUpperCase().endsWith(".IMG")) {
+                    imgFiles.push(file);
+                    newFiles.push(file);
+
+                    // Leggi il contenuto del file .img
+                    const text = await file.text();
+                    //const text = fileContents.text;
+                    var dat = extractVicarData(text, file.name);
+                    vicarData.push(dat);
 console.log(`File .img elaborato: ${file.name}`, dat);
-		        } else if (file.name.endsWith(".jpg")) {
-		            jpgFiles.push(file);
+                } else if (file.name.toUpperCase.endsWith(".JPG")) {
+                    jpgFiles.push(file);
 
-		            // Crea una texture da file .jpg
-		            const url = URL.createObjectURL(file);
-		            baseTexture = new BABYLON.StandardMaterial("baseTextureMaterial", babylonScene);
-		            baseTexture.diffuseTexture = new BABYLON.Texture(url, babylonScene);
-		            baseTexture.backFaceCulling = false;
-					baseTexturesLocal[file.filename] = baseTexture;
+                    // Crea una texture da file .jpg
+                    const url = URL.createObjectURL(file);
+                    baseTexture = new BABYLON.StandardMaterial("baseTextureMaterial", babylonScene);
+                    baseTexture.diffuseTexture = new BABYLON.Texture(url, babylonScene);
+                    baseTexture.backFaceCulling = false;
+                    baseTexturesLocal[file.filename] = baseTexture;
 
 console.log(`File .jpg elaborato: ${file.name}, ${baseTexture}`);
-		        } else {
-		            console.warn(`File ignorato: ${file.name}`);
-		        }
-		    }
+                } else {
+                    console.warn(`Suffisso errato, mfile ignorato: ${file.name}`);
+                }
+            }
 
 
-			// Add FOV frustum:
-			imgIndex = 0;
-		    for (let file of imgFiles) {
-				currentVicarData = vicarData[imgIndex];
-		    	addElementsToScene(babylonScene,
-					file.name,
-					currentVicarData.pancamAzimuthRad,
-					currentVicarData.pancamElevationRad,
-					currentVicarData.azimuthFOVdeg,
-					currentVicarData.elevationFOVdeg);
-				imgIndex++;
-			}
-		});
+            // Add FOV frustum:
+            //imgIndex = 0;
+            //for (let file of imgFiles) {
+//console.log("===*************==== Showing " , newFiles.length , " new images, index from " , imgFiles.length - newFiles.length , " to " , imgFiles.length-1);
+
+
+            for (imgIndex =  0; imgIndex < newFiles.length ; imgIndex++) {
+                const currentVicarData = vicarData[imgIndex + imgFiles.length - newFiles.length];
+
+                roverDriveIndex = currentVicarData.filename.substring(14,18);
+                if (!roverClones[roverDriveIndex]) {
+                   roverClones[roverDriveIndex] = roverBody.clone();
+                }
+
+                siteNum  = siteCodeToString(roverDriveIndex.substring(0,2));
+                driveNum = siteCodeToString(roverDriveIndex.substring(2,4));
+
+                roverDrives[roverDriveIndex] = vicarData[imgIndex + imgFiles.length - newFiles.length];
+
+
+                siteY = drives[siteNum][0].totalOffset.y;
+                siteX = drives[siteNum][0].totalOffset.x;
+                siteZ = drives[siteNum][0].totalOffset.z;
+
+                rovImgY = roverDrives[roverDriveIndex].yRover;
+                rovImgX = roverDrives[roverDriveIndex].xRover;
+                rovImgZ = roverDrives[roverDriveIndex].zRover;
+
+                rovTotY = siteY + rovImgY;
+                rovTotX = siteX + rovImgX;
+                rovTotZ = siteZ + rovImgZ;
+
+                rovBabylonX = rovTotX;
+                rovBabylonY = -rovTotZ;
+                rovBabylonZ = rovTotY;
+
+
+                roverClones[roverDriveIndex].position.y = rovBabylonY;
+                roverClones[roverDriveIndex].position.x = rovBabylonX;
+                roverClones[roverDriveIndex].position.z = rovBabylonZ;
+
+                roverClones[roverDriveIndex].rotation.y = roverDrives[roverDriveIndex].yawRover;
+                roverClones[roverDriveIndex].rotation.x = roverDrives[roverDriveIndex].pitchRover;
+
+
+createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "x", 2, new BABYLON.Color3(0, 1, 0))
+createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "y", 2, new BABYLON.Color3(0, 0, 1))
+createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "z", 2, new BABYLON.Color3(1, 0, 0))
+
+//debugSphere = BABYLON.MeshBuilder.CreateSphere("debugSphere", {diameter: 1}, scene);
+console.log("Site     " , siteNum , "= ",siteY.toFixed(2), siteX.toFixed(2), siteZ.toFixed(2));
+console.log("Drive     " , driveNum , "= ",  drives[siteNum][driveNum].totalOffset.y.toFixed(2), drives[siteNum][driveNum].totalOffset.x.toFixed(2),drives[siteNum][driveNum].totalOffset.z.toFixed(2));
+console.log("Drive0    " , driveNum , "= ",
+(drives[siteNum][driveNum].totalOffset.y-3123.76).toFixed(2),
+(drives[siteNum][driveNum].totalOffset.x+2048.98).toFixed(2),
+(drives[siteNum][driveNum].totalOffset.z+  86.45).toFixed(2));
+console.log("Rover from img: ",rovImgY.toFixed(2),rovImgX.toFixed(2),rovImgZ.toFixed(2));
+console.log("vs drive - site:",
+                      (drives[siteNum][driveNum].totalOffset.y - drives[siteNum][0].totalOffset.y).toFixed(2),
+                      (drives[siteNum][driveNum].totalOffset.x - drives[siteNum][0].totalOffset.x).toFixed(2),
+                      (drives[siteNum][driveNum].totalOffset.z - drives[siteNum][0].totalOffset.z).toFixed(2)
+                      );
+console.log("Rover az, el:",
+    roverClones[roverDriveIndex].rotation.y,//*180/3.14).toFixed(0),
+    roverClones[roverDriveIndex].rotation.x);//*180/3.14).toFixed(0));
+
+//debugSphere.position = new BABYLON.Vector3(drives[siteNum][0].totalOffset.x , -drives[siteNum][0].totalOffset.z , drives[siteNum][0].totalOffset.y );
+
+               if (currentVicarData.camera.indexOf("HAZ") >= 0) {
+                    fovHeight = 0.4;  // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+    				mat = matHaz;
+                } else if (currentVicarData.camera.indexOf("PAN") >= 0) {
+                    fovHeight = 2;  // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+    				mat = matPan;
+                } else {
+                    fovHeight = 2; // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+    				mat = matNav;
+                }
+
+                var cameraPosition = new BABYLON.Vector3(currentVicarData.xCam, -currentVicarData.zCam, currentVicarData.yCam);
+
+                var lookDirection = new BABYLON.Vector3(
+                                    currentVicarData.xCamTarget + currentVicarData.xCam,
+                                    -currentVicarData.zCamTarget -currentVicarData.zCam,
+                                    currentVicarData.yCamTarget + currentVicarData.yCam
+                );
+
+                var horizontalFOV = currentVicarData.horizFOVdeg * Math.PI / 180;
+                var verticalFOV = currentVicarData.vertFOVdeg * Math.PI / 180;
+
+                addElementsToScene(babylonScene,
+                    currentVicarData.filename,
+                    currentVicarData.xCam,
+                    -currentVicarData.zCam,
+                    currentVicarData.yCam,
+                    currentVicarData.azimuthRad,
+                    currentVicarData.elevationRad,
+                    currentVicarData.horizFOVdeg,
+                    currentVicarData.vertFOVdeg,
+                    currentVicarData.solNumber,
+                    currentVicarData.camera,
+                    currentVicarData.xCamTarget,
+                    -currentVicarData.zCamTarget,
+                    currentVicarData.yCamTarget,
+                    newFiles[imgIndex]
+                    );
+
+//roverDriveIndex++;
+
+
+                    //babylonCamera.radius = 15
+                    //babylonCamera.setTarget(roverClones[roverDriveIndex].position);
+                    //babylonCamera.radius = 4;
+
+centerOnRover(roverDriveIndex);
+
+            } // (imgIndex =  0; imgIndex < newFiles.length ; imgIndex++)
+
+        });  // document.getElementById("fileInput").addEventListener("change"
+
+
+
+
+            async function getTextureFromIMG(fc) {
+               const rawFileContents = fc;
+               const fileContentsUInt8 = new Uint8Array(rawFileContents);
+               const st = new KaitaiStream(fileContentsUInt8);
+               const imgDataFromFile = new ImgGray16(st);
+               return processImage(imgDataFromFile);
+            }
+
+
+
+            function processImage(imgDataFromFile) {
+               return new Promise((resolve) => {
+                   const width = imgDataFromFile.lines[0].samples.length;
+                   const height = imgDataFromFile.lines.length;
+                   canvas = document.createElement('canvas');
+                   canvas.width = width;
+                   canvas.height = height;
+                   const ctx = canvas.getContext('2d');
+                   const imageDataCanvas = ctx.createImageData(width, height);
+                   const data = imageDataCanvas.data;
+
+                   for (let y = 0; y < height; y++) {
+                       for (let x = 0; x < width; x++) {
+                           const rgb = imgDataFromFile.lines[y].samples[x] / 10;
+                           const idx = (y * width + x) * 4;
+                           data[idx] = rgb;     // R
+                           data[idx + 1] = rgb; // G
+                           data[idx + 2] = rgb; // B
+                           data[idx + 3] = 255; // A
+                       }
+                   }
+
+                   ctx.putImageData(imageDataCanvas, 0, 0);
+                   resolve(canvas.toDataURL('image/png'));
+               });
+            }
+
+
+
 
 
         function extractVicarData(vicarLabelText, filename) {
-			PMA_anglesValuesRaw =  readVicarParameter(vicarLabelText, "PMA_ARTICULATION_STATE", "ARTICULATION_DEVICE_ANGLE");
-			PMA_orientationValuesRaw = readVicarParameter(vicarLabelText, "PMA_ARTICULATION_STATE", "ARTICULATION_DEVICE_ANGLE")
+            azimuthRad = null
+            elevationRad = null;
+            azimuthFOVdeg = null;
+            elevationFOVdeg = null;
+            xCam = 0;
+            yCam = 0;
+            zCam = 0;
+            xOrigin = 0;
+            yOrigin = 0;
+            zOrigin = 0;
+			xRover = 0;
+			yRover = 0;
+			zRover = 0;
+			yawRover = 0;
+			pitchRover = 0;
+			rollRover = 0;
+            xTarget = 0;
+            yTarget = 0;
+            zTarget = 0;
+            dir = null;
 
-			PANCAM_azimuthRaw = PMA_orientationValuesRaw["AZIMUTH-MEASURED"];
-			PANCAM_elevationRaw = PMA_orientationValuesRaw["ELEVATION-MEASURED"];
-			PANCAM_azimuthFOV_Raw = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "AZIMUTH_FOV")["AZIMUTH_FOV"];
-			PANCAM_elevationFOV_Raw = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "ELEVATION_FOV")["ELEVATION_FOV"];
-			pancamAzimuthRad = parseFloat(PANCAM_azimuthRaw.replace("<rad>",""));
-			pancamElevationRad = parseFloat(PANCAM_elevationRaw.replace("<rad>",""));
-			azimuthFOVdeg = parseFloat(PANCAM_azimuthFOV_Raw.replace("<deg>",""));
-			elevationFOVdeg = parseFloat(PANCAM_elevationFOV_Raw.replace("<deg>",""));
+            cameraName = "undef";
+            solNumber = readVicarParameterSingle(vicarLabelText, "PLANET_DAY_NUMBER");
+            solNumber = String(solNumber).padStart(4, '0');
+
+
+
+////////// GET CAMERA POSITION DATA V1(ORIGIN_OFFSET_VECTOR) /////////
+////console.log("Getting camera POS V1 (PMA_COORDINATE_SYSTEM/ORIGIN_OFFSET_VECTOR)...");
+            try {
+            cameraPositionValuesRaw = readVicarParameter(vicarLabelText, "PMA_COORDINATE_SYSTEM", "ORIGIN_OFFSET_VECTOR")
+            if (!cameraPositionValuesRaw)
+                console.log("*extractVicarData - VALUE NOT FOUND for PMA_COORDINATE_SYSTEM/ORIGIN_OFFSET_VECTOR");
+				xOrigin = parseFloat(cameraPositionValuesRaw[0]);
+				yOrigin = parseFloat(cameraPositionValuesRaw[1]);
+				zOrigin = parseFloat(cameraPositionValuesRaw[2]);
+//console.log("   Camera pos (ORIGIN_OFFSET_VECTOR) (NASA: oriz, oriz, Z giu): ",xOrigin + "," +  yOrigin + "," + zOrigin);
+           } catch (e) {
+                 console.log("*extractVicarData - 'ORIGIN_OFFSET_VECTOR' ERROR in cameraPositionValuesRaw:", e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+//console.log("");
+
+////////// GET CAMERA POSITION DATA V2 (MODEL_COMPONENT_1)//////////
+//console.log("Getting camera POS V2 (MODEL_COMPONENT_1)...");
+            try {
+                result = readVicarParameterSingle(vicarLabelText, "MODEL_COMPONENT_1");
+//console.log("extractVicarData - Value extracted for MODEL_COMPONENT_1: ", result);
+                const match = result.replace(/[()]/g, '').split(',');
+                xCam = parseFloat(match[0]);
+                yCam = parseFloat(match[1]);
+                zCam = parseFloat(match[2]);
+//console.log("   Camera pos (MODEL_COMPONENT_1) (NASA oriz, oriz, vert giu):",xCam + "," +  yCam + "," +  zCam);
+            } catch (e) {
+                 console.log("*extractVicarData - 'MODEL_COMPONENT_1' ERROR in VICAR label:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+
+//console.log("");
+
+
+
+////////// GET CAMERA ORIENTATION DATA V1 (ARTICULATION_DEVICE_ANGLE) /////////
+//console.log("Getting camera ORIENTATION V1 (ARTICULATION_DEVICE_ANGLE)");
+            cameraOrientationValuesRaw = readVicarParameter(vicarLabelText, "PMA_ARTICULATION_STATE", "ARTICULATION_DEVICE_ANGLE")
+            if (!cameraOrientationValuesRaw)
+                console.log("extractVicarData - VALUE NOT FOUND for PMA_ARTICULATION_STATE/ARTICULATION_DEVICE_ANGLE");
+
+            try {
+                cameraAzimuthRaw = cameraOrientationValuesRaw["AZIMUTH-MEASURED"];
+            } catch (e) {
+                 console.log("*extractVicarData - 'AZIMUTH-MEASURED' ERROR in cameraOrientationValuesRaw:",cameraOrientationValuesRaw,e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+            try {
+                cameraElevationRaw = cameraOrientationValuesRaw["ELEVATION-MEASURED"];
+            } catch (e) {
+                 console.log("*extractVicarData - 'ELEVATION-MEASURED' ERROR in cameraOrientationValuesRaw:", e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+
+            try {
+                azimuthRad = parseFloat(cameraAzimuthRaw.split(" ")[0]);
+                elevationRad = parseFloat(cameraElevationRaw.replace("<rad>",""));
+//console.log("   azimuthRad=",azimuthRad, " rad, ", (azimuthRad*180/Math.PI).toFixed(2)  , " deg");
+//console.log("   elevationRad=",elevationRad, " rad, ", (elevationRad*180/Math.PI).toFixed(2)  , " deg");
+            } catch (e) {
+                 console.log("*extractVicarData - Error extracting float:",e);
+            }
+
+//console.log("");
+
+////////// GET CAMERA ORIENTATION DATA V2 (DESTINATION POINT, MODEL_COMPONENT_2)///////////
+//console.log("Getting camera ORIENTATION V2 (DESTINATION POINT,MODEL_COMPONENT_2)");
+            try {
+                result = readVicarParameterSingle(vicarLabelText, "MODEL_COMPONENT_2");
+//console.log("extractVicarData - Value extracted for MODEL_COMPONENT_2: ", result);
+                const match = result.replace(/[()]/g, '').split(',');
+                xTarget = parseFloat(match[0]);
+                yTarget = parseFloat(match[1]);
+                zTarget = parseFloat(match[2]);
+//console.log("   Camera target rel (MODEL_COMPONENT_2) (NASA oriz, oriz, vert giu):",xTarget, yTarget, zTarget);
+//console.log("   Camera target ABS (MODEL_COMPONENT_2) (NASA oriz, oriz, vert giu):",xPos + xTarget, yPos + yTarget, zPos + zTarget);
+            } catch (e) {
+                 console.log("*extractVicarData - 'MODEL_COMPONENT_2' ERROR in VICAR label:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+anglesFromPoints = calculateEulerAnglesAndDraw([xCam, yCam, zCam],[xCam + xTarget, yCam + yTarget, zCam + zTarget ],scene);
+//console.log("anglesFromPoints: ROLL=",anglesFromPoints.rollDeg.toFixed(2),  ", PITCH=", anglesFromPoints.pitchDeg.toFixed(2), "YAW=", anglesFromPoints.yawDeg.toFixed(2));
+//console.log("");
+
+const or = new BABYLON.Vector3(xCam, yCam, zCam);
+const tar = new BABYLON.Vector3(xTarget, yTarget, zTarget);
+ 
+babylAngles = orientation(or,tar)
+//console.log("babylAngles=  PITCH=",(babylAngles.x*180/Math.PI).toFixed(1), ", YAW=", (babylAngles.y*180/Math.PI).toFixed(1));
+function orientation(orig,targ) {
+        return BABYLON.Vector3.PitchYawRollToMoveBetweenPoints(orig, targ);
+}
+
+////////// GET ROVER ORIENTATION DATA V3 (ROVER_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH)///////////
+//console.log("Getting CAMERAvsROVER ORIENTATION V3 (ROVER_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH)");
+            cameraOrientationVsRoverRawAzimuth = readVicarParameter(vicarLabelText, "ROVER_DERIVED_GEOMETRY_PARMS", "INSTRUMENT_AZIMUTH")
+            cameraOrientationVsRoverRawElevation = readVicarParameter(vicarLabelText, "ROVER_DERIVED_GEOMETRY_PARMS", "INSTRUMENT_ELEVATION")
+
+            if (!cameraOrientationVsRoverRawAzimuth)
+                console.log("extractVicarData - VALUE NOT FOUND for ROVER_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH");
+            if (!cameraOrientationVsRoverRawElevation)
+                console.log("extractVicarData - VALUE NOT FOUND for ROVER_DERIVED_GEOMETRY_PARMS/INSTRUMENT_ELEVATION");
+				
+            try {
+                cameraOrientationVsRoverAz = parseFloat(cameraOrientationVsRoverRawAzimuth["INSTRUMENT_AZIMUTH"].replace("<deg>",""));
+//console.log("cameraOrientationVsRoverAz=",cameraOrientationVsRoverAz);
+                cameraOrientationVsRoverEl = parseFloat(cameraOrientationVsRoverRawElevation["INSTRUMENT_ELEVATION"].replace("<deg>",""));
+//console.log("cameraOrientationVsRoverEl=",cameraOrientationVsRoverEl);
+
+            } catch (e) {
+                 console.log("*extractVicarData - 'INSTRUMENT_AZIMUTH/INSTRUMENT_ELEVATION' ERROR in cameraOrientationVsRoverRawAzimuth/cameraOrientationVsRoverRawElevation:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+//console.log("");
+
+
+///////// GET CAMERA ORIENTATION DATA V4 (SITE_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH)///////////
+//console.log("Getting CAMERA vs SITE ORIENTATION V4 (SITE_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH)");
+            cameraOrientationVsSiteRawAzimuth = readVicarParameter(vicarLabelText, "SITE_DERIVED_GEOMETRY_PARMS", "INSTRUMENT_AZIMUTH")
+            cameraOrientationVsSiteRawElevation = readVicarParameter(vicarLabelText, "SITE_DERIVED_GEOMETRY_PARMS", "INSTRUMENT_ELEVATION")
+			
+            if (!cameraOrientationVsSiteRawAzimuth)
+                console.log("extractVicarData - VALUE NOT FOUND for SITE_DERIVED_GEOMETRY_PARMS/INSTRUMENT_AZIMUTH");
+            if (!cameraOrientationVsSiteRawElevation)
+                console.log("extractVicarData - VALUE NOT FOUND for SITE_DERIVED_GEOMETRY_PARMS/INSTRUMENT_ELEVATION");
+				
+            try {
+                cameraVsSiteAzDeg = parseFloat(cameraOrientationVsSiteRawAzimuth["INSTRUMENT_AZIMUTH"].replace("<deg>",""));
+//console.log("cameraVsSiteAzDeg=",cameraVsSiteAzDeg);
+                cameraVsSiteElDeg = parseFloat(cameraOrientationVsSiteRawElevation["INSTRUMENT_ELEVATION"].replace("<deg>",""));
+//console.log("cameraVsSiteElDeg=",cameraVsSiteElDeg);
+
+            } catch (e) {
+                 console.log("*extractVicarData - 'INSTRUMENT_AZIMUTH/INSTRUMENT_ELEVATION' ERROR in cameraOrientationVsSiteRawAzimuth/cameraOrientationVsSiteRawElevation:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+////////// GET CAMERA ORIENTATION DATA V5 /////////
+//console.log("Getting CAMERA ORIENTATION DATA V5  (PMA_COORDINATE_SYSTEM/ORIGIN_ROTATION_QUATERNION s, v1, v2, v3)...");
+            cameraOrientationValuesRaw = readVicarParameter(vicarLabelText, "PMA_COORDINATE_SYSTEM", "ORIGIN_ROTATION_QUATERNION")
+            if (!cameraOrientationValuesRaw)
+                console.log("*extractVicarData - VALUE NOT FOUND for PMA_COORDINATE_SYSTEM/ORIGIN_ROTATION_QUATERNION");
+//console.log("   CAMERA ORIENTATION (ORIGIN_ROTATION_QUATERNION): ",cameraOrientationValuesRaw);
+
+babylonQuaternion = new BABYLON.Quaternion(
+	parseFloat(cameraOrientationValuesRaw[1]),
+	parseFloat(cameraOrientationValuesRaw[2]),
+	parseFloat(cameraOrientationValuesRaw[3]),
+	parseFloat(cameraOrientationValuesRaw[0])
+);
+//console.log("	babylonQuaternion=",babylonQuaternion)
+
+babylonEuler2 = babylonQuaternion.toEulerAngles();
+
+//console.log("	babylonEuler2 CAMERA V5=",babylonEuler2, (babylonEuler2.x*180/Math.PI).toFixed(2), (babylonEuler2.y*180/Math.PI).toFixed(2), (babylonEuler2.z*180/Math.PI).toFixed(2))
+
+            euler2 = quaternionToEuler(
+            	{
+            		s: cameraOrientationValuesRaw[0],
+            		v1: cameraOrientationValuesRaw[1],
+            		v2: cameraOrientationValuesRaw[2],
+            		v3: cameraOrientationValuesRaw[3]
+            	}
+            )
+//console.log("   CAMERA  ORIENTATION V5: ", euler2.yaw, euler2.pitch, euler2.roll , " rad",  euler2.yawDeg, euler2.pitchDeg, euler2.rollDeg);
+
+			
+
+
+
+//console.log("");
+
+////////// GET ROVER POSITION DATA /////////
+//console.log("Getting ROVER POSITION DATA (ROVER_COORDINATE_SYSTEM/ORIGIN_OFFSET_VECTOR)...");
+            roverPositionValuesRaw = readVicarParameter(vicarLabelText, "ROVER_COORDINATE_SYSTEM", "ORIGIN_OFFSET_VECTOR")
+            if (!roverPositionValuesRaw)
+                console.log("*extractVicarData - VALUE NOT FOUND for ROVER_COORDINATE_SYSTEM/ORIGIN_OFFSET_VECTOR");
+
+            xRover =  parseFloat(roverPositionValuesRaw[0]);
+            yRover =  parseFloat(roverPositionValuesRaw[1]);
+            zRover =  parseFloat(roverPositionValuesRaw[2]);
+//console.log("   ROVER pos (ORIGIN_OFFSET_VECTOR) (NASA: oriz, oriz, Z giu): " +xRover+ "," + yRover + "," + zRover);
+
+
+
+
+////////// GET ROVER ORIENTATION DATA /////////
+//console.log("Getting ROVER ORIENTATION DATA (ROVER_COORDINATE_SYSTEM/ORIGIN_ROTATION_QUATERNION s, v1, v2, v3)...");
+            roverOrientationValuesRaw = readVicarParameter(vicarLabelText, "ROVER_COORDINATE_SYSTEM", "ORIGIN_ROTATION_QUATERNION")
+            if (!roverOrientationValuesRaw)
+                console.log("*extractVicarData - VALUE NOT FOUND for ROVER_COORDINATE_SYSTEM/ORIGIN_ROTATION_QUATERNION");
+//console.log("   ROVER ORIENTATION (ORIGIN_ROTATION_QUATERNION): ",roverOrientationValuesRaw);
+
+
 /*
-			console.log("PANCAM Azimuth degrees:", parseInt(pancamAzimuthRad*180/Math.PI));
-			console.log("PANCAM Elevation degrees:", parseInt(pancamElevationRad*180/Math.PI));
-			console.log("azimuthFOV degrees:", parseInt(azimuthFOVdeg));
-			console.log("elevationFOV degrees:", parseInt(elevationFOVdeg));
-*/			
-			return {
-				pancamAzimuthRad : pancamAzimuthRad,
-				pancamElevationRad : pancamElevationRad,
-				azimuthFOVdeg : azimuthFOVdeg,
-				elevationFOVdeg : elevationFOVdeg,
-				filename: filename
-			};
+File RVF:
+    <solution solution_id="telemetry" name="ROVER_FRAME" add_date="2007-11-02T18:31:23Z" index1="132" index2="54" index3="0" index4="0" index5="0">
+        <reference_frame name="SITE_FRAME" index1="132"/>
+        <offset x="6.70344" y="-3.53841" z="0.559567"/>
+        <orientation s="0.361761" v1="-0.051306" v2="0.0216669" v3="0.930606"/>
+    </solution>
+	
+File IMG:
+  ORIGIN_ROTATION_QUATERNION      = (0.361761,-0.051306,0.0216669,0.930606)
+	
+*/	
+babylonQuaternion = new BABYLON.Quaternion(
+	parseFloat(roverOrientationValuesRaw[1]),
+	parseFloat(roverOrientationValuesRaw[2]),
+	parseFloat(roverOrientationValuesRaw[3]),
+	parseFloat(roverOrientationValuesRaw[0])
+);
+//console.log("	babylonQuaternion=",babylonQuaternion)
+
+babylonEuler = babylonQuaternion.toEulerAngles();
+
+//console.log("	babylonEuler=",babylonEuler, (babylonEuler.x*180/Math.PI).toFixed(2), (babylonEuler.y*180/Math.PI).toFixed(2), (babylonEuler.z*180/Math.PI).toFixed(2))
+
+            euler = quaternionToEuler(
+            	{
+            		s: roverOrientationValuesRaw[0],
+            		v1: roverOrientationValuesRaw[1],
+            		v2: roverOrientationValuesRaw[2],
+            		v3: roverOrientationValuesRaw[3]
+            	}
+            )
+//console.log("   ROVER ORIENTATION: ", euler.yaw, euler.pitch, euler.roll , " rad",  euler.yawDeg, euler.pitchDeg, euler.rollDeg);
+
+
+//console.log("Getting camera AZIMUTH_FOV...");
+///////// GET FOV DATA ////////////
+            try {
+                result = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "AZIMUTH_FOV");
+//console.log("extractVicarData - Value extracted for AZIMUTH_FOV: ", result);
+                cameraAzimuthFOV_Raw = result["AZIMUTH_FOV"];
+//console.log("Camera FOV AZ:",cameraAzimuthFOV_Raw);
+            } catch (e) {
+                 console.log("*extractVicarData - 'AZIMUTH_FOV' ERROR in VICAR label:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+console.log("****extractVicarData - Value extracted for AZIMUTH_FOV: ", result);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+//console.log("Getting camera ELEVATION_FOV...");
+            try {
+                result = readVicarParameter(vicarLabelText, "INSTRUMENT_STATE_PARMS", "ELEVATION_FOV");
+//console.log("extractVicarData - Value extracted for ELEVATION_FOV: ", result);
+                cameraElevationFOV_Raw = result["ELEVATION_FOV"];
+//console.log("Camera FOV AZ:",cameraElevationFOV_Raw);
+            } catch (e) {
+                 console.log("*extractVicarData - 'ELEVATION_FOV' ERROR in VICAR label:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+
+
+/*
+console.log("Direction for points ",xPos, yPos, zPos, xPos + xTarget, yPos + yTarget, zPos + zTarget);
+dir = calculateEulerAnglesV1([xPos, yPos, zPos], [xPos + xTarget, yPos + yTarget, zPos + zTarget]);
+console.log(dir);
+*/
+
+/////////// GET CAMERA NAME
+            try {
+                result = readVicarParameterSingle(vicarLabelText, "INSTRUMENT_ID");
+//console.log("Camera name raw:",result);
+                cameraName = result;//.split('"').join('');//.split("_")[1];
+            } catch (e) {
+                 console.log("*extractVicarData - 'INSTRUMENT_ID' ERROR in VICAR label:",e);
+                 console.log("*extractVicarData - Label file ", filename);
+                 console.log("*extractVicarData - Label contents: ", vicarLabelText);
+            }
+
+////// CONVERT TO NUMBERS //////////
+            try {
+                azimuthRad = parseFloat(cameraAzimuthRaw.replace("<rad>",""));
+                elevationRad = parseFloat(cameraElevationRaw.replace("<rad>",""));
+                azimuthFOVdeg = parseFloat(cameraAzimuthFOV_Raw.replace("<deg>",""));
+                elevationFOVdeg = parseFloat(cameraElevationFOV_Raw.replace("<deg>",""));
+            } catch (e) {
+                 console.log("*extractVicarData - Error extracting float:",e);
+            }
+
+
+
+
+//            console.log("========= RIEPILOGO ==========", );
+//console.log("ORIGINE MASTCAM (ORIGIN_OFFSET_VECTOR) (NASA: oriz, oriz, Z giu): ",parseFloat(cameraPositionValuesRaw[0])+ "," +  parseFloat(cameraPositionValuesRaw[1])+ "," + parseFloat(cameraPositionValuesRaw[2]));
+
+            console.log("=====================", );
+
+            return {
+
+                horizFOVdeg : azimuthFOVdeg,
+                vertFOVdeg : elevationFOVdeg,
+                xMastcamOrigin : xOrigin,
+                yMastcamOrigin : yOrigin,
+                zMastcamOrigin : zOrigin,
+				
+				xCam : xCam,
+				yCam : yCam,
+				zCam : zCam,
+				
+				xCamTarget : xTarget,
+				yCamTarget : yTarget, 
+				zCamTarget : zTarget,
+				
+				xRover : xRover,
+				yRover : yRover,
+				zRover : zRover,
+				yawRover: euler.yaw,
+				pitchRover : euler.pitch,
+				rollRover : euler.roll,
+				yawRoverDeg: euler.yawDeg,
+				pitchRoverDeg : euler.pitchDeg,
+				rollRoverDeg : euler.rollDeg,
+
+                filename: filename,
+                solNumber: solNumber,
+                camera : cameraName
+            };
         }
 
 
 
-		function readVicarParameter(vicarLabel, groupName, paramName) {
-		    const data = vicarLabel;
 
-		    // Trova il gruppo con regex che include tutte le righe tra il gruppo iniziale e il successivo
-		    const groupRegex = new RegExp(`GROUP\\s*=\\s*${groupName}\\s*([\\s\\S]*?)(?:GROUP|$)`, 'i');
-		    const groupMatch = data.match(groupRegex);
-		    if (!groupMatch) return null;  // Gruppo non trovato
+function removeParentheticalLineBreaks(input) {
+  return input.replace(/\(\s*([^)]+)\s*\)/g, (match, content) => {
+    // Remove newlines and extra whitespace
+    const cleanedContent = content
+      .replace(/\n/g, ' ')  // Replace newlines with spaces
+      .replace(/\s+/g, ' ')  // Replace multiple whitespaces with a single space
+      .trim();  // Remove leading and trailing whitespace
 
-		    const groupData = groupMatch[1];
+    return `(${cleanedContent})`;
+  });
+}
 
-		    // Trova il parametro specificato nel gruppo
-		    const paramRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*(.*)`, 'm');
-		    const paramMatch = groupData.match(paramRegex);
-		    if (!paramMatch) return null;  // Parametro non trovato
 
-		    let value = paramMatch[1].trim();
+        function readVicarParameter(vicarLabel, groupName, paramName) {
 
-		    // Verifica se il valore è una lista
-		    if (value.startsWith("(")) {
-		        // Regex per estrarre correttamente tutti gli elementi tra parentesi tonde (compresi ritorni a capo)
-		        const listRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
-		        const listMatch = groupData.match(listRegex);
+/* NOTES ON HAZCAMS:
+...  fish-eye lenses with a 124° × 124° horizontal/vertical field of view and a 180° diagonal FOV.
+...
+Front Hazcam optical boresight pointed at an angle of 45° below the horizon.
+Rear Hazcam optical boresight pointed at an angle of 35° below the horizon.
+This configuration allows for the viewing of ~17° of sky in the Front Hazcam images
+and ~15° of sky in the Rear Hazcam images (the upper 12° of the Rear Hazcam images
+are blocked by the rear solar panel on the rover).
 
-		        if (listMatch) {
-		            value = listMatch[1].split(',').map(v => v.trim());  // Crea un array con ogni elemento
-		            const nameParam = paramName + "_NAME";               // Cerca un array di nomi associati
-		            const nameRegex = new RegExp(`^\\s*${nameParam}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
-		            const nameMatch = groupData.match(nameRegex);
+Stereo baseline: 0.10 m
 
-		            // Associa i nomi ai valori, se presente la lista di nomi
-		            if (nameMatch) {
-		                const names = nameMatch[1].split(',').map(name => name.trim().replace(/"/g, ''));
-		                const result = {};
-		                names.forEach((name, index) => {
-		                    result[name] = value[index];
-		                });
-		                return result;
-		            }
-		        }
-		    }
 
-		    // Restituisce un oggetto con chiave e valore singolo se non è una lista
-		    return { [paramName.trim()]: value };
-		}
+ref. Mars Exploration Rover Engineering Cameras, J. N. Maki
+https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2003JE002077
+----------
+
+https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MSL/Instruments/MSL%20Hazcam.htm:
+- center of the front panel of the rover body with a boresight 68 cm
+- center of rear panel of the rover body with a boresight 78 cm above the base of the wheels
+- Both front and rear Hazcams are pointed directly away from the rover 45 degrees off nadir
+- 16.6 cm stereo baseline for each of the front pairs
+- 10 cm for each of the rear pairs
+
+------------
+
+Orientation:
+  Spice kernel mer2_v10.tf:
+
+  Y rotation, X rotation, Z rotation
+  pitch, roll, yaw
+
+Nominal:
+FRONT
+      TKFRAME_-254011_AXES             = (   2,       1,       3     )
+      TKFRAME_-254011_ANGLES           = ( -45.000,   0.000,  90.000 )
+
+      TKFRAME_-254012_AXES             = (   2,       1,       3     )
+      TKFRAME_-254012_ANGLES           = ( -45.000,   0.000,  90.000 )
+
+REAR
+      TKFRAME_-254021_AXES             = (   2,       1,       3     )
+      TKFRAME_-254021_ANGLES           = (  55.000,   0.000, -90.000 )
+
+      TKFRAME_-254022_AXES             = (   2,       1,       3     )
+      TKFRAME_-254022_ANGLES           = (  55.000,   0.000, -90.000 )
+
+Actual:
+  FRONT_HAZCAM_LEFT:
+        TKFRAME_-254011_AXES             = (    2,        1,        3     )
+        TKFRAME_-254011_ANGLES           = (  -45.443,    1.662,   89.940 )
+
+  FRONT_HAZCAM_RIGHT:
+        TKFRAME_-254012_AXES             = (    2,        1,        3     )
+        TKFRAME_-254012_ANGLES           = (  -45.485,    1.621,   88.712 )
+
+  REAR_HAZCAM_LEFT:
+        TKFRAME_-254021_AXES             = (    2,        1,        3     )
+        TKFRAME_-254021_ANGLES           = (   56.520,   -0.986,  -89.661 )
+
+  REAR_HAZCAM_RIGHT:
+        TKFRAME_-254022_AXES             = (    2,        1,        3     )
+        TKFRAME_-254022_ANGLES           = (   56.797,   -0.953,  -90.031 )
+
+
+Position (x,y,z):
+  IK file mer2_fl_20031204_c58.ti:
+  Front left
+        INS-254011_CAHVOR_C     = (       0.606185     -0.043367     -0.234891 )
+        INS-254011_CAHVOR_A     = (       0.712013      0.037316      0.701174 )
+37.32,-81.91
+TKFRAME_-254011_ANGLES           = (  -45.443,    1.662,   89.940 )
+
+IMG file:
+  MODEL_COMPONENT_1               = (0.606185,-0.043367,-0.234891)
+  MODEL_COMPONENT_2               = (0.712013,0.037316,0.701174)
+
+
+
+  mer2_fr_20031204_c59.ti
+  Front right:
+        INS-254012_CAHVOR_C     = (       0.605777      0.055065     -0.235306 )
+        INS-254012_CAHVOR_A     = (       0.702176     -0.007688      0.711962 )
+-33,83
+TKFRAME_-254012_ANGLES           = (  -45.485,    1.621,   88.712 )
+
+MODEL_COMPONENT_1               = (0.605777,0.055065,-0.235306)
+MODEL_COMPONENT_2               = (0.702176,-0.007688,0.711962)
+
+
+
+  mer2_rl_20031204_c60.ti
+  Rear left:
+        INS-254021_CAHVOR_C     = (      -0.352830      0.027840     -0.220359 )
+        INS-254021_CAHVOR_A     = (      -0.820494     -0.017232      0.571396 )
+
+-174,-59
+TKFRAME_-254021_ANGLES           = (   56.520,   -0.986,  -89.661 )
+
+MODEL_COMPONENT_1               = (-0.35283,0.02784,-0.220359)
+MODEL_COMPONENT_2               = (-0.820494,-0.017232,0.571396)
+
+
+
+  mer2_rr_20031204_c61.ti
+  Rear right:
+        INS-254022_CAHVOR_C     = (      -0.352856     -0.071599     -0.220484 )
+        INS-254022_CAHVOR_A     = (      -0.817110      0.006074      0.576450 )
+170.50,-59.43
+TKFRAME_-254022_ANGLES           = (   56.797,   -0.953,  -90.031 )
+
+  MODEL_COMPONENT_1               = (-0.352856,-0.071599,-0.220484)
+  MODEL_COMPONENT_2               = (-0.81711,0.006074,0.57645)
+
+
+*/
+
+//console.log("readVicarParameter -  searching '" + paramName + "' in '"  + groupName + "'");
+            const data = vicarLabel;
+
+            try {
+                // Trova il gruppo con regex che include tutte le righe tra il gruppo iniziale e il successivo
+                const groupRegex = new RegExp(`GROUP\\s*=\\s*${groupName}\\s*([\\s\\S]*?)(?:GROUP|$)`, 'i');
+                const groupMatch = data.match(groupRegex);
+                if (!groupMatch) return null;  // Gruppo non trovato
+
+                const groupData = groupMatch[1];
+
+                oneLine = removeParentheticalLineBreaks(groupData);
+//console.log(oneLine);
+                paramRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*(.*)$`, 'm');
+                paramMatch = oneLine.match(paramRegex);
+//console.log("readVicarParameter - paramMatch", paramMatch);
+
+
+                let value = paramMatch[1].trim();
+//console.log("readVicarParameter -  value:",  value);
+
+                // Verifica se il valore è una lista
+                if (value.startsWith("(")) {
+//console.log("readVicarParameter -  Found list...:",value);
+                    // Regex per estrarre correttamente tutti gli elementi tra parentesi tonde (compresi ritorni a capo)
+                    const listRegex = new RegExp(`^\\s*${paramName}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
+                    const listMatch = oneLine.match(listRegex);
+
+
+                    if (listMatch) {
+//console.log("readVicarParameter -  Found requested parameter " + paramName + " in list:",listMatch);
+                        value = listMatch[1].split(',').map(v => v.trim());  // Crea un array con ogni elemento
+//console.log("readVicarParameter -  value for " + paramName + ":", value);
+                        const nameParam = paramName +"_NAME";               // Cerca un array di nomi associati
+                        const nameRegex = new RegExp(`^\\s*${nameParam}\\s*=\\s*\\(([^)]+)\\)`, 'ms');
+                        const nameMatch = oneLine.match(nameRegex);
+
+                        // Associa i nomi ai valori, se presente la lista di nomi
+                        if (nameMatch) {
+//console.log("readVicarParameter -  Found names for parameters;", nameMatch);
+                            const names = nameMatch[1].split(',').map(name => name.trim().replace(/"/g, ''));
+                            const result = {};
+                            names.forEach((name, index) => {
+                                result[name] = value[index];
+                            });
+                            return result;
+                        } else {
+//console.log("*readVicarParameter -  NO NAMES for values of ", nameParam);
+                            return value;
+                        }
+                    } else {
+//console.log("*readVicarParameter -  NO MATCH for list ", paramName);
+                    }
+                } else {
+//console.log("readVicarParameter -  SINGLE param found:", value, " returned: ", { [paramName.trim()]: value });
+                    // Restituisce un oggetto con chiave e valore singolo se non è una lista
+                    return { [paramName.trim()]: value };
+                }
+            } catch (e) {
+                console.log("*readVicarParameter - ERROR:", e);
+                console.log("*readVicarParameter - label contents:", vicarLabel);
+                console.log("*readVicarParameter - Request:", groupName, paramName);
+            }
+
+        }
 
 
 //////////// fine codice caricamento IMG //////////
 
 function create3d() {
+
+
     const createScene = () => {
         const scene = new BABYLON.Scene(engine);
-        const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 5, BABYLON.Vector3.Zero(), scene);
-        camera.attachControl(canvas, true);
-		camera.wheelDeltaPercentage = 0.01;
-        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+        babylonCamera = new BABYLON.ArcRotateCamera("camera1", 0, 0, 0, new BABYLON.Vector3(0, 0, -0), scene);
+        babylonCamera.setPosition(new BABYLON.Vector3(0, 0, -10));
+        babylonCamera.attachControl(canvas, true);
+        babylonCamera.wheelDeltaPercentage = 0.01;
 
+
+        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        const light2 = new BABYLON.PointLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        scene.addLight(light);
+        scene.addLight(light2);
+
+/*
         // Piano di ground
         const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
         const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
@@ -200,24 +877,41 @@ function create3d() {
         groundMaterial.backFaceCulling = false;
         groundMaterial.alpha = 0.2;
         ground.material = groundMaterial;
-
-        // Assi cartesiani
+*/
+/*        // Assi cartesiani
         createAxis(scene, "x", 2, new BABYLON.Color3(1, 0, 0));
         createAxis(scene, "y", 2, new BABYLON.Color3(0, 1, 0));
         createAxis(scene, "z", 2, new BABYLON.Color3(0, 0, 1));
-
+*/
         return scene;
     };
 
-    const createAxis = (scene, axis, length, color) => {
-        const points = [new BABYLON.Vector3.Zero(), new BABYLON.Vector3(...(axis === "x" ? [length, 0, 0] : axis === "y" ? [0, length, 0] : [0, 0, length]))];
-        const lines = BABYLON.MeshBuilder.CreateLines(`axis${axis}`, { points }, scene);
-        lines.color = color;
-    };
 
     const canvas = document.getElementById("renderCanvas");
     const engine = new BABYLON.Engine(canvas, true);
     scene = createScene();
+scene.useRightHandedSystem = true;
+const axes = new BABYLON.AxesViewer(scene, 2);
+
+	blueMaterial = new BABYLON.StandardMaterial("blueMat", scene);
+	blueMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1);
+
+	redMaterial = new BABYLON.StandardMaterial("redMat", scene);
+	redMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
+
+	greenMaterial = new BABYLON.StandardMaterial("greenMat", scene);
+	greenMaterial.diffuseColor = new BABYLON.Color3(0, 1,0);
+
+	yellowMaterial = new BABYLON.StandardMaterial("yellowMat", scene);
+	yellowMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0);
+
+	whiteMaterial = new BABYLON.StandardMaterial("whiteMat", scene);
+	whiteMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1);
+
+	matPan = blueMaterial;
+	matNav = redMaterial;
+	matHaz = yellowMaterial;
+	matTarget = whiteMaterial;
 
     engine.runRenderLoop(() => scene.render());
     window.addEventListener("resize", () => engine.resize());
@@ -227,117 +921,95 @@ function create3d() {
 }
 
 function addRover(scene) {
-			// Pancam
-			pancamCylinder = BABYLON.MeshBuilder.CreateCylinder("pancam", { diameter: 0.05, height: 0.1 }, scene);
-			pancamCylinder.position = new BABYLON.Vector3(originOffsetVector.x, originOffsetVector.y, originOffsetVector.z);
-			pancamCylinder.rotation = new BABYLON.Vector3(Math.PI/2, 0, 0);
+    // Pancam
+    pancamCylinder = BABYLON.MeshBuilder.CreateCylinder("pancam", { diameter: 0.05, height: 0.1 }, scene);
+    pancamCylinder.position = new BABYLON.Vector3(0,0,0);//originOffsetVector.x, originOffsetVector.y, originOffsetVector.z);
+    pancamCylinder.rotation = new BABYLON.Vector3(Math.PI/2, 0, 0);
 
-			// Mast of pancam
-			const mastCylinder = BABYLON.MeshBuilder.CreateCylinder("mast", { diameter: 0.05, height: 0.5 }, scene);
-			mastCylinder.position = new BABYLON.Vector3(originOffsetVector.x, 0.75, originOffsetVector.z);
+    // Mast of pancam
+    const mastCylinder = BABYLON.MeshBuilder.CreateCylinder("mast", { diameter: 0.05, height: 1.09668 }, scene);
+    mastCylinder.position = new BABYLON.Vector3( 0.45781,+1.09668/2,0.02779);
 
 
-			const roverBody = BABYLON.MeshBuilder.CreateBox("box", { width: 0.4, height: 0.2, depth: 0.8 }, scene);
-			roverBody.position = new BABYLON.Vector3(originOffsetVector.x, 0.4, -0.4);
+    roverBody = BABYLON.MeshBuilder.CreateBox("box", { width: 0.45781*2 + 0.2, height: 0.2, depth: 0.45781 }, scene);
+    roverBody.position = new BABYLON.Vector3(0,0,0);//originOffsetVector.x, 0.4, -0.4);
 
+	mastCylinder.parent =roverBody;
 }
 
 
-async function addElementsToScene(scene, textureFileName, azimuthRad, elevationRad, azimuthFOVdeg, elevationFOVdeg) {
-			fovsIndex  = 0;
-			// Orienta il cilindro verso azimuth/elevation della Pancam
-			//const azimuthRad = pancamAzimuthRad;
-			elevationRad = -elevationRad;
 
-			pancamCylinder.rotation = new BABYLON.Vector3(elevationRad + Math.PI/2, azimuthRad, 0);
+async function addElementsToScene(scene, textureFileName, x,y,z, azimuthRad, elevationRad, azimuthFOVdeg, elevationFOVdeg, solNumber, camera, xt, yt, zt, file) {
+            fovsIndex  = 0;
 
-			// Rappresentazione FOV come piramide
-			const fovHeight = 2; // Distanza della base FOV dalla Pancam
-			const fovBaseSizeX = 2 * Math.tan(BABYLON.Tools.ToRadians(azimuthFOVdeg / 2)) * fovHeight;
-			const fovBaseSizeY = 2 * Math.tan(BABYLON.Tools.ToRadians(elevationFOVdeg / 2)) * fovHeight;
+            // Orienta il cilindro verso azimuth/elevation della Pancam
+            pancamCylinder.rotation = new BABYLON.Vector3(elevationRad + Math.PI/2, azimuthRad, 0);
 
-			// Creazione piramide FOV
-			const vertexDataPyramid = new BABYLON.VertexData();
-			const positionsPyramid = [
-			    0, 0, 0,                                      // Vertice della piramide (vertice del FOV)
-			    -fovBaseSizeX / 2, -fovBaseSizeY / 2, fovHeight,  // Vertice della base quadrata
-			    fovBaseSizeX / 2, -fovBaseSizeY / 2, fovHeight,
-			    fovBaseSizeX / 2, fovBaseSizeY / 2, fovHeight,
-			    -fovBaseSizeX / 2, fovBaseSizeY / 2, fovHeight
-			];
-			const indicesPyramid = [
-			    0, 1, 2,  // Lato 1
-			    0, 2, 3,  // Lato 2
-			    0, 3, 4,  // Lato 3
-			    0, 4, 1   // Lato 4
-			];
+            if (camera.indexOf("HAZ") >= 0) {
+                fovHeight = 0.4;  // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+				mat = matHaz;
+            } else if (camera.indexOf("PAN") >= 0) {
+                fovHeight = 2;  // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+				mat = matPan;
+            } else {
+                fovHeight = 2; // Distanza del piano di proiezione dell'immagine dalla camera, in metri
+				mat = matNav;
+            }
 
-			vertexDataPyramid.positions = positionsPyramid;
-			vertexDataPyramid.indices = indicesPyramid;
+            const fovBaseSizeX = 2 * Math.tan(BABYLON.Tools.ToRadians(azimuthFOVdeg / 2)) * fovHeight;
+            const fovBaseSizeY = 2 * Math.tan(BABYLON.Tools.ToRadians(elevationFOVdeg / 2)) * fovHeight;
 
-			const fovPyramid = new BABYLON.Mesh("fovPyramid", scene);
-			vertexDataPyramid.applyToMesh(fovPyramid);
+            const camSphere = BABYLON.MeshBuilder.CreateSphere("camSphere", {diameter: 0.1}, scene);
+            camSphere.position = new BABYLON.Vector3(x,y,z );
+            camSphere.parent = roverClones[roverDriveIndex] ;
 
-			fovPyramid.position = pancamCylinder.position.clone();
-			fovPyramid.rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
-
-			// Materiale semitrasparente per il FOV
-			const fovMaterial = new BABYLON.StandardMaterial("fovMaterial", scene);
-			fovMaterial.backFaceCulling = false;
-			fovMaterial.alpha = 0.1; // Imposta la trasparenza al 30%
-			fovMaterial.diffuseColor = new BABYLON.Color3(1, 1, 0); // Colore giallo semitrasparente
-			fovPyramid.material = fovMaterial;
-
-			// Creazione della base rettangolare per il FOV
-			const baseFov = BABYLON.MeshBuilder.CreatePlane("baseFov", {
-			    width: fovBaseSizeX,
-			    height: fovBaseSizeY
-			}, scene);
-			
-			baseFovs[textureFileName] = baseFov;
-
-	
-			// Calcolo della direzione basata su azimuth e elevation
-			const direction = new BABYLON.Vector3(
-			    Math.sin(azimuthRad) * Math.cos(-elevationRad), // X
-			    Math.sin(-elevationRad),                        // Y
-			    Math.cos(azimuthRad) * Math.cos(-elevationRad)  // Z
-			).normalize();
-
-			// Posizionamento della base a 2 metri di distanza lungo la direzione
-			baseFovs[textureFileName].position = pancamCylinder.position.add(direction.scale(fovHeight));
-
-			// Rotazione della base per allinearla correttamente
-			baseFovs[textureFileName].rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
-
-			// Aggiunta della texture
-			baseTexture = new BABYLON.StandardMaterial("baseTextureMaterial", scene);
-			baseTextures[textureFileName] = baseTexture;
-console.log("addElementsToScene - Downloading texture" + textureFileName + " ...");
-			const textureData = await getTexture(textureFileName);
-console.log("addElementsToScene - RECEIVED texture:", textureData.length);			
-			baseTextures[textureFileName].diffuseTexture = new BABYLON.Texture(textureData, scene);
-			baseTextures[textureFileName].backFaceCulling = false;
-			baseFovs[textureFileName].material = baseTextures[textureFileName];
-
-fovsIndex++;
-
-	}
-
-// Creazione di un input per il caricamento del file
-const imageInput = document.getElementById("imageInput");
+            var cameraPosition = new BABYLON.Vector3(x,y,z);
+            var lookDirection = new BABYLON.Vector3(x+xt,y+yt,z+zt);
+            var horizontalFOV = azimuthFOVdeg * Math.PI / 180;
+            var verticalFOV = elevationFOVdeg * Math.PI / 180;
 
 
-// Carica texture
-imageInput.addEventListener("change", (event) => {
-    textureFile = event.target.files[0];
-});
+            frustumObj = getCameraFrustum(scene, cameraPosition, lookDirection, horizontalFOV, verticalFOV, fovHeight);
+            baseFov = frustumObj.squareMesh;
+
+            baseFovs[textureFileName] = baseFov;
+            baseFovs[textureFileName].rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
+
+            // Aggiunta della texture
+            const textureData = await getTextureForPancamViewer(textureFileName, solNumber, file);
+
+            if (textureData.length > 20) {
+                const formattedTextureData = textureData.startsWith('data:image') 
+                    ? textureData 
+                    : `data:image/jpeg;base64,${textureData}`;
+
+                const material = new BABYLON.StandardMaterial(textureFileName + "_material", scene);
+                const texture = new BABYLON.Texture(formattedTextureData, scene);
+             
+                // Rotate and flip texture
+                texture.uRotationCenter = 0.5;
+                texture.vRotationCenter = 0.5;
+                texture.uScale = 1;
+                texture.vScale = -1;
+
+                // Apply texture to both front and back faces
+                material.diffuseTexture = texture;
+                material.backFaceCulling = false;
+                material.backMaterial = material.clone();
+                material.backMaterial.diffuseTexture = texture;
+
+                material.useAlphaFromDiffuseTexture = true;
+                
+                baseFovs[textureFileName].material = material;
+                baseTextures[textureFileName] = texture;
+            } else {
+                console.log("no texture");
+            }
 
 
-// Applica texture
-btnShowTexture.addEventListener("click", (event) => {
-    textureLoader(textureFile);
-});
+            fovsIndex++;
+    }
+
 
 
 function textureLoader(file) {
@@ -348,10 +1020,238 @@ function textureLoader(file) {
         baseTexture.backFaceCulling = false;
         baseFov.material = baseTexture;
     } else {
-		alert("Non hai caricato la texture!");
-	}
+        alert("Non hai caricato la texture!");
+    }
 }
 
+
+
+function calculateEulerAnglesV1(origin, target) {
+    // Calcola le differenze tra le coordinate
+    const dx = target[0] - origin[0];
+    const dy = target[1] - origin[1];
+    const dz = target[2] - origin[2];
+
+    // Calcola la distanza totale
+    const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+    // Calcolo degli angoli di Eulero (in radianti)
+    // Rotazione intorno all'asse Z (yaw)
+    const yaw = Math.atan2(dy, dx);
+
+    // Rotazione intorno all'asse Y (pitch)
+    const pitch = Math.atan2(dz, Math.sqrt(dx*dx + dy*dy));
+
+    return {
+        yaw: yaw,   // Rotazione orizzontale
+        pitch: pitch, // Rotazione verticale
+        distance: distance
+    };
+}
+
+
+
+function getCameraFrustum(scene, origin, target, horizontalFOV, verticalFOV, dist) {
+    // Creare il vettore direzione normalizzato
+    const direction = target.subtract(origin).normalize();
+
+    // Calcolo dei vettori perpendicolari
+    const up = new BABYLON.Vector3(0, 1, 0);
+    const right = BABYLON.Vector3.Cross(direction, up).normalize();
+    const trueUp = BABYLON.Vector3.Cross(right, direction).normalize();
+
+    // Dimensioni del piano visuale
+    const halfHorizontal = Math.tan(horizontalFOV / 2) * dist;
+    const halfVertical = Math.tan(verticalFOV / 2) * dist;
+
+    // Calcolo dei 4 angoli del piano visuale
+    const center = origin.add(direction.scale(dist));
+    const topLeft = center.add(trueUp.scale(halfVertical)).subtract(right.scale(halfHorizontal));
+    const topRight = center.add(trueUp.scale(halfVertical)).add(right.scale(halfHorizontal));
+    const bottomLeft = center.subtract(trueUp.scale(halfVertical)).subtract(right.scale(halfHorizontal));
+    const bottomRight = center.subtract(trueUp.scale(halfVertical)).add(right.scale(halfHorizontal));
+
+    // Crea una geometria visibile per il frustum
+    const frustumLines = [
+        origin, topLeft,
+        origin, topRight,
+        origin, bottomLeft,
+        origin, bottomRight
+    ];
+
+    const frustumMesh = BABYLON.MeshBuilder.CreateLines("frustum", {
+        points: frustumLines,
+    }, scene);
+
+    // Impostare un colore per il frustum
+    frustumMesh.color = new BABYLON.Color3(1, 0, 0);
+    frustumMesh.parent = roverClones[roverDriveIndex] ;
+
+
+// Definisci i 4 vertici del quadrato
+const vertices = [
+    topLeft,    // Vertice in alto a sinistra
+    topRight,   // Vertice in alto a destra
+    bottomRight,// Vertice in basso a destra
+    bottomLeft  // Vertice in basso a sinistra
+];
+
+// Crea un CustomMesh per il quadrato con i vertici specificati
+const squareMesh = new BABYLON.Mesh("customSquare", scene);
+squareMesh.parent = roverClones[roverDriveIndex] ;
+var vertexData = new BABYLON.VertexData();
+
+
+// Imposta le posizioni dei vertici
+vertexData.positions = vertices.flatMap(vertex => [vertex.x, vertex.y, vertex.z]);
+
+// Definisci gli indici per creare il quadrato
+vertexData.indices = [0, 1, 2, 0, 2, 3];
+
+// Definisci le coordinate UV per la texture
+vertexData.uvs = [
+    0, 0,  // bottom left
+    1, 0,  // bottom right
+    1, 1,  // top right
+    0, 1   // top left
+];
+
+// Applica i dati del vertice alla mesh
+vertexData.applyToMesh(squareMesh);
+
+	return  {
+		vertex: {
+	        topLeft,
+	        topRight,
+	        bottomRight,
+	        bottomLeft
+		},
+		squareMesh
+    }
+
+;
+}
+
+
+function siteNumToSiteCouple(value) {
+    if (value < 0 || value >= 36 * 26 + 100) {
+        return("debug error");//throw new Error("Il valore � fuori intervallo.");
+    }
+
+    // Caso 1: numerico puro ("00" - "99")
+    if (value < 100) {
+        return value.toString().padStart(2, '0');
+    }
+
+    // Caso 2: alfanumerico ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
+    const adjustedValue = value - 100;
+
+    // Calcola il primo carattere (lettera)
+    const firstValue = Math.floor(adjustedValue / 36);
+    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
+
+    // Calcola il secondo carattere (lettera o numero)
+    const secondValue = adjustedValue % 36;
+    let secondChar;
+
+    if (secondValue < 10) {
+        // Numerico
+        secondChar = secondValue.toString();
+    } else {
+        // Alfabetico
+        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
+    }
+
+    return firstChar + secondChar;
+}
+
+
+function siteCodeToString(code) {
+    code = code.toUpperCase();
+    if (code.length !== 2) {
+        throw new Error("Il codice deve essere una stringa di due caratteri.");
+    }
+
+    const firstChar = code[0];
+    const secondChar = code[1];
+    // Caso 1: numerico puro ("00" - "99")
+    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+        return parseInt(code, 10);
+    }
+
+    // Caso 2: alfanumerico ("A0" - "ZZ")
+    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare il valore delle lettere
+    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+    let secondValue;
+
+    if (isNaN(secondChar)) {
+        // Se il secondo carattere è una lettera
+        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+    } else {
+        // Se il secondo carattere è un numero
+        secondValue = parseInt(secondChar, 10);
+    }
+
+    // Formula per calcolare l'intervallo corretto (da 100 in poi)
+    return 100 + firstValue * 36 + secondValue;
+}
+
+
+function centerOnRover(idx) {
+
+  const targetPosition = new BABYLON.Vector3(
+      roverClones[idx].position._x,
+      roverClones[idx].position._y,
+      roverClones[idx].position._z
+  );
+
+  const cameraDistance = 10; // Distanza desiderata
+  const initialCameraPosition = new BABYLON.Vector3(
+      targetPosition.x,
+      targetPosition.y + 10,
+      targetPosition.z - cameraDistance
+  );
+
+  // Configura la camera
+  babylonCamera.setPosition(initialCameraPosition);
+  babylonCamera.setTarget(targetPosition);
+  //babylonCamera.attachControl(canvas, true);
+  //babylonCamera.radius = 4
+
+}
+
+
+    function createAxis(center, scene, axis, length, color) {
+console.log(center, scene, axis, length, color);
+        const points = [center, new BABYLON.Vector3(...(axis === "x" ? [length, 0, 0] : axis === "y" ? [0, length, 0] : [0, 0, length]))];
+        const lines = BABYLON.MeshBuilder.CreateLines(`axis${axis}`, { points }, scene);
+console.log("POINTS=",points);
+        lines.color = color;
+    };
+
+
+function createAxis(center, scene, axis, length, color) {
+    // Calcola il punto finale a partire dal centro
+    const endPoint =
+        axis === "x" ? [center.x + length, center.y, center.z] :
+        axis === "y" ? [center.x, center.y + length, center.z] :
+        [center.x, center.y, center.z + length];
+
+    const points = [
+        center,
+        new BABYLON.Vector3(...endPoint)
+    ];
+
+    // Crea le linee
+    const lines = BABYLON.MeshBuilder.CreateLines(
+        `axis${axis}`,
+        { points },
+        scene
+    );
+
+    lines.color = color;
+}
 
 
 babylonScene = create3d();

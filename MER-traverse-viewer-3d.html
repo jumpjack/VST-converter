@@ -93,7 +93,7 @@
 		    camera.lowerRadiusLimit = 2;
 		    camera.upperRadiusLimit = 10000;
 		    
-		    // Luci con intensità aumentata
+		    // Luci con intensitï¿½ aumentata
 		    const hemLight = new BABYLON.HemisphericLight(
 		        "hemLight", 
 		        new BABYLON.Vector3(0, 1, 0), 
@@ -108,7 +108,7 @@
 		    );
 		    dirLight.intensity = 0.7;  // aumentata da 0.5
 		    
-		    // Griglia di riferimento più grande
+		    // Griglia di riferimento piï¿½ grande
 		    const gridSize = 10000;  
 		    const grid = BABYLON.MeshBuilder.CreateGround(
 		        "grid", 
@@ -199,34 +199,34 @@ console.log(pickResult);
 // Parametri configurabili
 const minDistance = 5;      // Distanza minima
 const maxDistance = 500;    // Distanza massima
-const minSensitivity = 1;    // Sensibilità minima
-const maxSensitivity = 1000;   // Sensibilità massima
+const minSensitivity = 1;    // Sensibilitï¿½ minima
+const maxSensitivity = 1000;   // Sensibilitï¿½ massima
 
 
-// Funzione per regolare dinamicamente la sensibilità dello zoom
+// Funzione per regolare dinamicamente la sensibilitï¿½ dello zoom
 function adjustZoomSensitivity() {
     const distance = camera.radius; // Distanza attuale della telecamera dal target
 
-    // Calcola la sensibilità in base alla distanza
+    // Calcola la sensibilitï¿½ in base alla distanza
     let zoomSensitivity;
 
    if (distance <= minDistance) {
-        zoomSensitivity = minSensitivity; // Sensibilità minima quando molto vicino
+        zoomSensitivity = minSensitivity; // Sensibilitï¿½ minima quando molto vicino
     } else if (distance >= maxDistance) {
-        zoomSensitivity = maxSensitivity; // Sensibilità massima quando molto lontano
+        zoomSensitivity = maxSensitivity; // Sensibilitï¿½ massima quando molto lontano
     } else {
-        // Interpolazione lineare tra sensibilità minima e massima
+        // Interpolazione lineare tra sensibilitï¿½ minima e massima
         zoomSensitivity = distance/100
     }
 
-    // Applica la sensibilità
-    camera.wheelPrecision = zoomSensitivity;
+    // Applica la sensibilitï¿½
+    camera.wheelPrecision = 1; // DEBUG //zoomSensitivity;
 
-    // Debug: stampa distanza e sensibilità
-    console.log(`Distanza: ${distance.toFixed(2)} | Sensibilità: ${zoomSensitivity.toFixed(2)}`);
+    // Debug: stampa distanza e sensibilitï¿½
+    console.log(`Distanza: ${distance.toFixed(2)} | Sensibilitï¿½: ${zoomSensitivity.toFixed(2)}`);
 }
 
-// Monitorare la distanza e regolare la sensibilità ogni volta che la telecamera cambia posizione
+// Monitorare la distanza e regolare la sensibilitï¿½ ogni volta che la telecamera cambia posizione
 scene.onBeforeRenderObservable.add(() => {
     adjustZoomSensitivity();
 });
@@ -335,7 +335,7 @@ function insertRovers() {
 		                return;
 		            }
 
-		            // Crea un cubo
+		            // Crea corpo rover
 		            const box = BABYLON.MeshBuilder.CreateBox(
 		                `box_${site}_${drive}`, 
 		                { 
@@ -348,21 +348,40 @@ function insertRovers() {
 		            
 		            // Imposta il materiale
 		            box.material = boxMaterial;
+
+		            const mastCam = BABYLON.MeshBuilder.CreateBox(
+		                `mastCam_${site}_${drive}`, 
+		                { 
+		                    width: 0.05,  
+		                    height: 0.5, 
+		                    depth: 0.05    
+		                }, 
+		                scene
+		            );
 		            
-		            // Posiziona il cubo
+
 		            box.position = new BABYLON.Vector3(
 		                -driveData.totalOffset.x,
 		                -driveData.totalOffset.z,
 		                driveData.totalOffset.y
 		            );
-		            
+					
+					mastCam.position = new BABYLON.Vector3(
+					    -driveData.totalOffset.x - 0.3	, 
+					    -driveData.totalOffset.z +0.2,
+					    driveData.totalOffset.y     
+					);
+										
+// Imposta la MastCam come child del rover
+mastCam.setParent(box);
+							            
 		            
 /*		            // Applica la rotazione dal quaternione
 box.rotationQuaternion = new BABYLON.Quaternion(
-    driveData.quaternion.v1, // Z al posto di X
-    driveData.quaternion.v2, // Y rimane invariato
-    driveData.quaternion.v3, // X al posto di Z
-    driveData.quaternion.s   // W
+    driveData.quaternion.s, 
+    driveData.quaternion.v1, 
+    driveData.quaternion.v2, 
+    driveData.quaternion.v3   
 );*/
 
 box.rotation = new BABYLON.Vector3(
@@ -370,6 +389,9 @@ box.rotation = new BABYLON.Vector3(
     driveData.euler.yaw,   
     driveData.euler.roll   
 );
+
+
+
 		            boxCount++;
 		        });
 		    });
