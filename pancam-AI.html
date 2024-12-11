@@ -115,57 +115,70 @@ console.log(`File .jpg elaborato: ${file.name}, ${baseTexture}`);
                 }
             }
 
-
             // Add FOV frustum:
-            //imgIndex = 0;
-            //for (let file of imgFiles) {
-//console.log("===*************==== Showing " , newFiles.length , " new images, index from " , imgFiles.length - newFiles.length , " to " , imgFiles.length-1);
-
 
             for (imgIndex =  0; imgIndex < newFiles.length ; imgIndex++) {
+                // Get data from IMG file:
                 const currentVicarData = vicarData[imgIndex + imgFiles.length - newFiles.length];
 
-                roverDriveIndex = currentVicarData.filename.substring(14,18);
+                // The site+drive sequence becomes the index of arrays: 2f292380359fflb159p1211l0m1 --> sequence B159 --> site = B1, drive = 59
+                roverDriveIndex = currentVicarData.filename.substr(14,4).toUpperCase(); // WARNING: Algorithm for coding of site/drive numbers into string works only with upper case!
                 if (!roverClones[roverDriveIndex]) {
-                   roverClones[roverDriveIndex] = roverBody.clone();
+                   roverClones[roverDriveIndex] = roverBody.clone(); // Create a rover clone for each site+drive sequence
                 }
 
+                // Convert site index and drive index  into integer numbers:
                 siteNum  = siteCodeToString(roverDriveIndex.substring(0,2));
                 driveNum = siteCodeToString(roverDriveIndex.substring(2,4));
 
-                roverDrives[roverDriveIndex] = vicarData[imgIndex + imgFiles.length - newFiles.length];
-
-
+                 // Absolute coordinates of site w.r.t. landing site are taken from a traverse file calculated from mer2_master.svf file, which contains only relative positions (sequential)
+                 /*
+                 * "A Site Vector File (SVF) is an RMC file that contains nothing but Site Frame definitions. Each Site is defined
+                 * relative to the immediately previous Site, and all Sites back to 0 must be defined (Site 0 has no reference
+                 * and is not in the file). Thus the file defines a continuous chain of Sites from 0 up to the current Site."
+                 * https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/document/rmc_sis.htm
+                 */
                 siteY = drives[siteNum][0].totalOffset.y;
                 siteX = drives[siteNum][0].totalOffset.x;
                 siteZ = drives[siteNum][0].totalOffset.z;
 
+               // Rover coordinates and orientation w.r.t. site are taken from the IMG label
+                roverDrives[roverDriveIndex] = vicarData[imgIndex + imgFiles.length - newFiles.length];
                 rovImgY = roverDrives[roverDriveIndex].yRover;
                 rovImgX = roverDrives[roverDriveIndex].xRover;
                 rovImgZ = roverDrives[roverDriveIndex].zRover;
 
+                // Absolute coordinates of rover w.r.t. landing site:
                 rovTotY = siteY + rovImgY;
                 rovTotX = siteX + rovImgX;
                 rovTotZ = siteZ + rovImgZ;
 
+                //  Convert into Babylon reference system: NASA has Z+ down, right-naded, Babylon has Y+ up, lef-handed (fixed by scene.useRightHandedSystem = true)
                 rovBabylonX = rovTotX;
                 rovBabylonY = -rovTotZ;
                 rovBabylonZ = rovTotY;
 
-
+                // Place rover clone in absolute position
                 roverClones[roverDriveIndex].position.y = rovBabylonY;
                 roverClones[roverDriveIndex].position.x = rovBabylonX;
                 roverClones[roverDriveIndex].position.z = rovBabylonZ;
 
+                // Set rover orientation; orientation provided in IMG label is w.r.t North/Nadir
+                /*
+                * "When a Rover frame is defined with a Site as its reference (the normal case), then the orientation
+                * quaternion is the orientation of the rover with respect to North/Nadir. If a Rover frame were defined
+                * with another Rover frame as reference, this is not the case - the quaternion would represent the
+                * rotation between the two (but this is rarely done; the reference should usually be a Site frame)."
+                * https://pds-geosciences.wustl.edu/mer/mer2-m-eng-6-rmc-ops-v1/mer2rm_0xxx/document/rmc_sis.htm
+                */
                 roverClones[roverDriveIndex].rotation.y = roverDrives[roverDriveIndex].yawRover;
                 roverClones[roverDriveIndex].rotation.x = roverDrives[roverDriveIndex].pitchRover;
 
 
-createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "x", 2, new BABYLON.Color3(0, 1, 0))
-createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "y", 2, new BABYLON.Color3(0, 0, 1))
-createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "z", 2, new BABYLON.Color3(1, 0, 0))
+                createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "x", 2, new BABYLON.Color3(0, 1, 0))
+                createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "y", 2, new BABYLON.Color3(0, 0, 1))
+                createAxis(new BABYLON.Vector3(rovBabylonX, rovBabylonY, rovBabylonZ), scene, "z", 2, new BABYLON.Color3(1, 0, 0))
 
-//debugSphere = BABYLON.MeshBuilder.CreateSphere("debugSphere", {diameter: 1}, scene);
 console.log("Site     " , siteNum , "= ",siteY.toFixed(2), siteX.toFixed(2), siteZ.toFixed(2));
 console.log("Drive     " , driveNum , "= ",  drives[siteNum][driveNum].totalOffset.y.toFixed(2), drives[siteNum][driveNum].totalOffset.x.toFixed(2),drives[siteNum][driveNum].totalOffset.z.toFixed(2));
 console.log("Drive0    " , driveNum , "= ",
@@ -179,10 +192,9 @@ console.log("vs drive - site:",
                       (drives[siteNum][driveNum].totalOffset.z - drives[siteNum][0].totalOffset.z).toFixed(2)
                       );
 console.log("Rover az, el:",
-    roverClones[roverDriveIndex].rotation.y,//*180/3.14).toFixed(0),
-    roverClones[roverDriveIndex].rotation.x);//*180/3.14).toFixed(0));
+                    roverClones[roverDriveIndex].rotation.y,
+                    roverClones[roverDriveIndex].rotation.x);
 
-//debugSphere.position = new BABYLON.Vector3(drives[siteNum][0].totalOffset.x , -drives[siteNum][0].totalOffset.z , drives[siteNum][0].totalOffset.y );
 
                if (currentVicarData.camera.indexOf("HAZ") >= 0) {
                     fovHeight = 0.4;  // Distanza del piano di proiezione dell'immagine dalla camera, in metri
@@ -223,14 +235,7 @@ console.log("Rover az, el:",
                     newFiles[imgIndex]
                     );
 
-//roverDriveIndex++;
-
-
-                    //babylonCamera.radius = 15
-                    //babylonCamera.setTarget(roverClones[roverDriveIndex].position);
-                    //babylonCamera.radius = 4;
-
-centerOnRover(roverDriveIndex);
+                centerOnRover(roverDriveIndex);
 
             } // (imgIndex =  0; imgIndex < newFiles.length ; imgIndex++)
 
@@ -976,7 +981,8 @@ async function addElementsToScene(scene, textureFileName, x,y,z, azimuthRad, ele
             baseFovs[textureFileName].rotation = new BABYLON.Vector3(elevationRad, azimuthRad, 0);
 
             // Aggiunta della texture
-            const textureData = await getTextureForPancamViewer(textureFileName, solNumber, file);
+            const imgData = await getDataFromLocalIMG( file);
+            const textureData = imgData.textureBASE64;
 
             if (textureData.length > 20) {
                 const formattedTextureData = textureData.startsWith('data:image') 

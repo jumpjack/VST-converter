@@ -10,6 +10,14 @@
      <link rel='stylesheet' type='text/css' href='VST2X3D.css'></link>
      <script type="text/javascript">
 	 
+	 
+/*
+ * 009:
+ * Added list of links to raw textures, jpg textures, textures folders.
+ * Added double support for remote/local LBL and IMG associated to VST.
+ * Added local saving of retrieved files.
+*/
+	 
 /* 008:
     * Implemented extraction of texture from .IMG loaded together with VST locally;
    * known bug: kaitai struct does not support yet this file format:
@@ -300,7 +308,7 @@ Files list:<br>
            <!-- Modello di default per quando nessun file � caricato -->
            <Shape> 
              <Appearance>
-               <Material diffuseColor='1 0 0'></Material> 
+               <Material diffuseColor='1 0 0'></Material>
              </Appearance>
            </Shape>
          </Transform>
@@ -328,6 +336,8 @@ Files list:<br>
 	 <li>U = Reset flight mode
 	 </ul>
 	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+	 Processed files:<br>
+	 <span id="spnProcessed"></span<br>
 
      <script type="text/javascript" src="VST2X3D-AI.js"></script>
 	 <script>
@@ -355,25 +365,22 @@ dropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     dropArea.classList.remove('dragover');
     const files = Array.from(e.dataTransfer.files);
-    handleFiles(files, document.getElementById("txtFilename"));
+    handleFiles(files, document.getElementById("txtFilename")); // <<<<<<<<<<<<<<<<<<<--------------- Conversion
 });
 
 
 async function getTextureFromIMG(fc) {
-console.log("getTextureFromIMG start");
    const rawFileContents = fc;
    const fileContentsUInt8 = new Uint8Array(rawFileContents);
    const st = new KaitaiStream(fileContentsUInt8);
    const imgDataFromFile = new ImgGray16(st);
    const BASE64data = processImage(imgDataFromFile);
-console.log("getTextureFromIMG data ",imgDataFromFile);
    return BASE64data;
 }
 
 
 
 function processImage(imgDataFromFile) {
-console.log("processImage  start",imgDataFromFile);
    return new Promise((resolve) => {
        const width = imgDataFromFile.lines[0].samples.length;
        const height = imgDataFromFile.lines.length;
@@ -397,7 +404,6 @@ console.log("processImage  start",imgDataFromFile);
 
        ctx.putImageData(imageDataCanvas, 0, 0);
     let finalResult = canvas.toDataURL('image/png');
-console.log("processImage  returning: ",finalResult.length);
        resolve(finalResult);
    });
 }

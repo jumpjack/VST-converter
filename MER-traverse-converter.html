@@ -77,15 +77,16 @@ console.log(file.name); // Per verifica
 
         function processMasterFile() {
             siteOffsets = [];
-            const solutions = masterData.getElementsByTagName('solution');
+            solutionsSites = masterData.getElementsByTagName('solution');
+console.log(solutionsSites);
             let cumulativeOffset = { x: 0, y: 0, z: 0 };
 
-            for (let solution of solutions) {
-//console.log("solution", solution);			
-                if (solution.getAttribute('name') === 'SITE_FRAME') {
-                    const index1 = parseInt(solution.getAttribute('index1'));
-//console.log("     site found", index1);			
-                   const offset = solution.getElementsByTagName('offset')[0];
+            for (let solutionSite of solutionsSites) {
+console.log("solutionSite", solutionSite);
+                if (solutionSite.getAttribute('name') === 'SITE_FRAME') {
+                    const index1 = parseInt(solutionSite.getAttribute('index1'));
+//console.log("     site found", index1);
+                   const offset = solutionSite.getElementsByTagName('offset')[0];
 //console.log("         offset=", offset);			
                     const relativeOffset = {
                         x: parseFloat(offset.getAttribute('x')),
@@ -106,44 +107,66 @@ console.log(file.name); // Per verifica
                         relativeOffset,
                         cumulativeOffset: {...cumulativeOffset}
                     });
+                } else {
+                // never here
                 }
             }
         }
 
 function processSecondaryFiles() {
+/*
+* 1. Site - Declared by operations personnel (i.e. manually), this is a major coordinate frame from which all activities in a local region are referenced. When the Site is incremented. all other components are set to 0.
+* 2. Drive - Incremented by the rover whenever it intentionally moves. When the Drive is incremented, all other components except for Site are set to 0.
+* 3. IDD - Incremented by the rover whenever the IDD (Instrument Deployment Device) moves. Other components are NOT set to 0 when this changes.
+* 4. PMA - Incremented by the rover whenever the PMA (Pancam Mast Assembly) moves. Other components are NOT set to 0 when this changes.
+* 5. HGA - Incremented by the rover whenever the HGA (High Gain Antenna) moves. Other components are NOT set to 0 when this changes
+*/
     drives = {};
     let lastSite = null;
     let lastDrive = null;
     
     // Per ogni documento XML secondario
     for (let doc of secondaryData) {
-        const solutions = doc.getElementsByTagName('solution');
+        solutionsDrives = doc.getElementsByTagName('solution');
         // Per ogni solution nel documento
-        for (let solution of solutions) {    
-            if ((solution.getAttribute('name') === 'ROVER_FRAME') && (solution.getAttribute('solution_id') === 'telemetry')) {
-                const site = parseInt(solution.getAttribute('index1'));
-                const drive = parseInt(solution.getAttribute('index2'));    
+        for (let solutionDrive of solutionsDrives) {
+            if ((solutionDrive.getAttribute('name') === 'ROVER_FRAME') && (solutionDrive.getAttribute('solution_id') === 'telemetry')) {
+                const site = parseInt(solutionDrive.getAttribute('index1'));
+                const drive = parseInt(solutionDrive.getAttribute('index2'));
+                const IDD = parseInt(solutionDrive.getAttribute('index3')); // arm
+                const PMA = parseInt(solutionDrive.getAttribute('index4')); // pancam
+                const HGA = parseInt(solutionDrive.getAttribute('index5')); // Haigh Gain Antenna
                 // Salta se site e drive sono uguali all'ultima soluzione processata
-                if (lastSite === site && lastDrive === drive) {
+                /*if (lastSite === site && lastDrive === drive && lastPMA === PMA) {
                     continue;
-                }
-console.log("    site, drive:", site, drive);                
+                }*/
+console.log("    site, drive, arm, pancam, antenna:", site, drive, IDD, PMA, HGA);
                 
                 // Aggiorna gli ultimi site e drive processati
                 lastSite = site;
                 lastDrive = drive;
-                
+                lastIDD = IDD;
+                lastPMA = PMA;
+                lastHGA = HGA;
+
                 // Ottieni offset e orientamento dalla solution
-                const offset = solution.getElementsByTagName('offset')[0];
-                const orientation = solution.getElementsByTagName('orientation')[0];
+//console.log("OFFSET=",solutionDrive.getElementsByTagName('offset'));
+                const offset = solutionDrive.getElementsByTagName('offset')[0];
+                const orientation = solutionDrive.getElementsByTagName('orientation')[0];
                 
                 // Crea oggetto quaternione dai dati
+                /*
+                * "The orientation element is a quaternion representing the rotation of the current frame with
+                * respect to the reference frame (reference = current * orientation). Note that per ground system
+                * convention, the scalar part of the quaternion is listed first; this differs from the flight system
+                * convention of putting the scalar part last."  (s, v1, v2, v3) (w, x, y, z)
+                */
                 const quaternion = {
                     s: parseFloat(orientation.getAttribute('s')),
                     v1: parseFloat(orientation.getAttribute('v1')),
                     v2: parseFloat(orientation.getAttribute('v2')),
                     v3: parseFloat(orientation.getAttribute('v3'))
-                };    
+                };
                 
                 // Cerca l'offset cumulativo corrispondente al site
                 let siteOffset = { x: 0, y: 0, z: 0 }; // valore di default
@@ -174,7 +197,7 @@ console.log("    site, drive:", site, drive);
                 drives[site][drive] = {
                     offset: driveOffset,
                     quaternion: quaternion,
-                    euler: quaternionToEuler(quaternion),
+                    euler: quaternionToEuler(quaternion), // w.r.t north
                     totalOffset: totalOffset
                 };
             }
