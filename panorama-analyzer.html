@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Mars Rover Panorama Data Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+        }
+        #results {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+    </style>
+    <script src="IMGfiles.js"></script>
+</head>
+<body>
+    <h1>Mars Rover Panorama Data Processor</h1>
+
+    <textarea id="dataInput" placeholder="Incolla qui i dati delle immagini"></textarea>
+    <button onclick="processData()">Elabora Dati</button>
+
+    <div id="results"></div>
+
+    <script>
+        // Oggetto per memorizzare i panorami
+        let panoramas = {};
+        const proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+
+
+        function processData() {
+            // Ottieni il testo dall'area di testo
+            const inputData = document.getElementById('dataInput').value;
+
+            // Pulisci i risultati precedenti
+            panoramas = {};
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Dividi l'input in righe
+            const rows = inputData.trim().split('\n');
+
+            // Processa ogni riga
+            rows.forEach(async (row) => {
+                try {
+                    // Rimuovi gli apici e dividi in campi
+                    const fields = row.replace(/"/g, '').split(',');
+
+                    // Costruisci l'URL del file .LBL
+                    const baseUrl = 'https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-5-color-mosaics-sci-v1/';
+                    const fileName = fields[2].trim();
+                    const pathPrefix = fields[0].toLowerCase();//.replace('xxx', '2');
+                    const dataPath = fields[1].toLowerCase();//.replace('xxx', '2');
+
+                    const fileUrl = `${baseUrl}${pathPrefix}/${dataPath}${fileName}`;
+//console.log("Scarico:",fileUrl);
+                    // Scarica e analizza il file .LBL
+                    const response = await fetch(proxyURL + encodeURIComponent(fileUrl));
+//console.log("    response:",response);
+                    const text = await response.text();
+//console.log("    text:",text);
+
+                    // Estrai PRODUCT_ID e SOURCE_PRODUCT_ID
+                    const productIdMatch = text.match(/PRODUCT_ID\s*=\s*"([^"]+)"/);
+                    const sourceProductIdMatches = text.match(/SOURCE_PRODUCT_ID\s*=\s*{([^}]+)}/s);
+
+                    if (productIdMatch && sourceProductIdMatches) {
+                        const productId = productIdMatch[1];
+                        const sourceProductIds = sourceProductIdMatches[1]
+                            .replace(/\n|\r/g, '')
+                            .split(',')
+                            /*.map(id => id.trim().replace(/"/g, ''));*/
+                           .map(id => {
+                              const trimmedId = id.trim().replace(/"/g, '');
+                              return ({ path: "" /* to be implemented */  , id: trimmedId, parentPanoramaPath: `${baseUrl}${pathPrefix}/${dataPath}`});   //`${baseUrl}${pathPrefix}/${trimmedId}`;
+                          });
+                        // Memorizza nel dizionario panoramas
+                        panoramas[productId] = sourceProductIds;
+                    }
+
+                    // Aggiorna la visualizzazione
+                    updateResults();
+
+                } catch (error) {
+                    console.error('Errore nel processare il file:', error);
+                }
+            });
+        }
+
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>Panorami Elaborati:</h2>';
+
+            Object.entries(panoramas).forEach(([productId, sourceIds]) => {
+                const resultItem = document.createElement('div');
+                resultItem.textContent = `${productId}: ${sourceIds.length} elementi`;
+                resultsDiv.appendChild(resultItem);
+            });
+        }
+
+
+        function saveData() {
+          const jsonData = JSON.stringify(panoramas, null, 2);
+          const blob = new Blob([jsonData], {type: 'application/json'});
+          const url = URL.createObjectURL(blob);
+
+          // Crea un link temporaneo per il download
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'panoramas.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
+function findElementsByFilenameIMG(obj, targetFilename) {
+  const results = [];
+  const partialResults = [];
+
+  function searchRecursively(item) {
+    if (typeof item === 'object') {
+      if (Array.isArray(item)) {
+        item.forEach(elem => {
+          if (elem.filename.toUpperCase() === (targetFilename + ".vst").toUpperCase()) {
+            results.push(elem);
+          } else {
+//console.log("no");
+          }
+
+          if ( elem.filename.substr(0,11).toUpperCase() === (targetFilename.substr(0,11)).toUpperCase() ) { // 2P318384721 EFFB2Z8P2397L2M1
+            partialResults.push(elem);
+          } else if ( elem.filename.substr(18,5).toUpperCase() === (targetFilename.substr(18,5)).toUpperCase() ) { // 2P318384721EFFB2Z8 P2397 L2M1
+            partialResults.push(elem);
+          } else {
+
+//console.log("no");
+          }
+
+          searchRecursively(elem);
+        });
+      } else {
+        Object.values(item).forEach(value => {
+          searchRecursively(value);
+        });
+      }
+    }
+  }
+
+  searchRecursively(obj);
+  return ({ exactMatch: results, partialMatch : partialResults});
+}
+
+
+    </script>
+</body>
+</html>

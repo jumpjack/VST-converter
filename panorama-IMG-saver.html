@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>MER panorama downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .selection-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        select {
+            flex-grow: 1;
+            padding: 5px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+    </style>
+    <script src="panoramas.js"></script>
+</head>
+<body>
+    <h1>MER Pamorama downloader</h1>
+
+    <div class="selection-container">
+        <select id="productIdSelect">
+            <option value="">Seleziona Product ID</option>
+        </select>
+        <select id="formatSelect">
+            <option value="">Seleziona Formato</option>
+        </select>
+        <select id="typeSelect">
+            <option value="">Seleziona tipo</option>
+        </select>
+        <button onclick="processSelection()">Elabora</button>
+    </div>
+
+    <textarea id="txtImages" cols=50 rows = 10></textarea><br>
+
+    <div id="result"></div><br>
+
+    Thumbnails:<br>
+    <span id="thumbnails"></span><br>
+    <br>
+
+    Full:<br>
+    <span id="spnFullPanorama"></span><br>
+    <br>
+    <table id="tblLinks" border=1>
+    <thead><td>id</td><td>JPG</td><td>IMG</td><td>VST</td></thead>
+    <tbody></tbody>
+    </table>
+    <br>
+    <table id =  "myTable" border="1">
+    <thead><td>id</td><td>Total, /3</td></thead>
+    <tbody></tbody>
+    </table>
+    <br>
+
+<script src="3dfiles.js"></script>
+<script src="IMGfiles.js"></script>
+
+    <script>
+
+        // Mosaics repository: https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-5-color-mosaics-sci-v1/mer2pc_2xxx/data/sol0xxx/  (BY SOL GROUP)
+        // Images (IMG/JPG) repository: https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2po_0xxx/browse/solyyyy/edr/      (BY SOL)
+        // VST repository: https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/pancam/siteyyyy/                 (BY SITE)
+
+        BASE_MOSAIC_FOLDER = "https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-5-color-mosaics-sci-v1/mer2pc_2xxx/data/";
+        BASE_IMG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
+        BASE_VST_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2mw_0xxx/data/pancam/" ; // siteyyyy
+        // Variabili globali che verranno caricate esternamente
+        let formats = ["original","ith"];
+        let types = ["triplet", "couple", "single"];
+        let imgFolder = 'rdr';
+        let myTable = document.getElementById("myTable");
+        let tblLinks = document.getElementById("tblLinks");
+        linksBody = tblLinks.querySelector("tbody");
+        myTableBody = myTable.querySelector("tbody");
+        spnFullPanorama = document.getElementById("spnFullPanorama");
+
+let imgLinks = [];
+
+function showImages() {
+    spnFullPanorama.innerHTML = "";
+    imgLinks.forEach(lnk => {
+        const im = document.createElement("img");
+        im.setAttribute("width",150);
+        im.src = lnk;
+        spnFullPanorama.appendChild(im);
+    });
+}
+
+function sortList() {
+// Seleziona l'elemento select
+const selectElement = document.getElementById('productIdSelect');
+
+// Converti le opzioni in un array, ordinale, e ricostruisci il select
+const options = Array.from(selectElement.options)
+    .sort((a, b) => a.text.localeCompare(b.text));
+
+// Rimuovi le vecchie opzioni
+selectElement.innerHTML = '';
+
+// Aggiungi le opzioni ordinate
+options.forEach(option => {
+    selectElement.appendChild(option);
+});
+}
+
+      // Funzione per ordinare la tabella
+        function sortTable(columnIndex) {
+console.log("Riordino tabella...");
+            table = myTable;
+            tbody = table.querySelector("tbody");
+            rows = Array.from(tbody.rows);
+            const isAscending = table.getAttribute('data-sort-dir') !== 'asc';
+
+            rows.sort((a, b) => {
+                const cellA = a.cells[columnIndex].textContent.trim();
+                const cellB = b.cells[columnIndex].textContent.trim();
+
+                return isAscending
+                    ? cellA.localeCompare(cellB)
+                    : cellB.localeCompare(cellA);
+            });
+
+            // Rimuovi le righe esistenti e aggiungi quelle ordinate
+            tbody.innerHTML = "";
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Imposta la direzione dell'ordinamento per il prossimo click
+            table.setAttribute('data-sort-dir', isAscending ? 'desc' : 'asc');
+        }
+
+
+        // Funzione per popolare i select dopo il caricamento dei dati
+        function initializeSelectors() {
+//            sortPanoramasAlphabetically();
+            const productIdSelect = document.getElementById('productIdSelect');
+            formatSelect = document.getElementById('formatSelect');
+            typeSelect = document.getElementById('typeSelect');
+
+            // Popola product ID
+            Object.keys(panoramas).forEach(productId => {
+                const option = document.createElement('option');
+                option.value = productId;
+                option.textContent = productId;
+                const tr = document.createElement("TR");
+                const td1 = document.createElement("TD");
+                const td2 = document.createElement("TD");
+                td1.innerHTML = productId;
+                const images = panoramas[productId]
+                td2.innerHTML = images.length + ", " + images.length/3;
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                myTableBody.appendChild(tr);
+                productIdSelect.appendChild(option);
+            });
+
+            // Popola formati
+            formats.forEach(format => {
+                const option = document.createElement('option');
+                option.value = format;
+                option.textContent = format;
+                formatSelect.appendChild(option);
+            });
+
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeSelect.appendChild(option);
+            });
+
+            // Aggiungi event listener per mostrare numero elementi al cambiamento
+            productIdSelect.addEventListener('change', function() {
+                const resultDiv = document.getElementById('result');
+                const txtImages = document.getElementById('txtImages');
+                txtImages.value = "";
+                const selectedProductId = this.value;
+
+                if (selectedProductId) {
+                    const images = panoramas[selectedProductId];
+                    resultDiv.innerHTML = `Images count: ${images.length}`;
+                    for (let i=0; i< images.length; i++) {
+                        txtImages.value += images[i].id + "\n";
+                    }
+                } else {
+                    resultDiv.innerHTML = '';
+                }
+            });
+
+            formatSelect.value = formats[0];
+            typeSelect.value = types[0];
+            sortList();
+            sortTable(0);
+
+
+        }
+
+        function processSelection() {
+            linksBody.innerHTML = "";
+            const productIdSelect = document.getElementById('productIdSelect');
+            const formatSelect = document.getElementById('formatSelect');
+            const typeSelect = document.getElementById('typeSelect');
+            const resultDiv = document.getElementById('result');
+
+            const selectedProductId = productIdSelect.value;
+            const selectedFormat = formatSelect.value;
+            const selectedType = typeSelect.value;
+
+//console.log("TYPE=",selectedType);
+            if (!selectedProductId || !selectedFormat || !selectedType) {
+                resultDiv.innerHTML = 'Per favore, seleziona sia un Product ID che un formato.';
+                return;
+            }
+
+            // Ottieni l'array di immagini per il product ID selezionato
+            const images = panoramas[selectedProductId];
+
+
+    thumbnails.innerHTML ="";
+
+
+            let skipperCount = 0;
+            let CHOSEN_INDEX = 0;
+            let subIndex = 0;
+            images.forEach((imageId, index) => {
+                // Costruisci il nome del file immagine
+//console.log("Image n. ", index, subIndex, CHOSEN_INDEX, imageId.id);
+if (CHOSEN_INDEX === subIndex) {
+//    console.log("OK:", imageId.id);
+    const TR = document.createElement("TR");
+    const TD0 = document.createElement("TD");
+//    const TD1 = document.createElement("TD");
+    const TD2 = document.createElement("TD");
+    const TD3 = document.createElement("TD");
+    const TD4 = document.createElement("TD");
+    TD0.innerHTML = imageId.id;
+//    TD1.innerHTML = "<a href='" +  (imageId.path +  imageId.id).toLowerCase() + ".tif'>MOS</a>";
+    let r = findElementsByFilename3d(filesAvailability3d,imageId.id);
+    if (r && r.exactMatch && r.exactMatch.length>0) {
+        link3d = "<a href='" + BASE_VST_FOLDER + r.exactMatch.filepath + r.exactMatch.filename + "'>Full</a>";
+console.log(imageId.id + ": Found exact VST: ",r.exactMatch);
+    } else  if (r && r.partialMatch && r.partialMatch.length>0) {
+console.log(imageId.id + ": Found VST for sequence " , r.partialMatch[0].filename.substr(18,5), ":", r.partialMatch);
+        link3d =  "Sequence " + r.partialMatch[0].filename.substr(18,5) + " found, see console";
+    } else {
+        link3d = "no VST";
+console.log("Not found VST:",imageId.id);
+    }
+
+    r = findElementsByFilenameIMG(filesAvailabilityIMG, imageId.id)
+//console.log("IMG:",r);
+    if (r && r.exactMatch && r.exactMatch.length>0) {
+        linkIMG = "<a href='" + BASE_IMG_FOLDER + r.exactMatch.filepath + r.exactMatch.filename  + ".jpg" + "'>Full</a>";
+        linkJPG = linkIMG.replace("xxx/data","xxx/browse");
+//console.log("Found: ",r.exactMatch);
+    } else  if (r && r.partialMatch && r.partialMatch.length>0) {
+//console.log("Found partial IMG: ", BASE_IMG_FOLDER +r.partialMatch[0],r.partialMatch[0].filepath);
+        linkIMG = "<a href='" + BASE_IMG_FOLDER + r.partialMatch[0].filepath + r.partialMatch[0].filename  + ".jpg" + "'>Partial match</a>";
+        linkJPG = linkIMG.replace("xxx/data","xxx/browse");
+        imgFilename = r.partialMatch[0].filename;
+        imgFilenameThumbnail = imgFilename.substr(0,11)+"thn" + imgFilename.substr(14,imgFilename.length-13); // turn into thumbnail
+        imgLink = (BASE_IMG_FOLDER + r.partialMatch[0].filepath + imgFilename + ".jpg").replace("xxx/data","xxx/browse");
+        imgLinks.push(imgLink);
+        imgLinkThumbnail = (BASE_IMG_FOLDER + r.partialMatch[0].filepath + imgFilenameThumbnail + ".jpg").replace("xxx/data","xxx/browse");
+        const im = document.createElement("IMG");
+        im.setAttribute("width",100);
+        im.src = imgLinkThumbnail;
+        thumbnails.appendChild(im);
+    } else {
+        linkIMG = "no IMG";
+        linkJPG = "no JPG";
+console.log("Not found IMG:",imageId.id);
+    }
+    TD2.innerHTML = linkJPG;
+    TD3.innerHTML = linkIMG;
+    TD4.innerHTML = link3d;
+    TR.appendChild(TD0);
+//    TR.appendChild(TD1);
+    TR.appendChild(TD2);
+    TR.appendChild(TD3);
+    TR.appendChild(TD4);
+    linksBody.appendChild(TR);
+}
+                const fileName = `${imageId.id}.${selectedFormat}`;
+                const fullPath = `${imgFolder}/${fileName}`;
+
+                // Log del percorso (nella pratica, dovresti implementare
+                // il download o il salvataggio effettivo)
+//console.log(`Salvataggio immagine: ${fullPath}`);
+                skipperCount++;
+                subIndex++;
+                if (selectedType === "triplet") {
+                    if (skipperCount === 3) {
+                        skipperCount = 0;
+                        subIndex = 0;
+                    }
+                }
+               if (selectedType === "couple") {
+                    if (skipperCount === 2) {
+                        skipperCount = 0;
+                        subIndex = 0;
+                    }
+                }
+               if (selectedType === "single") {
+                    if (skipperCount === 1) {
+                        skipperCount = 0;
+                        subIndex = 0;
+                    }
+                }
+            });
+
+
+        }
+
+        // Aggiungi un listener per l'evento di caricamento esterno
+        window.addEventListener('load', initializeSelectors);
+
+
+
+function findElementsByFilenameIMG(obj, targetFilename) {
+  const results = [];
+  const partialResults = [];
+
+  function searchRecursively(item) {
+    if (typeof item === 'object') {
+      if (Array.isArray(item)) {
+        item.forEach(elem => {
+          if (elem.filename.toUpperCase() === (targetFilename + ".vst").toUpperCase()) {
+            results.push(elem);
+          } else {
+//console.log("no");
+          }
+
+          if ( elem.filename.substr(0,11).toUpperCase() === (targetFilename.substr(0,11)).toUpperCase() ) { // 2P318384721 EFFB2Z8P2397L2M1
+            partialResults.push(elem);
+          } /* else if ( elem.filename.substr(18,5).toUpperCase() === (targetFilename.substr(18,5)).toUpperCase() ) { // 2P318384721EFFB2Z8 P2397 L2M1
+            partialResults.push(elem);
+          } */ else {
+
+//console.log("no");
+          }
+
+          searchRecursively(elem);
+        });
+      } else {
+        Object.values(item).forEach(value => {
+          searchRecursively(value);
+        });
+      }
+    }
+  }
+
+  searchRecursively(obj);
+  return ({ exactMatch: results, partialMatch : partialResults});
+}
+
+
+function findElementsByFilename3d(obj, targetFilename) {
+  const results = [];
+  const partialResults = [];
+
+  function searchRecursively(item) {
+    if (typeof item === 'object') {
+      if (Array.isArray(item)) {
+        item.forEach(elem => {
+//console.log(elem);
+          if (elem.filename.toUpperCase() === (targetFilename + ".vst").toUpperCase()) {
+            results.push(elem);
+          } else {
+//console.log("NO: ",elem.filename.toUpperCase(),(targetFilename + ".vst").toUpperCase());
+          }
+          if (elem.filename.substr(0,11).toUpperCase() === targetFilename.substr(0,11).toUpperCase()) {
+            partialResults.push(elem);
+          } else   if (elem.filename.substr(18,5).toUpperCase() === targetFilename.substr(18,5).toUpperCase()) {
+            partialResults.push(elem);
+          } else {
+//console.log("NO: ",elem.filename.toUpperCase(),(targetFilename + ".vst").toUpperCase());
+          }
+        });
+      } else {
+        Object.values(item).forEach(value => {
+          searchRecursively(value);
+        });
+      }
+    }
+  }
+  searchRecursively(obj);
+//console.log(results, partialResults);
+  return ({ exactMatch: results, partialMatch : partialResults});
+}
+
+// Esempio di utilizzo
+//const result = findElementsByFilename(filesAvailability3d, "2f126468064vil0000p1001l0m1.vst");
+//console.log(result);
+
+
+    </script>
+</body>
+</html>

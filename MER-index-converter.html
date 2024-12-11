@@ -1,7 +1,28 @@
 <!--
 	Loads index file rdrindex.tab from https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab 
-	into an array for couning vst, pfb and ht
-	files in traverse2d viewer
+	into an array for couning vst, pfb and ht files in traverse2d viewer
+
+file contents:
+Column 	Name	Offset
+1	VOLUME_ID	2
+2	DATA_SET_ID	16
+3	INSTRUMENT_HOST_ID	59
+4	INSTRUMENT_ID	66
+5	PATH_NAME	87
+6	FILE_NAME	155
+7	RELEASE_ID	190
+8	PRODUCT_ID	197
+9	PRODUCT_CREATION_TIME	226
+10	TARGET_NAME	248
+11	MISSION_PHASE_NAME	257
+12	PLANET_DAY_NUMBER	289
+13	START_TIME	294
+14	STOP_TIME	315
+15	SPACECRAFT_CLOCK_START_COUNT	337
+16	SPACECRAFT_CLOCK_STOP_COUNT	370
+17	PRODUCT_TYPE_NAME	403
+18	MAP_PROJECTION_TYPE	438
+
 -->
 
 <!DOCTYPE html>
@@ -10,13 +31,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Loader and Parser</title>
-</head>
+
 <body>
   <h1>MER products index converter</h1>
   Please load index file rdrindex.tab from <a href="https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab">https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab</a><br>
   File will be processed to extract data about available 3d files per each site/drive (.PFB, .VST, .HT).<br>
   Use filseAvailability["sitexxxx"][driveNumber] to get all available files.<br>
-  Use (filesAvailability["sitexxxx"][driveNumber] || []).filter(file => file.filename.endsWith(".YYY"); to get all available files with extension "YYY".<br>  
+  Use (filesAvailability["sitexxxx"][driveNumber] || []).filter(file => file.filename.endsWith(".YYY"); to get all available files with extension "YYY".<br>
   <br>
   <input type="file" id="fileInput" />
   <button id="saveButton" style="margin-top: 20px;" disabled>Save</button><br>
@@ -37,69 +58,79 @@ allFiles = [];
         const content = e.target.result;
         const rows = content.trim().split("\n");
 
-        rows.forEach((row) => {
-          // Rimuove eventuali virgolette e divide la riga
-          const columns = row.replace(/"/g, "").split("\t");
+ rows.forEach((row) => {
+    // Rimuove eventuali virgolette e divide la riga
+    const columns = row.replace(/"/g, "").split("\t");
 
-          // Estrae il valore del sito (es. "site0000")
-          const site = columns[4].match(/site\d+/)?.[0];
-          if (!site) return;
+    // Estrae il valore del sito (es. "site0000")
+    const site = columns[4].match(/site\d+/)?.[0];
+    if (!site) return;
 
-          // Estrae i campi richiesti
-          const path = columns[4].trim();
-          var filename = columns[5].trim();
-          const date = columns[8].trim();
-          const sclk1 = columns[14].trim();
-          const sclk2 = columns[15].trim();
-allFiles.push(filename);
-			const justName = filename.split(".")[0];
-			const ext = filename.slice(filename.lastIndexOf('.') + 1);
-		  if (ext.toUpperCase().substr(0,1) === "V") { // An error in original data cuts many filenames and their extensions, so .VST becomes .VS or even .V
-				filename = justName + ".vst";
-				const sol = "n/a";
-				const cameras = "n/a";
+    var filepath = columns[4].trim();
+    var filename = columns[5].trim();
+    const sol = columns[11].trim() || "n/a";
+    const solNorm = `sol${sol.padStart(4, "0")}`;
 
-				const siteChars = filename.slice(14, 16).toUpperCase(); // Posizioni 14 e 15
-				const driveChars = filename.slice(16, 18).toUpperCase(); // Posizioni 16 e 17
-				const siteNum = siteCodeToString2(siteChars);
-				const driveNum = siteCodeToString2(driveChars);
-	          // Crea o aggiorna l'array per il sito e il drive specifici
-	          if (!filesData[site]) filesData[site] = {};
-	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
-	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
-//console.log("VST:",filename,siteChars,driveChars, siteNum,driveNum);			  
-		  } else if (ext.toUpperCase().substr(0,1) === "P") { // An error in original data cuts many filenames and their extensions, so .PFB becomes .PF or even .P
-		  		// 2mesh_1362_n_132_ffl_71_v1.pfb
-				filename = justName + ".pfb";
-				const pieces = 	filename.split("_");
-				const sol = pieces[1]
-				const cameras = pieces[2];
-				const siteNum = pieces[3];
-				const driveNum = pieces[5];
-	            const siteChars = siteNumToSiteCouple(siteNum);
-	            const driveChars = siteNumToSiteCouple(driveNum);
-	          // Crea o aggiorna l'array per il sito e il drive specifici
-	          if (!filesData[site]) filesData[site] = {};
-	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
-	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
-//console.log("PFB:",filename,siteChars,driveChars, siteNum,driveNum);			  
-		  } else if (ext.toUpperCase().substr(0,1) === "H") {  // An error in original data cuts many filenames and their extensions, so .HT becomes .H
-		  		// 2mesh_1362_n_132_ffl_71_v1.ht
-				filename = justName + ".ht";
-				const pieces = 	filename.split("_");
-				const sol = pieces[1]
-				const cameras = pieces[2];
-				const siteNum = pieces[3];
-				const driveNum = pieces[5];
-	            const siteChars = siteNumToSiteCouple(siteNum);
-	            const driveChars = siteNumToSiteCouple(driveNum);
-	          // Crea o aggiorna l'array per il sito e il drive specifici
-	          if (!filesData[site]) filesData[site] = {};
-	          if (!filesData[site][driveNum]) filesData[site][driveNum] = [];
-	          filesData[site][driveNum].push({ path, filename, siteChars, driveChars, siteNum, driveNum, date, sclk1, sclk2 });
-//console.log("HT:",filename,siteChars,driveChars, siteNum,driveNum);			  
-		  }
-        });
+    allFiles.push(filename);
+    const justName = filename.split(".")[0];
+    const ext = filename.slice(filename.lastIndexOf('.') + 1).toUpperCase();
+
+    // Inizializza la struttura dati con più livelli, aggiungendo finalExt
+    if (!filesData[solNorm]) filesData[solNorm] = {};
+
+    if (ext.substr(0,1) === "V") {
+        filename = justName + ".vst";
+        finalExt = "vst";
+        const cameras = "n/a";
+
+        const siteChars = filename.slice(14, 16).toUpperCase();
+        const driveChars = filename.slice(16, 18).toUpperCase();
+
+        if (!filesData[solNorm][siteChars]) filesData[solNorm][siteChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars]) filesData[solNorm][siteChars][driveChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars][finalExt]) filesData[solNorm][siteChars][driveChars][finalExt] = [];
+
+        if (filename) {
+            filesData[solNorm][siteChars][driveChars][finalExt].push({filepath, filename});
+        }
+    } else if (ext.substr(0,1) === "P") {
+        filename = justName + ".pfb";
+        finalExt = "pfb";
+        const pieces = filename.split("_");
+        const sol = pieces[1];
+        const cameras = pieces[2];
+        const siteNum = pieces[3];
+        const driveNum = pieces[5];
+        const siteChars = siteNumToSiteCouple(siteNum);
+        const driveChars = siteNumToSiteCouple(driveNum);
+
+        if (!filesData[solNorm][siteChars]) filesData[solNorm][siteChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars]) filesData[solNorm][siteChars][driveChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars][finalExt]) filesData[solNorm][siteChars][driveChars][finalExt] = [];
+
+        if (filename) {
+            filesData[solNorm][siteChars][driveChars][finalExt].push({filepath, filename});
+        }
+    } else if (ext.substr(0,1) === "H") {
+        filename = justName + ".ht";
+        finalExt = "ht";
+        const pieces = filename.split("_");
+        const sol = pieces[1];
+        const cameras = pieces[2];
+        const siteNum = pieces[3];
+        const driveNum = pieces[5];
+        const siteChars = siteNumToSiteCouple(siteNum);
+        const driveChars = siteNumToSiteCouple(driveNum);
+
+        if (!filesData[solNorm][siteChars]) filesData[solNorm][siteChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars]) filesData[solNorm][siteChars][driveChars] = {};
+        if (!filesData[solNorm][siteChars][driveChars][finalExt]) filesData[solNorm][siteChars][driveChars][finalExt] = [];
+
+        if (filename) {
+            filesData[solNorm][siteChars][driveChars][finalExt].push({filepath, filename});
+        }
+    }
+});;
 		alert("Done");
 		const er = countErrors().errorsTot;
 		if (er>0 )  alert ("WARNING! " + er + " truncation errors detected in database!\nMissing extensions:" + countErrors().errorsMissing + "\nTruncated extensions:" + countErrors().errorsTrunc); 
@@ -114,12 +145,12 @@ allFiles.push(filename);
 
       reader.readAsText(file);
     });
-	
+
 	
 	
       function saveDataToFile(filename) {
           // Converti i dati in una stringa JSON
-          const jsonData = "const filesAvailability = " + JSON.stringify(filesData, null, 2);
+          const jsonData = "const filesAvailability3d = " + JSON.stringify(filesData, null, 2);
 
           // Crea un blob con i dati
           const blob = new Blob([jsonData], { type: "application/json" });
@@ -141,7 +172,7 @@ allFiles.push(filename);
 	
 		
 		document.getElementById("saveButton").addEventListener("click", () => {
-			saveDataToFile("files.js");
+			saveDataToFile("3dfiles.json");
 		});
 
 	  
@@ -235,6 +266,56 @@ allFiles.push(filename);
 			return {errorsTrunc, errorsMissing, errorsTot};
 		} 
 
+
+
+
+function find3Dfiles(filesData, solNorm, siteChars, driveChars, extension, allowedCameras) {
+    const matchingFiles = [];
+    const solData = filesData;
+
+    for (const sol in solData) {
+        if (solNorm && sol !== solNorm) continue; // Se `solNorm` è definito, filtriamo solo quel valore
+        const siteData = solData[sol];
+        if (!siteData) continue;
+
+        for (const site in siteData) {
+            if (siteChars && site !== siteChars) continue; // Se `siteChars` è definito, filtriamo solo quel valore
+            const driveData = siteData[site];
+            if (!driveData) continue;
+
+            for (const drive in driveData) {
+                if (driveChars && drive !== driveChars) continue; // Se `driveChars` è definito, filtriamo solo quel valore
+                const extData = driveData[drive];
+                if (!extData) continue;
+
+                for (const ext in extData) {
+                    if (extension && ext !== extension) continue; // Se `extension` è definito, filtriamo solo quel valore
+
+
+					if (extension === "vst") {
+						if (allowedCameras) {
+		                    // Filtra i file in base al secondo carattere della telecamera
+		                    filteredFiles = extData[ext].filter(filename => {
+		                        // Estrai il secondo carattere del nome del file (dopo il primo underscore)
+		                        const cameraPart = filename[1];
+		                        return cameraPart && allowedCameras.includes(cameraPart);
+		                    });
+						} else {
+							filteredFiles = extData[ext];
+						}
+					} else {
+						filteredFiles = extData[ext];
+					}
+
+                    // Aggiungi i file filtrati a `matchingFiles`
+                    matchingFiles.push(...filteredFiles);
+                }
+            }
+        }
+    }
+
+    return matchingFiles;
+}
   </script>
 </body>
 </html>
