@@ -1,0 +1,365 @@
+<!--
+	Loads index file rdrindex.tab from https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab 
+	into an array for couning vst, pfb and ht
+	files in traverse2d viewer
+
+file contents:
+Column 	Name	Offset
+1	VOLUME_ID	2
+2	DATA_SET_ID	16
+3	INSTRUMENT_HOST_ID	59
+4	INSTRUMENT_ID	66
+5	PATH_NAME	87
+6	FILE_NAME	155
+7	RELEASE_ID	190
+8	PRODUCT_ID	197
+9	PRODUCT_CREATION_TIME	226
+10	TARGET_NAME	248
+11	MISSION_PHASE_NAME	257
+12	PLANET_DAY_NUMBER	289
+13	START_TIME	294
+14	STOP_TIME	315
+15	SPACECRAFT_CLOCK_START_COUNT	337
+16	SPACECRAFT_CLOCK_STOP_COUNT	370
+17	PRODUCT_TYPE_NAME	403
+18	MAP_PROJECTION_TYPE	438
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Loader and Parser</title>
+</head>
+<body>
+  <h1>MER products index converter</h1>
+  Please load index file rdrindex.tab from <a href="https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab">https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/index/rdrindex.tab</a><br>
+  File will be processed to extract data about available 3d files per each site/drive (.PFB, .VST, .HT).<br>
+  Use filseAvailability["sitexxxx"][driveNumber] to get all available files.<br>
+  Use (filesAvailability["sitexxxx"][driveNumber] || []).filter(file => file.filename.endsWith(".YYY"); to get all available files with extension "YYY".<br>  
+  <br>
+  <input type="file" id="fileInput" multiple />
+  <button id="saveButton" style="margin-top: 20px;" disabled>Save</button><br>
+  <pre id="output"></pre>
+  <script>	
+	var filesData = {};
+allFiles = [];
+
+    document.getElementById("fileInput").addEventListener("change", function (event) {
+      const files = event.target.files;//[0];
+
+
+
+    let filesProcessed = 0;
+
+    Array.from(files).forEach((file) => {
+		const camera = file.name.split(" ")[0];
+console.log("CAM=",camera);
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const content = e.target.result;
+            console.log(`File ${file.name} letto: ${content.length} caratteri`);
+
+            const rows = content.trim().split("\n");
+console.log(`    Righe nel file ${file.name}: ${rows.length}`);
+
+            rows.forEach((row) => {
+                // Rimuove eventuali virgolette e divide la riga
+                const columns = row.replace(/"/g, "").split("\t");
+
+                if (columns.length >= 12) {
+                    const sol = columns[11].trim();
+                    if (!sol) return;
+                    const solNorm = `sol${sol.padStart(4, "0")}`;
+
+                    let filepath = columns[4].trim();
+                    let filename = columns[5].trim();
+                    allFiles.push(filename);
+
+                    const justName = filename.split(".")[0];
+
+                    const ext = filename.slice(filename.lastIndexOf('.') + 1);
+					 if (ext.toUpperCase().substr(0, 1) === "I") {
+					    filename = justName + ".img";
+					    const siteChars = filename.slice(14, 16).toUpperCase();
+					    const driveChars = filename.slice(16, 18).toUpperCase();
+					    const siteNum = siteCodeToString2(siteChars);
+					    const driveNum = siteCodeToString2(driveChars);
+
+					    // Inizializza la struttura dati con più livelli
+					    if (!filesData[camera]) filesData[camera] = {};
+					    if (!filesData[camera][solNorm]) filesData[camera][solNorm] = {};
+					    if (!filesData[camera][solNorm][siteChars]) filesData[camera][solNorm][siteChars] = {};
+					    if (!filesData[camera][solNorm][siteChars][driveChars]) filesData[camera][solNorm][siteChars][driveChars] = [];
+
+					    filename = stripUseless(filename);
+					    if (filename) {
+					        filesData[camera][solNorm][siteChars][driveChars].push(filename.toUpperCase().replace(".IMG",""));
+					    }
+					}
+
+                } else {
+                    console.log(`Riga ignorata nel file ${file.name}: colonne insufficienti`);
+                }
+            });
+
+            filesProcessed++;
+            if (filesProcessed === files.length) {
+                alert("Tutti i file sono stati elaborati!");
+                const er = countErrors().errorsTot;
+                if (er > 0) {
+                    alert(`ATTENZIONE! ${er} errori di troncamento rilevati nel database!\n` +
+                          `Estensioni mancanti: ${countErrors().errorsMissing}\n` +
+                          `Estensioni troncate: ${countErrors().errorsTrunc}`);
+                }
+                saveButton.disabled = false; // Abilita il pulsante Salva
+            }
+        };
+
+        reader.onerror = function () {
+            alert(`Errore nella lettura del file ${file.name}!`);
+        };
+
+        reader.readAsText(file);
+    });
+
+
+    });
+	
+
+	function stripUseless(filename) {
+		// 2r292205857rsdb0s0p1311r0m1
+		// 012345678901234567890123456
+		const thumbnailChar = filename[13];
+		const slopeChar = filename[11];
+		const leftRightChar = filename[23];
+		const productAcronym = filename.substring(11,14)
+		const uselessAcronyms = [
+			"uvw",//  Surface Normal
+			"uvl",//  Surface Normal
+			"uvt",//  Surface Normal
+			"uvn",//  Surface Normal
+			"slp", // slope
+			"sll", // slope
+			"slt", // slope
+			"sln", // slope
+			"srd", // slope
+			"srl", // slope
+			"srt", // slope
+			"srn", // slope
+			"shp", // slope
+			"shl", // slope
+			"sht", // slope
+			"shn", // slope
+			"smp", // slope
+			"sml", // slope
+			"smt", // slope
+			"smn", // slope
+
+			"xyz",
+			"xyl",
+			"xyt",
+			"xyn",
+
+
+			"ith",// robotic arm reachability
+			"idl", // robotic arm reachability
+			"idd", // robotic arm reachability
+			"idn", // robotic arm reachability
+			"idt", // robotic arm reachability
+
+			"dis", // disparity
+			"dil", // disparity
+			"dit", // disparity
+			"din", // disparity
+			"dss", // disparity
+			"dsl", // disparity
+			"dst", // disparity
+			"dsn", // disparity
+			"dls", // disparity
+			"dll", // disparity
+			"dlt", // disparity
+			"dln", // disparity
+
+			"rng", // range
+			"rnl", // range
+			"rnt", // range
+			"rnn", // range
+
+			"ruf", // surface roughness
+			"rul", // surface roughness
+			"rut", // surface roughness
+			"run" // surface roughness
+		];
+
+	    // Verifica le condizioni richieste
+	    if (leftRightChar !== "r" && slopeChar !== "s" && thumbnailChar !== "t" && thumbnailChar !== "n" && !uselessAcronyms.includes(productAcronym)) {
+	        return filename;//.substring(0,18);
+	    }
+
+	    // Restituisce undefined se le condizioni non sono soddisfatte
+	    return null;
+
+	};
+
+
+
+      function saveDataToFile(filename) {
+          // Converti i dati in una stringa JSON
+          const jsonData = "const filesAvailabilityIMG = " + JSON.stringify(filesData, null, 2);
+
+          // Crea un blob con i dati
+          const blob = new Blob([jsonData], { type: "application/json" });
+
+          // Crea un URL per il download
+          const url = window.URL.createObjectURL(blob);
+
+          // Crea un elemento <a> per il download
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+
+          // Attiva il download
+          a.click();
+
+          // Libera la memoria
+          window.URL.revokeObjectURL(url);
+      }
+	
+		
+		document.getElementById("saveButton").addEventListener("click", () => {
+			saveDataToFile("IMGfiles.json");
+		});
+
+	  
+	
+		function siteCodeToString2(code) {
+
+		    if (code.length !== 2) {
+		        return "ERR: 3 chars codes not supported"
+		    }
+
+			code = code.toUpperCase();
+		    const firstChar = code[0];
+		    const secondChar = code[1];
+
+		    // Caso 1: numerico puro ("00" - "99")
+		    if (!isNaN(firstChar) && !isNaN(secondChar)) {
+		        return parseInt(code, 10);
+		    }
+
+		    // Caso 2: alfanumerico ("A0" - "ZZ")
+		    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare il valore delle lettere
+		    const firstValue = firstChar.charCodeAt(0) - alphabetOffset;
+		    let secondValue;
+
+		    if (isNaN(secondChar)) {
+		        // Se il secondo carattere è una lettera
+		        secondValue = secondChar.charCodeAt(0) - alphabetOffset + 10;
+		    } else {
+		        // Se il secondo carattere è un numero
+		        secondValue = parseInt(secondChar, 10);
+		    }
+
+		    // Formula per calcolare l'intervallo corretto (da 100 in poi)
+		    return 100 + firstValue * 36 + secondValue;
+		}
+			
+			
+			
+		function siteNumToSiteCouple(value) {
+		    if (value < 0 || value >= 36 * 26 + 100) {
+		        return("debug error");//throw new Error("Il valore è fuori intervallo.");
+		    }
+
+		    // Caso 1: numerico puro ("00" - "99")
+		    if (value < 100) {
+		        return value.toString().padStart(2, '0');
+		    }
+
+		    // Caso 2: alfanumerico ("A0" - "ZZ")
+		    const alphabetOffset = 'A'.charCodeAt(0); // Offset per calcolare le lettere
+		    const adjustedValue = value - 100;
+
+		    // Calcola il primo carattere (lettera)
+		    const firstValue = Math.floor(adjustedValue / 36);
+		    const firstChar = String.fromCharCode(alphabetOffset + firstValue);
+
+		    // Calcola il secondo carattere (lettera o numero)
+		    const secondValue = adjustedValue % 36;
+		    let secondChar;
+
+		    if (secondValue < 10) {
+		        // Numerico
+		        secondChar = secondValue.toString();
+		    } else {
+		        // Alfabetico
+		        secondChar = String.fromCharCode(alphabetOffset + (secondValue - 10));
+		    }
+
+		    return firstChar + secondChar;
+		}		
+
+
+		function countErrors() {
+			errorsTrunc = 0;
+			errorsMissing = 0;
+			errorsTot = 0;
+			allFiles.forEach((filename) => {
+				const pieces = filename.split(".");
+				if (pieces.length > 1){
+					const ext = pieces[1].toUpperCase();
+					// At least there is an extensiom, but now let's check it
+					if ((ext === "I") || (ext === "IM")) {
+						errorsTrunc++;
+						errorsTot++;
+					}
+				} else {
+					errorsMissing++;
+					errorsTot++;
+				}
+			});
+			return {errorsTrunc, errorsMissing, errorsTot};
+		}
+
+function findIMGfile(filesData, camera, solNorm, siteChars, driveChars) {
+    const matchingFiles = [];
+
+    for (const cam in filesData) {
+        if (camera && cam !== camera) continue; // Se `camera` è definito, filtriamo solo quel valore
+
+        const solData = filesData[cam];
+        if (!solData) continue;
+
+        for (const sol in solData) {
+            if (solNorm && sol !== solNorm) continue; // Se `solNorm` è definito, filtriamo solo quel valore
+
+            const siteData = solData[sol];
+            if (!siteData) continue;
+
+            for (const site in siteData) {
+                if (siteChars && site !== siteChars) continue; // Se `siteChars` è definito, filtriamo solo quel valore
+
+                const driveData = siteData[site];
+                if (!driveData) continue;
+
+                for (const drive in driveData) {
+                    if (driveChars && drive !== driveChars) continue; // Se `driveChars` è definito, filtriamo solo quel valore
+
+                    // Aggiungi i file trovati a `matchingFiles`
+                    matchingFiles.push(...driveData[drive]);
+                }
+            }
+        }
+    }
+
+    return matchingFiles;
+}
+
+  </script>
+</body>
+</html>
+

@@ -52,13 +52,19 @@
     <span id="thumbnails"></span><br>
     <br>
 
-    Full:<br>
+    Full: <button onclick="showImages()">Show</button><br>
     <span id="spnFullPanorama"></span><br>
     <br>
+
+    VST links <button onclick="showVST()">Show</button><br>
+    <span id="spnVST"></span><br>
+    <br>
+
     <table id="tblLinks" border=1>
     <thead><td>id</td><td>JPG</td><td>IMG</td><td>VST</td></thead>
     <tbody></tbody>
     </table>
+
     <br>
     <table id =  "myTable" border="1">
     <thead><td>id</td><td>Total, /3</td></thead>
@@ -76,8 +82,15 @@
         // VST repository: https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/pancam/siteyyyy/                 (BY SITE)
 
         BASE_MOSAIC_FOLDER = "https://pds-geosciences.wustl.edu/mer/mer2-m-pancam-5-color-mosaics-sci-v1/mer2pc_2xxx/data/";
+        BASE_JPG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
         BASE_IMG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
         BASE_VST_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2mw_0xxx/data/pancam/" ; // siteyyyy
+
+        camFolder = [];
+        camFolder["pancam"]= "/mer2po_0xxx/";
+        camFolder["navcam"]= "/mer2no_0xxx/";
+        camFolder["hazcam"]= "/mer2ho_0xxx/";
+
         // Variabili globali che verranno caricate esternamente
         let formats = ["original","ith"];
         let types = ["triplet", "couple", "single"];
@@ -88,15 +101,27 @@
         myTableBody = myTable.querySelector("tbody");
         spnFullPanorama = document.getElementById("spnFullPanorama");
 
-let imgLinks = [];
+let inlineImageLinks = [];
+let VSTlinks = [];
 
 function showImages() {
     spnFullPanorama.innerHTML = "";
-    imgLinks.forEach(lnk => {
+    inlineImageLinks.forEach(lnk => {
         const im = document.createElement("img");
         im.setAttribute("width",150);
         im.src = lnk;
         spnFullPanorama.appendChild(im);
+    });
+}
+
+function showVST() {
+    spnVST.innerHTML = "";
+    VSTlinks.forEach(lnk => {
+        const a = document.createElement("a");
+        a.setAttribute("href",lnk);
+        a.innerHTML = lnk;
+        spnVST.appendChild(a);
+        spnVST.appendChild(document.createElement("br"));
     });
 }
 
@@ -229,77 +254,106 @@ console.log("Riordino tabella...");
             const images = panoramas[selectedProductId];
 
 
-    thumbnails.innerHTML ="";
-
+            thumbnails.innerHTML ="";
+            spnFullPanorama.innerHTML = "";
 
             let skipperCount = 0;
             let CHOSEN_INDEX = 0;
             let subIndex = 0;
             images.forEach((imageId, index) => {
                 // Costruisci il nome del file immagine
-//console.log("Image n. ", index, subIndex, CHOSEN_INDEX, imageId.id);
-if (CHOSEN_INDEX === subIndex) {
-//    console.log("OK:", imageId.id);
-    const TR = document.createElement("TR");
-    const TD0 = document.createElement("TD");
-//    const TD1 = document.createElement("TD");
-    const TD2 = document.createElement("TD");
-    const TD3 = document.createElement("TD");
-    const TD4 = document.createElement("TD");
-    TD0.innerHTML = imageId.id;
-//    TD1.innerHTML = "<a href='" +  (imageId.path +  imageId.id).toLowerCase() + ".tif'>MOS</a>";
-    let r = findElementsByFilename3d(filesAvailability3d,imageId.id);
-    if (r && r.exactMatch && r.exactMatch.length>0) {
-        link3d = "<a href='" + BASE_VST_FOLDER + r.exactMatch.filepath + r.exactMatch.filename + "'>Full</a>";
-console.log(imageId.id + ": Found exact VST: ",r.exactMatch);
-    } else  if (r && r.partialMatch && r.partialMatch.length>0) {
-console.log(imageId.id + ": Found VST for sequence " , r.partialMatch[0].filename.substr(18,5), ":", r.partialMatch);
-        link3d =  "Sequence " + r.partialMatch[0].filename.substr(18,5) + " found, see console";
-    } else {
-        link3d = "no VST";
-console.log("Not found VST:",imageId.id);
-    }
 
-    r = findElementsByFilenameIMG(filesAvailabilityIMG, imageId.id)
+                if (CHOSEN_INDEX === subIndex) {
+//    console.log("OK:", imageId.id);
+                    const TR = document.createElement("TR");
+                    const TD0 = document.createElement("TD");
+                //    const TD1 = document.createElement("TD");
+                    const TD2 = document.createElement("TD");
+                    const TD3 = document.createElement("TD");
+                    const TD4 = document.createElement("TD");
+                    TD0.innerHTML = imageId.id;
+                //    TD1.innerHTML = "<a href='" +  (imageId.path +  imageId.id).toLowerCase() + ".tif'>MOS</a>";
+                    let r = findElementsByFilename3d(filesAvailability3d,imageId.id);
+                    link3d = "";
+                    VSTfound = false;
+                    if (r && r.exactMatch && r.exactMatch.length>0) {
+                        link3d += "<a href='" + BASE_VST_FOLDER + r.exactMatch[0].filepath + r.exactMatch[0].filename + "'>Full</a>";
+                        VSTlinks.push(BASE_VST_FOLDER + r.exactMatch[0].filepath + r.exactMatch[0].filename);
+                        VSTfound = true;
+console.log(imageId.id + ": Found exact VST: ",r.exactMatch[0]);
+                    }
+                    if (r && r.partialMatch && r.partialMatch.length>0) {
+                        link3d =  "<br>Sequence " + r.partialMatch[0].filename.substr(14,4) + "/" + r.partialMatch[0].filename.substr(18,5) + " found, see console";
+                        r.partialMatch.forEach(VST => {
+                          const fullPath = BASE_VST_FOLDER + VST.filepath + VST.filename;
+                          // Aggiungi solo se non è già presente nell'array
+                          if (!VSTlinks.includes(fullPath)) {
+                            VSTlinks.push(fullPath);
+                          }
+                        });
+                        VSTfound = true;
+console.log(imageId.id + ": Found VST for sequence " , r.partialMatch[0].filename.substr(18,5), ":", r.partialMatch);
+                    }
+                    if (!VSTfound) {
+                        link3d = "no VST";
+console.log("Not found VST:",imageId.id);
+                    }
+
+                    r = findElementsByFilenameIMG(filesAvailabilityIMG, imageId.id)
 //console.log("IMG:",r);
-    if (r && r.exactMatch && r.exactMatch.length>0) {
-        linkIMG = "<a href='" + BASE_IMG_FOLDER + r.exactMatch.filepath + r.exactMatch.filename  + ".jpg" + "'>Full</a>";
-        linkJPG = linkIMG.replace("xxx/data","xxx/browse");
+                    IMGfound = false;
+                    linkIMG = "";
+                    linkJPG = "";
+                    if (r && r.exactMatch && r.exactMatch.length>0) {
+                        idx = r.parentPaths[0][0];
+                        sol = r.parentPaths[0][1]
+                        jpgFolder = BASE_JPG_FOLDER + camFolder[idx]  + "browse/" + sol + "/rdr/";
+                        IMGfolder = BASE_IMG_FOLDER + camFolder[idx]  + "data/" + sol + "/rdr/";
+                        linkIMG += "<a href='" + IMGfolder + r.exactMatch.toLowerCase()  + ".img" + "'>Full</a>";
+                        linkJPG += "<a href='" + jpgFolder + r.exactMatch.toLowerCase()  + ".img.jpg" + "'>Full</a>";
+                        IMGfound = true;
 //console.log("Found: ",r.exactMatch);
-    } else  if (r && r.partialMatch && r.partialMatch.length>0) {
-//console.log("Found partial IMG: ", BASE_IMG_FOLDER +r.partialMatch[0],r.partialMatch[0].filepath);
-        linkIMG = "<a href='" + BASE_IMG_FOLDER + r.partialMatch[0].filepath + r.partialMatch[0].filename  + ".jpg" + "'>Partial match</a>";
-        linkJPG = linkIMG.replace("xxx/data","xxx/browse");
-        imgFilename = r.partialMatch[0].filename;
-        imgFilenameThumbnail = imgFilename.substr(0,11)+"thn" + imgFilename.substr(14,imgFilename.length-13); // turn into thumbnail
-        imgLink = (BASE_IMG_FOLDER + r.partialMatch[0].filepath + imgFilename + ".jpg").replace("xxx/data","xxx/browse");
-        imgLinks.push(imgLink);
-        imgLinkThumbnail = (BASE_IMG_FOLDER + r.partialMatch[0].filepath + imgFilenameThumbnail + ".jpg").replace("xxx/data","xxx/browse");
-        const im = document.createElement("IMG");
-        im.setAttribute("width",100);
-        im.src = imgLinkThumbnail;
-        thumbnails.appendChild(im);
-    } else {
-        linkIMG = "no IMG";
-        linkJPG = "no JPG";
+                    }
+
+                    if (r && r.partialMatch && r.partialMatch.length>0) {
+//console.log("Found partial IMG: ", r.partialMatch);
+                        idx = r.parentPaths[0][0];
+                        sol = r.parentPaths[0][1]
+                        jpgFolder = BASE_JPG_FOLDER + camFolder[idx]  + "browse/" + sol + "/rdr/";
+                        IMGfolder = BASE_IMG_FOLDER + camFolder[idx]  + "data/" + sol + "/rdr/";
+                        imgFilename = r.partialMatch[0].toLowerCase();
+                        imgFilenameThumbnail = imgFilename.substr(0,11) + "thn" + imgFilename.substr(14,imgFilename.length-13); // turn into thumbnail
+                        inlineImageLink = (jpgFolder + imgFilename + ".img.jpg");
+                        inlineImageLinkThumbnail = jpgFolder + imgFilenameThumbnail + ".img.jpg";
+                        IMG_ImageLink = IMGfolder + imgFilename + ".img";
+                        inlineImageLinks.push(inlineImageLink);
+                        linkIMG += "<br><a href='" + IMG_ImageLink + "'>Partial match</a>";
+                        linkJPG += "<br><a href='" + inlineImageLink + "'>Partial match</a>";
+                        const im = document.createElement("IMG");
+                        im.setAttribute("width" ,100);
+                        im.src = inlineImageLinkThumbnail;
+                        thumbnails.appendChild(im);
+                        IMGfound = true;
+                    }
+
+                    if (!IMGfound) {
+                        linkIMG = "no IMG";
+                        linkJPG = "no JPG";
 console.log("Not found IMG:",imageId.id);
-    }
-    TD2.innerHTML = linkJPG;
-    TD3.innerHTML = linkIMG;
-    TD4.innerHTML = link3d;
-    TR.appendChild(TD0);
-//    TR.appendChild(TD1);
-    TR.appendChild(TD2);
-    TR.appendChild(TD3);
-    TR.appendChild(TD4);
-    linksBody.appendChild(TR);
-}
+                    }
+                    TD2.innerHTML = linkJPG;
+                    TD3.innerHTML = linkIMG;
+                    TD4.innerHTML = link3d;
+                    TR.appendChild(TD0);
+                //    TR.appendChild(TD1);
+                    TR.appendChild(TD2);
+                    TR.appendChild(TD3);
+                    TR.appendChild(TD4);
+                    linksBody.appendChild(TR);
+                }
                 const fileName = `${imageId.id}.${selectedFormat}`;
                 const fullPath = `${imgFolder}/${fileName}`;
 
-                // Log del percorso (nella pratica, dovresti implementare
-                // il download o il salvataggio effettivo)
-//console.log(`Salvataggio immagine: ${fullPath}`);
                 skipperCount++;
                 subIndex++;
                 if (selectedType === "triplet") {
@@ -328,44 +382,49 @@ console.log("Not found IMG:",imageId.id);
         // Aggiungi un listener per l'evento di caricamento esterno
         window.addEventListener('load', initializeSelectors);
 
-
+memo = "";
 
 function findElementsByFilenameIMG(obj, targetFilename) {
+console.log("Searching for ",targetFilename,"...");
   const results = [];
   const partialResults = [];
+  const parentPaths = [];
 
-  function searchRecursively(item) {
+  function searchRecursively(item, currentPath = []) {
     if (typeof item === 'object') {
       if (Array.isArray(item)) {
-        item.forEach(elem => {
-          if (elem.filename.toUpperCase() === (targetFilename + ".vst").toUpperCase()) {
+        item.forEach((elem, index) => {
+          if (elem.toUpperCase() === (targetFilename + ".img").toUpperCase()) {
             results.push(elem);
-          } else {
-//console.log("no");
+            parentPaths.push([...currentPath]);
           }
 
-          if ( elem.filename.substr(0,11).toUpperCase() === (targetFilename.substr(0,11)).toUpperCase() ) { // 2P318384721 EFFB2Z8P2397L2M1
+          if (elem.substr(0,11).toUpperCase() === (targetFilename.substr(0,11)).toUpperCase()) {
             partialResults.push(elem);
-          } /* else if ( elem.filename.substr(18,5).toUpperCase() === (targetFilename.substr(18,5)).toUpperCase() ) { // 2P318384721EFFB2Z8 P2397 L2M1
-            partialResults.push(elem);
-          } */ else {
-
-//console.log("no");
+            parentPaths.push([...currentPath]);
           }
 
-          searchRecursively(elem);
+          searchRecursively(elem, currentPath);
         });
       } else {
-        Object.values(item).forEach(value => {
-          searchRecursively(value);
+        Object.entries(item).forEach(([key, value]) => {
+          searchRecursively(value, [...currentPath, key]);
         });
       }
     }
   }
 
   searchRecursively(obj);
-  return ({ exactMatch: results, partialMatch : partialResults});
+
+console.log("Search complete, found ", results.length, " exact matches and ", partialResults.length , " partial matches.", partialResults);
+//console.log(errore);
+  return {
+    exactMatch: results,
+    partialMatch: partialResults,
+    parentPaths: parentPaths
+  };
 }
+
 
 
 function findElementsByFilename3d(obj, targetFilename) {
@@ -384,7 +443,7 @@ function findElementsByFilename3d(obj, targetFilename) {
           }
           if (elem.filename.substr(0,11).toUpperCase() === targetFilename.substr(0,11).toUpperCase()) {
             partialResults.push(elem);
-          } else   if (elem.filename.substr(18,5).toUpperCase() === targetFilename.substr(18,5).toUpperCase()) {
+          } else   if (elem.filename.substr(14,9).toUpperCase() === targetFilename.substr(14,9).toUpperCase()) {
             partialResults.push(elem);
           } else {
 //console.log("NO: ",elem.filename.toUpperCase(),(targetFilename + ".vst").toUpperCase());
@@ -399,6 +458,8 @@ function findElementsByFilename3d(obj, targetFilename) {
   }
   searchRecursively(obj);
 //console.log(results, partialResults);
+console.log("VST search complete, found ", results.length, " exact matches and ", partialResults.length , " partial matches.", partialResults);
+//console.log(errore);
   return ({ exactMatch: results, partialMatch : partialResults});
 }
 

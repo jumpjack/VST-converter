@@ -16,19 +16,30 @@
 <body>
 <h1>MER traverse viewer and 3d files analyzer</h1>
 	<span id="status"></span><br>
-    <input type="checkbox" id = "chkFullFrame" checked>FFL<br>
-	<button id="btnPlot" onclick="placeMarkers(132,138)">Plot</button>
+    Start site:<input type="text" id = "startSite" value = "131"><br>
+    End site:<input type="text" id = "endSite" value = "138"><br>
+    <button id="btnPlot" onclick="placeMarkers(parseInt(document.getElementById('startSite').value),parseInt(document.getElementById('endSite').value))">Plot</button><br>
+    <br>
+    <input type="checkbox" id = "chkFullFrame" checked>Show only FFL products<br>
     <div id="sitesPlot" style="height:500px; width:500px;"></div>
 	<span id="spnLinks"></span><br>
     <script>
 
-myPlot = null;
+        myPlot = null;
 
 		MINSIZE_WITHOUT = 8;
 		MINSIZE = 15;
 		MAXSIZE = 40;
 
+BASE_JPG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
+BASE_IMG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
+camFolder = [];
+camFolder["pancam"]= "/mer2po_0xxx/";
+camFolder["navcam"]= "/mer2no_0xxx/";
+camFolder["hazcam"]= "/mer2ho_0xxx/";
+
 		function placeMarkers(startSite = 0, endSite = 138) {
+console.log("Plotting from ", startSite , " to " , endSite);
 			const xSecondary = [];
 			const ySecondary = [];
 			const textSecondary = []; //  tip blu
@@ -74,11 +85,7 @@ myPlot = null;
 						if (IMGFiles) {
 							IMGFilesCount = IMGFiles.length;
 							if (IMGFiles[0]) {
-								if (IMGFiles[0].filepath) {
-									solNumberNorm = IMGFiles[0].filepath.substring(18,25); // "/mer2po_0xxx/data/sol1363/rdr"
-								} else {
-//console.log("no path", siteCode, driveCode);
-								}
+								solNumberNorm = IMGFiles[0].sol; // "/mer2po_0xxx/data/sol1363/rdr"
 							} else {
 //console.log("no imagesint", siteCode, driveCode);
 							}
@@ -189,7 +196,7 @@ console.log(`Creati ${xPrimary.length + xSecondary.length} marker.`);
 				const ycm = ((y - ym)*100).toFixed(0);
 
 	// alert(`Hai cliccato sul punto con coordinate (x: ${x}, y: ${y})`);
-	            console.log('Informazioni del punto cliccato:', point);
+console.log('Informazioni del punto cliccato:', point);
 				pointDataLines = point.text.split("<br>");
 				pointProduct = pointDataLines[0];
 				pointSite = pointDataLines[1].split(" ")[1];
@@ -230,16 +237,20 @@ addImage = false;
                         }
                         if (addImage) {
 
+jpgFolder = BASE_JPG_FOLDER + camFolder[IMG.camera]  + "browse/" + IMG.sol + "/rdr/";
+IMGfolder = BASE_IMG_FOLDER + camFolder[IMG.camera]  + "data/" + IMG.sol + "/rdr/";
+
+// https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
                           spnLinks.innerHTML += "" +
                           "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
-                                                IMG.filepath +
-                                                IMG.filename + "'>" +
-                                                IMG.filename +  "</a>, " +
+                                                IMGfolder +
+                                                IMG.filename + ".img'>" +
+                                                IMG.filename +  ".img</a>, " +
 
                           "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
-                                                IMG.filepath.replace("data","browse") +
-                                                IMG.filename.replace(".img",".img.jpg") + "'>" +
-                                                IMG.filename.replace(".img",".img.jpg") +  "</a>" +
+                                                jpgFolder +
+                                                IMG.filename + ".img.jpg" + "'>" +
+                                                IMG.filename + ".img.jpg" +  "</a>" +
                                                 "<br>";
                             addImage = false;
                         }
@@ -293,9 +304,95 @@ addImage = false;
  });
 
 
-function findIMGfile(filesData, camera, solNorm, siteChars, driveChars) {
-    const matchingFiles = [];
 
+function findIMGfile(filesAvailabilityIMG, camera, sol, site, drive) {
+  const results = [];
+
+  // Se non viene fornita la camera, cerca in tutte le camere
+  if (!camera) {
+    for (const currentCamera in filesAvailabilityIMG) {
+      // Se sol non è specificato, cerca in tutti i sol
+      if (!sol) {
+        for (const currentSol in filesAvailabilityIMG[currentCamera]) {
+          if (
+            filesAvailabilityIMG[currentCamera][currentSol][site] &&
+            filesAvailabilityIMG[currentCamera][currentSol][site][drive]
+          ) {
+            results.push(...filesAvailabilityIMG[currentCamera][currentSol][site][drive].map(filename => ({
+              filename,
+              camera: currentCamera,
+              sol: currentSol,
+              site,
+              drive
+            })));
+          }
+        }
+      } else {
+        // Sol specificato
+        if (
+          filesAvailabilityIMG[currentCamera][sol] &&
+          filesAvailabilityIMG[currentCamera][sol][site] &&
+          filesAvailabilityIMG[currentCamera][sol][site][drive]
+        ) {
+          results.push(...filesAvailabilityIMG[currentCamera][sol][site][drive].map(filename => ({
+            filename,
+            camera: currentCamera,
+            sol,
+            site,
+            drive
+          })));
+        }
+      }
+    }
+    return results;
+  }
+
+  // Camera specificata
+  if (!sol) {
+    for (const currentSol in filesAvailabilityIMG[camera]) {
+      if (
+        filesAvailabilityIMG[camera][currentSol][site] &&
+        filesAvailabilityIMG[camera][currentSol][site][drive]
+      ) {
+        results.push(...filesAvailabilityIMG[camera][currentSol][site][drive].map(filename => ({
+          filename,
+          camera,
+          sol: currentSol,
+          site,
+          drive
+        })));
+      }
+    }
+    return results;
+  }
+
+  // Caso standard con camera e sol specificati
+  if (
+    filesAvailabilityIMG[camera] &&
+    filesAvailabilityIMG[camera][sol] &&
+    filesAvailabilityIMG[camera][sol][site] &&
+    filesAvailabilityIMG[camera][sol][site][drive]
+  ) {
+    return filesAvailabilityIMG[camera][sol][site][drive].map(filename => ({
+      filename,
+      camera,
+      sol,
+      site,
+      drive
+    }));
+  }
+
+  // Se non trova l'array, restituisce un array vuoto
+  return [];
+}
+
+
+
+
+
+function findIMGfileOld(filesData, camera, solNorm, siteChars, driveChars) {
+    const matchingFiles = [];
+console.log("Looking for ",camera, solNorm, siteChars, driveChars);
     for (const cam in filesData) {
         if (camera && cam !== camera) continue; // Se `camera` è definito, filtriamo solo quel valore
 
