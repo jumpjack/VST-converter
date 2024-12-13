@@ -22,7 +22,15 @@
     <br>
     <input type="checkbox" id = "chkFullFrame" checked>Show only FFL products<br>
     <div id="sitesPlot" style="height:500px; width:500px;"></div>
-	<span id="spnLinks"></span><br>
+	<span id="spnLinks"></span><br><br>
+
+	<span id="spnLinksIMG">
+      <table border=1>
+        <tbody>
+        </tbody>
+      </table>
+    </span><br>
+
     <script>
 
         myPlot = null;
@@ -30,6 +38,7 @@
 		MINSIZE_WITHOUT = 8;
 		MINSIZE = 15;
 		MAXSIZE = 40;
+ proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
 
 BASE_JPG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
 BASE_IMG_FOLDER = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit"; // mer2po_0xxx/browse/";  // solyyyy/edr/";
@@ -79,13 +88,13 @@ console.log("Plotting from ", startSite , " to " , endSite);
 				        const vstFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "vst", "pn").length;
 				        const pfbFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "pfb", "pn").length;
 				        const htFilesCount = find3Dfiles(filesAvailability3d, null, siteCode, driveCode, "ht", "pn").length;
-				        const IMGFiles = findIMGfile(filesAvailabilityIMG, null, null, siteCode, driveCode);
+				        const IMGFilesFound = findIMGfile(filesAvailabilityIMG, null, null, siteCode, driveCode);
 						IMGFilesCount = 0;
 						solNumberNorm = "n/a";
-						if (IMGFiles) {
-							IMGFilesCount = IMGFiles.length;
-							if (IMGFiles[0]) {
-								solNumberNorm = IMGFiles[0].sol; // "/mer2po_0xxx/data/sol1363/rdr"
+						if (IMGFilesFound) {
+							IMGFilesCount = IMGFilesFound.length;
+							if (IMGFilesFound[0]) {
+								solNumberNorm = IMGFilesFound[0].sol; // "/mer2po_0xxx/data/sol1363/rdr"
 							} else {
 //console.log("no imagesint", siteCode, driveCode);
 							}
@@ -204,8 +213,8 @@ console.log('Informazioni del punto cliccato:', point);
 				const siteNorm = `site${pointSite.padStart(4, "0")}`;
 				const pointSol = pointDataLines[3].split(" ")[1];
 				const solNorm = `sol${pointSol.padStart(4, "0")}`;
-				const IMGFiles = findIMGfile(filesAvailabilityIMG, null, null, pointProduct.substring(0,2), pointProduct.substring(2,4));
-				const IMGFilesCount = IMGFiles.length;
+				const IMGFilesFound = findIMGfile(filesAvailabilityIMG, null, null, pointProduct.substring(0,2), pointProduct.substring(2,4));
+				const IMGFilesCount = IMGFilesFound.length;
 				const VSTfiles = find3Dfiles(filesAvailability3d, null, pointProduct.substring(0,2), pointProduct.substring(2,4), "vst", "pn");
 				const VSTfilesCount = VSTfiles.length;
 
@@ -220,16 +229,19 @@ console.log('Informazioni del punto cliccato:', point);
 				if (VSTfilesCount > 0) {
 					VSTfiles.forEach((VST) => {
 						spnLinks.innerHTML += "" +
-											"<a target = '_blank' href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" + VST.filepath + VST.filename + "'>" + VST.filename +  "</a><br>";
+											"<a target = '_blank' href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" + VST.filepath.toLowerCase() + VST.filename.toLowerCase() + "'>" + VST.filename.toLowerCase() +  "</a><br>";
 					});
 				}
 
 
-				spnLinks.innerHTML += "<br>RAW IMG files for "  + pointSol +  ", " +  siteNorm + "/drive" + pointDrive + " (look for products '" + pointProduct + "'): " + IMGFilesCount + "<br>";
+//spnLinksIMG.innerHTML = "<br>Images for "  + pointSol +  ", " +  siteNorm + "/drive" + pointDrive + " (look for products '" + pointProduct + "'): " + IMGFilesCount + "<br>";
 
-addImage = false;
+                addImage = false;
+                spnLinksIMG.querySelector('tbody').innerHTML = "";
+                imgsToDownload = [];
+
 				if (IMGFilesCount > 0) {
-					IMGFiles.forEach((IMG) => {
+					IMGFilesFound.forEach((IMG) => {
                         if (chkFullFrame.checked) {
                           if (IMG.filename.toUpperCase().indexOf("FFL") >= 0) addImage = true;
                         } else {
@@ -237,26 +249,118 @@ addImage = false;
                         }
                         if (addImage) {
 
-jpgFolder = BASE_JPG_FOLDER + camFolder[IMG.camera]  + "browse/" + IMG.sol + "/rdr/";
-IMGfolder = BASE_IMG_FOLDER + camFolder[IMG.camera]  + "data/" + IMG.sol + "/rdr/";
+                          jpgFolder = BASE_JPG_FOLDER + camFolder[IMG.camera]  + "browse/" + IMG.sol + "/rdr/";
+                          IMGfolder = BASE_IMG_FOLDER + camFolder[IMG.camera]  + "data/" + IMG.sol + "/rdr/";
 
-// https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
-                          spnLinks.innerHTML += "" +
-                          "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
-                                                IMGfolder +
-                                                IMG.filename + ".img'>" +
-                                                IMG.filename +  ".img</a>, " +
+                          // https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2no_0xxx/data/sol1869/rdr/
 
-                          "<a target = '_blank'  href='https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/" +
-                                                jpgFolder +
-                                                IMG.filename + ".img.jpg" + "'>" +
-                                                IMG.filename + ".img.jpg" +  "</a>" +
-                                                "<br>";
+                          // Crea una riga della tabella con le 4 colonne richieste
+                          let tableRow = document.createElement('tr');
+
+                          // Link IMG
+                          const imgLink = document.createElement('a');
+                          imgLink.href = IMGfolder + IMG.filename.toLowerCase() + ".img";
+                          imgLink.target = "_blank";
+                          imgLink.textContent = IMG.filename.toLowerCase() + ".img";
+
+                          // Link JPG
+                          const jpgLink = document.createElement('a');
+                          jpgLink.href = jpgFolder + IMG.filename.toLowerCase() + ".img.jpg";
+                          jpgLink.target = "_blank";
+                          jpgLink.textContent = IMG.filename.toLowerCase() + ".img.jpg";
+
+                          // Link thumbnail JPG
+                          const f = IMG.filename.toLowerCase();
+                          const leftPart = f.substr(0,11);
+                          const rightPart = f.substr(14,f.length-14);
+                          const newf = leftPart + "thn" + rightPart;
+                          const thumbnail = document.createElement('img');
+                          thumbnail.src = jpgFolder + newf + ".img.jpg";
+                          //thumbnail.style.width = '100px';
+
+
+                          // Colonna 1: IMG link
+                          let imgLinkCell = document.createElement('td');
+                          imgLinkCell.appendChild(imgLink);
+                          tableRow.appendChild(imgLinkCell);
+                          //console.log("Aggiunta riga per ", IMG.filename);
+
+
+                          // Colonna 2: JPG link
+                          let jpgLinkCell = document.createElement('td');
+                          jpgLinkCell.appendChild(jpgLink);
+                          tableRow.appendChild(jpgLinkCell);
+
+                          // Colonna 3: JPG thumbnail
+                          let thumbnailCell = document.createElement('td');
+                          thumbnailCell.appendChild(thumbnail);
+                          tableRow.appendChild(thumbnailCell);
+
+
+                          // Colonna 4: checkbox
+                          let checkboxCell = document.createElement('td');
+                          const checkbox = document.createElement('input');
+                          checkbox.type = 'checkbox';
+                          checkbox.id = "chkIMG_" + IMG.filename.toLowerCase();
+                          checkboxCell.appendChild(checkbox);
+                          tableRow.appendChild(checkboxCell);
+
+                          // Aggiungi la riga alla tabella
+                          spnLinksIMG.querySelector('tbody').appendChild(tableRow);
+
                             addImage = false;
                         }
 					});
-				}
 
+                    // Aggiungi il pulsante COPY dopo la tabella (se non è già stato aggiunto)
+                    if (!document.getElementById('copyButton')) {
+                        const copyButton = document.createElement('button');
+                        copyButton.id = 'copyButton';
+                        copyButton.textContent = 'COPY';
+                        copyButton.addEventListener('click', function() {
+                            // Rimuovi eventuali elenchi precedenti
+                            const existingList = document.getElementById('selectedLinksList');
+                            if (existingList) {
+                                existingList.remove();
+                            }
+
+                            // Crea un nuovo elenco per i link selezionati
+                            const selectedLinksList = document.createElement('span');
+                            selectedLinksList.id = 'selectedLinksList';
+
+
+                            // Trova tutte le checkbox selezionate
+                            checkedBoxes = document.querySelectorAll('input[type="checkbox"]:checked');
+
+                            // Per ogni checkbox selezionata, aggiungi i link corrispondenti all'elenco
+                            checkedBoxes.forEach(function(checkbox) {
+                            if (checkbox.id.indexOf("chkIMG_") >=0 ) {
+                                        const row = checkbox.closest('tr');
+                                        const imgLink = row.querySelector('td:first-child a');
+                                        const jpgLink = row.querySelector('td:nth-child(2) a');
+                                        // Crea elementi lista per IMG e JPG
+                                        const imgLinkItem = document.createElement('span');
+                                        imgLinkItem.appendChild(imgLink.cloneNode(true));
+
+                                        const jpgLinkItem = document.createElement('span');
+                                        jpgLinkItem.appendChild(jpgLink.cloneNode(true));
+
+                                        imgFilename = imgLink.getAttribute("href") .split('/').pop().replace('.jpg', '');
+                                        jpgFilename = jpgLink.getAttribute("href").split('/').pop();
+
+                                        selectedLinksList.innerHTML += "<br><a href='" + jpgLink +  "'>"  +  jpgFilename +   "</a>, <a href='" + imgLink +   "'>" + imgFilename +   "</a>";
+                                        imgsToDownload.push(imgLink.getAttribute("href"));
+                            }
+                                    });
+
+                            // Aggiungi l'elenco dopo il pulsante COPY
+                            copyButton.parentNode.insertBefore(selectedLinksList, copyButton.nextSibling);
+                        });
+
+                        // Aggiungi il pulsante dopo la tabella
+                        spnLinksIMG.querySelector('tbody').parentNode.insertBefore(copyButton, spnLinksIMG.querySelector('tbody').nextSibling);
+                    }
+				}
 	        });
 		}
 
@@ -455,7 +559,7 @@ function find3Dfiles(filesData, solNorm, siteChars, driveChars, extension, allow
 		                    // Filtra i file in base al secondo carattere della telecamera
 		                    filteredFiles = extData[ext].filter(obj => {
 		                        // Estrai il secondo carattere del nome del file (dopo il primo underscore)
-		                        const cameraPart = obj.filename[1];
+		                        const cameraPart = obj.filename[1].toLowerCase();
                                  //console.log( cameraPart ,allowedCameras.includes(cameraPart));
 		                        return cameraPart && allowedCameras.includes(cameraPart);
 		                    });
