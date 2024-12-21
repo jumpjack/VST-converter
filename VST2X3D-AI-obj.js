@@ -1,7 +1,6 @@
-/*
- * 010:
- * Accepts lading of local img, lbl, vst; download if not available
-*/
+/* 0.10.0
+ * added routines  to convert to obj, BROKEN CONVERSION TO X3D!!!
+ * *
 
 /* 0.7.0
  * Added list of links to raw textures, jpg textures, textures folders
@@ -29,7 +28,7 @@ BASE_IMG_URL = "";
 //BASE_IMG_URL_NAVCAM = "https://planetarydata.jpl.nasa.gov/w10n/mer2-m-navcam-5-disparity-ops-v1.0/mer2no_0xxx/";
 BASE_IMG_URL_NAVCAM = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2no_0xxx/";
 BASE_IMG_URL_PANCAM = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2po_0xxx/";
-BASE_IMG_URL_HAZCAM = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2po_0xxx/";
+BASE_IMG_URL_HAZCAM = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2ho_0xxx/";
 IMG_RAW_FOLDER = "data/";
 IMG_JPG_FOLDER = "browse/";
 SOL_FOLDER = "sol#SOLNUMBER#/rdr/"; // sol must be determined from VST // DEBUG!!   (Sol number is in .lbl of .vst file)
@@ -47,6 +46,17 @@ let x3d = null;
 wireframeEnabled = false;
 let rawIMGfileContents = null;
 let extractedVicarData = "";
+
+
+let filesObj = [];
+let filesMtl = [];
+let filesTexture = [];
+
+
+
+const   OPPORTUNITY = "1"; // First letter of filename
+const   SPIRIT = "2";
+const   roverName = ["","opportunity", "spirit"];
 
  proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
 
@@ -79,6 +89,9 @@ const graphicalProducts = [
  "ITH",
  "THN"
 ];
+
+
+            let lods = [];
 
 
 // Strutture dati VST
@@ -364,7 +377,7 @@ console.log("productIndex=",productIndex, ", product variant: ", textureVariant)
   console.log("label not loaded yet, looking locally, then online...")
                     if (imgFiles.length === 0) { // no local IMG file available, download:
   console.log("no local IMG file '" + suggestedFilename + " 'available for Alt/Az,  download...")
-                        let rawContents = await downloadIMG(currentRAWIMGProductID, siteNumberString, solNumber);
+                        let rawContents = await downloadIMG(currentRAWIMGProductID, solNumber);
 console.log("rawContents=",rawContents);
                         labelContents = new TextDecoder().decode(rawContents);
 console.log("labelContents=",labelContents.length);
@@ -552,7 +565,7 @@ await advanceProgress("HEADER2 - Vertex loaded");
 
 
             //////////// Process LODs
-            const lods = [];
+//            let lods = [];
             for (let i = 0; i < header.lodNum; i++) {
                 const lod = this.parseLOD(needsReverse);
                 lods.push(lod);
@@ -660,31 +673,30 @@ await advanceProgress("HEADER2 - LOD processed");
 
 
 
-function generateOBJ_AI(vstData, startLod, endLod) { /// debug
- const vertices = vstData.vertices;
- const lods = vstData.lods;
+function generateOBJ_AI(vstData, startLod, endLod) { // vecchia routine
+  const vertices = vstData.vertices;
+  const lods = vstData.lods;
 
- let obj = "";
+  let obj = "";
 
- // Write vertex data
- for (let vertex of vertices) {
+  // Write vertex data
+  for (let vertex of vertices) {
    obj += `v ${vertex.x} ${-vertex.z} ${vertex.y}\n`;
- }
+  }
 
- // Write texture coordinate data  
- for (let vertex of vertices) {
+  // Write texture coordinate data
+  for (let vertex of vertices) {
    obj += `vt ${vertex.tx} ${1 - vertex.ty}\n`;
- }
+  }
 
- obj += "# Faces\n";
+  obj += "# Faces\n";
 
- // Write face data for each LOD from startLod to endLod
- //for (let lodIndex = startLod; lodIndex <= endLod; lodIndex++) {
- lodIndex=1;  // debug
-   const lod = lods[lodIndex]; // debug
-   
-   for (let patch of lod.patches) {
-     if (patch.header.pointCloud === 0) {
+  // Write face data for each LOD from startLod to endLod
+  for (let lodIndex = startLod; lodIndex <= endLod; lodIndex++) {
+    //lodIndex=1;  // debug
+    const lod = lods[lodIndex]; // debug
+    for (let patch of lod.patches) {
+      if (patch.header.pointCloud === 0) { // trianglestrip
        const textureFile = vstData.textureFiles?.[patch.header.texture];
        if (textureFile) {
          obj += `# Material: ${textureFile}\n`;
@@ -701,13 +713,12 @@ function generateOBJ_AI(vstData, startLod, endLod) { /// debug
          }
          obj += "\n";
        }
-     }
-   }
-
-
- //}
-
- return obj;
+      } else {
+      // pointcloud not implemented
+      }
+    }
+  }
+  return obj;
 }
 
 
@@ -781,47 +792,47 @@ console.log("Creating x3d file without the missing texture.");
                     }
 
                     // Handle textured triangles
-x3d += `\n          <Appearance>
-              <Material backAmbientIntensity='1.0'
+x3d += `\n              <Appearance>
+                  <Material backAmbientIntensity='1.0'
                  backDiffuseColor='1 1 1'
                  diffuseColor='1 1 1'
                  transparency='0'/>`;
 
-currentShape += `\n          <Appearance>
-              <Material backAmbientIntensity='1.0'
+currentShape += `\n              <Appearance>
+                  <Material backAmbientIntensity='1.0'
                  backDiffuseColor='1 1 1'
                  diffuseColor='1 1 1'
                  transparency='0'/>`;
 
-wireframe += `\n          <Appearance>
-               <Material emissiveColor = "1 1 0"/>`;
+wireframe += `\n              <Appearance>
+                   <Material emissiveColor = "1 1 0"/>`;
 
                     if (textureOk) {
-                           x3d += `\n                 <ImageTexture url="` + finalUrl+ `"\n                 />
-                 <TextureProperties boundaryModeS='REPEAT'
+                           x3d += `\n                     <ImageTexture url="` + finalUrl+ `"\n                 />
+                     <TextureProperties boundaryModeS='REPEAT'
                          boundaryModeT='REPEAT'
                          magnificationFilter='NICEST'
                          minificationFilter='NICEST'\n                 />`;
 
-                           currentShape += `\n              <ImageTexture url="` + finalUrl+ `"\n              />
-                 <TextureProperties boundaryModeS='REPEAT'
+                           currentShape += `\n                  <ImageTexture url="` + finalUrl+ `"\n              />
+                     <TextureProperties boundaryModeS='REPEAT'
                          boundaryModeT='REPEAT'
                          magnificationFilter='NICEST'
                          minificationFilter='NICEST'\n                 />`;
                        }
 
-x3d += `\n          </Appearance>
-          <IndexedTriangleStripSet solid='false'
+x3d += `\n              </Appearance>
+              <IndexedTriangleStripSet solid='false'
             ccw='true'
             index="`;
 
-currentShape += `\n          </Appearance>
-          <IndexedTriangleStripSet solid='false'
+currentShape += `\n              </Appearance>
+              <IndexedTriangleStripSet solid='false'
             ccw='true'
             index="`;
 
-wireframe += `\n          </Appearance>
-          <IndexedLineSet solid='false'
+wireframe += `\n              </Appearance>
+              <IndexedLineSet solid='false'
             ccw='true'
             index="`;
 
@@ -837,9 +848,9 @@ wireframe += `\n          </Appearance>
                     wireframe += indices.join(' ');
 
                     // Add coordinates
-                    x3d +=          `">\n            <Coordinate point="`;
-                    currentShape += `">\n            <Coordinate point="`;
-                    wireframe +=    `">\n            <Coordinate point="`;
+                    x3d +=          `">\n                <Coordinate point="`;
+                    currentShape += `">\n                <Coordinate point="`;
+                    wireframe +=    `">\n                <Coordinate point="`;
                     const points = [];
                     for (let i = 0; i <= lod.header.vertMax; i++) {
                         points.push(formatPoint(vertices[i]));
@@ -854,9 +865,9 @@ wireframe += `\n          </Appearance>
 
                     if (textureOk) {
                         // Add texture coordinates
-                        x3d +=          `\n            <TextureCoordinate point="`;
-                        currentShape += `\n            <TextureCoordinate point="`;
-                        wireframe +=    `\n            <TextureCoordinate point="`;
+                        x3d +=          `\n                <TextureCoordinate point="`;
+                        currentShape += `\n                <TextureCoordinate point="`;
+                        wireframe +=    `\n                <TextureCoordinate point="`;
                         const texCoords = [];
                         for (let i = 0; i <= lod.header.vertMax; i++) {
                             texCoords.push(formatTexCoord(vertices[i]));
@@ -868,16 +879,16 @@ wireframe += `\n          </Appearance>
                         currentShape += '"\n            />';
                         wireframe += '"\n            />';
                     }
-                    x3d +=          '\n          </IndexedTriangleStripSet>';
-                    currentShape += '\n          </IndexedTriangleStripSet>';
-                    wireframe +=    '\n          </IndexedLineSet>';
+                    x3d +=          '\n              </IndexedTriangleStripSet>';
+                    currentShape += '\n              </IndexedTriangleStripSet>';
+                    wireframe +=    '\n              </IndexedLineSet>';
 
                     x3d += '\n      </Shape>';
                     currentShape += '\n      </Shape>';
                     if (wireframeEnabled) {
 
-                                        x3d += `\n      <Shape id = "PROD_${product_name_no_ext}_LOD_${lodIndex}_wireframe"   bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
-                                        currentShape += `\n      <Shape id = "PROD_${product_name_no_ext}_LOD_${lodIndex}_wireframe"   bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
+                                        x3d += `\n          <Shape id = "PROD_${product_name_no_ext}_LOD_${lodIndex}_wireframe"   bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
+                                        currentShape += `\n          <Shape id = "PROD_${product_name_no_ext}_LOD_${lodIndex}_wireframe"   bboxCenter="${bboxCenter.x} ${bboxCenter.y} ${bboxCenter.z}" bboxSize="${bboxSize.x} ${bboxSize.y} ${bboxSize.z}">`;
                                         x3d += wireframe;
                     }
                 } // patch cycle, trianglestrip type
@@ -1059,16 +1070,16 @@ console.log("Camera direction in yaw/pitch (deg):" , coordinateSystem.yawDeg.toF
         
 console.log("Inserting model into scene....");
         x3dContent = generateX3D(vstData, 1,1); // DEBUG: LOD must be selected by user; // DEBUG: Get the x3d file as returned value to pass to viewer
-console.log("Conversion to x3d completed.",x3dContent.length);
+console.log("Conversion to x3d completed.");
+
+
 //saveX3Dfile(x3dContent);
 //objContent = generateOBJ_AI(vstData, 1,1); // FUNZIONA la pointcloud!
 //saveOBJfile(objContent);
 
-
         showStatus(selectedFile.name + 'completato.', 'success');
 
-
-        loadX3DFile(x3dContent, angles.pancamAzimuthRad, -angles.pancamElevationRad);
+        addRotatedX3dToScene(x3dContent, angles.pancamAzimuthRad, -angles.pancamElevationRad);
     //} catch (error) {
        // showStatus(`Errore durante la conversione: ${error.message}`, 'error');
    // }
@@ -1295,7 +1306,7 @@ console.log(`>>Errore durante il caricamento della label per leggere il Sol Numb
 
 
 
-async function downloadIMG(textureName, siteNumberString, solNumber) {
+async function downloadIMG(textureName,  solNumber) {
 console.log("downloadIMG",textureName);
     let imgFileNameLeft = textureName.substring(0, 11);
     let imgFileNameRight = textureName.substring(14);
@@ -1589,7 +1600,6 @@ function saveRawContents(rawContents, filename) {
     URL.revokeObjectURL(url);
 }
 
-
 /////////////////////
 
 async function getFilePath(filename) {
@@ -1777,4 +1787,3 @@ function saveScene() {
         saveObjFiles(filesTexture[key], filesObj[key], filesMtl[key], key);
     }
 }
-

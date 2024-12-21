@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+     <title>X3d viewer</title>
+     <script type='text/javascript' src='x3dom.js'></script>
+    <script src="KaitaiStream.js"></script>
+    <script src="img_gray16.js"></script>
+     <link rel='stylesheet' type='text/css' href='x3dom.css'></link>
+     <link rel='stylesheet' type='text/css' href='VST2X3D.css'></link>
+     <script type="text/javascript">
+     
+/*
+ * 010:
+ * Accepts lading of local img, lbl, vst; download if not available
+ * DISABLED button to save obj: routines in .js file to convert to obj BREAK CONVERSION TO X3D!!!
+ * /
+     
+     
+/*
+ * 009:
+ * Added list of links to raw textures, jpg textures, textures folders.
+ * Added double support for remote/local LBL and IMG associated to VST.
+ * Added local saving of retrieved files.
+*/
+     
+/* 008:
+    * Implemented extraction of texture from .IMG loaded together with VST locally;
+   * known bug: kaitai struct does not support yet this file format:
+   * FORMAT='HALF' <<<<<<<<<<<
+   * TYPE='IMAGE'
+   * BUFSIZ=512
+   * DIM=3 <<<<<<<<<
+   * EOL=0
+   * RECSIZE=512
+   * ORG='BSQ'
+   * NL=256
+   * NS=256
+   * NB=1 <<<<<<<<<<<<
+   * N1=256
+   * N2=256
+*/
+
+// 007: Fixed flipped X axis
+//      Started implementation of full scene save:
+//        fixed wrong names of x3d tags
+//        implemented single shapes storage for future save; yet to incapsulate them into the alt/az transforms
+//      Note: broken "click to load", only drag/drop working
+//      Added local saving of full .x3d model
+
+// 006: separate conversion function from convertBtn, to allow automatic call after loading.
+//      Fixed bug of models orientation, removed temporary debug sliders.
+//      Fixed bug of wrong sol in texture folder.
+//      Pre-selected turntable view
+
+// 005: Embedded VST2X3D conversion.
+//      Fixed VST/X3D orientation depending on rover frame orientation.
+//      Temporarily added sliders to manual rotate shapes in x3d model (for debugging).
+//        To do:
+//       - separate conversion function from convertBtn, to allow automatic call after loading
+//       - add support for multiple local files processing
+//         - add local saving of downloaded files
+//       - add support for multiple product ids pasted in the textbox for downloading
+
+// 004: Added model azimuth support; vertical axis inverted
+
+// 003: Added multimodel support
+//      Note: probably vertical axis is reversed
+
+const namespace = "http://www.web3d.org/specifications/x3d-namespace"; // o il namespace appropriato per il tuo caso
+
+     navigationInfo = null;
+     modelsCount = 0;
+     initialAzimuth = [];
+     initialElevation = [];
+
+
+function cleanAttributes(element) {
+    // Lista degli attributi da resettare
+    const attributesToReset = [
+        "render", "visible", "bboxCenter", "bboxSize", "bboxDisplay",
+        "bboxMargin", "bboxColor", "center", "translation",
+        "scale", "scaleOrientation"
+    ];
+
+    // Imposta ogni attributo della lista a ""
+    attributesToReset.forEach(attr => {
+        element.setAttribute(attr, "");
+    });
+}
+
+    function loadX3DFile(inputX3D, azimuth, elevation) {
+                var content = inputX3D; // e.target.result;
+                var parser = new DOMParser();
+                x3dDoc = parser.parseFromString(content, "text/xml"); // DOM element (HTML document)
+                // Corregge i percorsi delle texture
+                var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+                imageTextures.forEach(function(texture) {
+                    var url = texture.getAttribute("url");
+                    if (!url || url === "") {
+                        texture.removeAttribute("url");
+                    }
+                });
+
+                sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+                
+console.log(sourceScene);                    
+
+                if (sourceScene) {
+                    
+                    // Ottieni il riferimento alla scena esistente
+                    targetScene = document.getElementById("modelScene");
+
+                    // Mantieni il viewpoint esistente o creane uno nuovo se non esiste
+                    viewpoint = targetScene.querySelector("Viewpoint");
+                    if (!viewpoint) {
+                        viewpoint = x3dDoc.createElementNS(namespace,"Viewpoint");
+                        targetScene.insertBefore(viewpoint, targetScene.firstChild);
+
+                        // Imposta posizione e zoom solo se è un nuovo viewpoint
+                        viewpoint.setAttribute("position", "20 20 0");
+                        viewpoint.setAttribute("orientation", "0 1 0 0");
+                        viewpoint.setAttribute("fieldOfView", "1.7");
+                    }
+
+                    // Crea un nuovo Transform per il modello per impostare l'azimuth e successivamente l'elevazione (nidificata)
+                    altAzTransform = document.createElementNS(namespace, "Transform")
+                    altAzTransform.setAttribute("id","trfAzimuth");
+                    altAzTransform.setAttribute("rotation", `0 1 0 ${azimuth}`);
+
+                    // Crea un secondo Transform per l'elevazione
+                    var elevationTransform = document.createElementNS(namespace,"Transform");
+                    elevationTransform.setAttribute("id","trfElevation");
+                    elevationTransform.setAttribute("rotation", `1 0 0 ${elevation}`);
+
+                    altAzTransform.appendChild(elevationTransform);
+
+                    rotatedShapes.push(altAzTransform);
+
+                    // Aggiungi tutti gli elementi del nuovo modello al Transform
+                    Array.from(sourceScene.children).forEach(function(child) {
+                        // Salta NavigationInfo e Viewpoint quando aggiungi gli elementi
+                        if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
+                            var importedNode = document.importNode(child, true);
+                            elevationTransform.appendChild(importedNode);
+                        }
+                    });
+
+                    // Aggiungi il nuovo Transform alla scena esistente
+                    targetScene.appendChild(altAzTransform);
+
+                    console.log("New model added to scene, now refreshing model...");
+                    initialAzimuth[modelsCount] = azimuth;
+                    initialElevation[modelsCount] = elevation;
+                    modelsCount++;
+                    targetScene.setAttribute("scale","-1 1 1"); // due to Z axis inversion
+                    x3dom.reload(); // Ricarica x3dom per aggiornare la scena
+
+//generateObjFromPatch( vstData.lods[1], vstData.vertices, vstData.textureFiles[0], product_name_no_ext, azimuth, elevation) // debug - sistemare LOD
+
+                } else {
+                    console.error("Nessuna scena trovata nel file X3D");
+                }
+        }
+
+
+        function saveSceneToX3D(shapes, filename = "output.x3d") {
+            if ( filename === "")  filename = "output.x3d"
+            if (filename.split(".").length < 2) filename += ".x3d";
+
+            const x3dHeader = `` +
+`<?xml version="1.0" encoding="UTF-8"?>
+
+<X3D profile="Immersive" version="3.3" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+    <Scene>
+        `;
+
+const x3dFooter = `` +
+`
+    </Scene>
+</X3D>`;
+
+
+         // Estrai il contenuto XML di ogni shape HTML
+            const shapesContent = Array.from(shapes)
+                .map(shape => shape.outerHTML)
+                .join("\n");
+
+
+            // Unisci header, contenuto delle shape e footer
+            const x3dContent = x3dHeader + shapesContent + x3dFooter;
+
+            // Parse la stringa X3D in un documento DOM
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(x3dContent, "application/xml");
+
+            // Trova tutti gli elementi <Transform>
+            const transforms = xmlDoc.getElementsByTagName("Transform");
+
+            // Itera su ogni elemento e rimuove l'attributo "scale" (sennò non si vede in https://imagetostl.com/view-x3d-online#convert )
+            Array.from(transforms).forEach(transform => {
+                if (transform.hasAttribute("scale")) {
+                    transform.removeAttribute("scale");
+                }
+            });
+
+            // Converte il DOM modificato di nuovo in stringa
+            const serializer = new XMLSerializer();
+            modifiedX3DContent = serializer.serializeToString(xmlDoc);
+            modifiedX3DContent = modifiedX3DContent.replace('<Transform id="trfElevation"','\n        <Transform id="trfElevation"'); // add CR to improve readability
+            modifiedX3DContent = modifiedX3DContent.replace('<Shape id=','\n            <Shape id='); // add CR to improve readability
+            modifiedX3DContent = modifiedX3DContent.replace('</Shape></Transform></Transform>','      </Shape>\n        </Transform>\n        </Transform>'); // add CR to improve readability
+
+
+
+            // Crea e scarica il file X3D
+            const blob = new Blob([modifiedX3DContent], { type: 'model/x3d+xml' });
+
+
+            // Crea un link per il download
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.style.display = "none";
+
+            // Aggiungi il link al documento e fai clic per scaricare
+            document.body.appendChild(link);
+            link.click();
+
+            // Rimuovi il link dal DOM
+            document.body.removeChild(link);
+        }
+
+     </script>
+   </head>
+   <body> 
+    <div class="container">
+        <h1>VST to X3D Converter</h1>
+        <p>Upload a .vst file to convert it to X3D format.</p>
+
+        <div id="dropArea" class="upload-area">
+            <p>Drag and drop a .vst file here or click to select</p>
+            <input type="file" id="fileInput" accept=".vst" style="display: none">
+        </div>
+
+        Filename: <input type="text" id = "txtFilename" name="txtFilename" value = "" style="width:250px;"><br>
+        Texture file (.img): <input type="file" id = "inputTexture" name="inputTexture" value = "(please wait)" style="width:250px;">
+
+        <button id="saveButton" class="button" onclick="saveSceneToX3D(rotatedShapes, txtFilename.value);" >Save to X3D</button><br>
+        <button id="saveButtonObj" class="button" onclick="saveLodsToObj(document.getElementById('lodNum').value, txtFilename.value);" >Save to OBJ</button> - Level:
+        <input type="text" id = "lodNum" value="1"><br>
+<div>
+File:
+  <span id="currentFileName"></span>
+  <progress id="fileProgressBar" value="0" max="100" style="width: 80%;"></progress>
+</div>
+        <div>
+          Files: <progress id="progressBar" value="0" max="100" style="width: 80%;"></progress>
+        </div>
+Files list:<br>
+<span id="spnLoaded"></span><br>
+        <div id="status" style="display: none;"></div>
+
+    </div>
+<hr>
+
+
+     <table>
+     <tr>
+     <td>
+     <x3d width='800px' height='600px'>
+       <scene> 
+         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+         <Viewpoint 
+            position="0 0 10" 
+            centerOfRotation="0 0 0"
+            orientation="0 1 0 0" 
+            fieldOfView="0.785" 
+            bind="true">
+         </Viewpoint>
+         
+            <Navigationinfo 
+                headlight="false" 
+                type="turntable"
+                typeparams="0.0 0.0 0.5 1.6" 
+                explorationmode="all" 
+                avatarsize="0.25,1.6,0.75" 
+                walkdamping="2" 
+                speed="-1"
+                transitiontime="1" 
+                transitiontype="LINEAR ">
+            </Navigationinfo>
+
+         <!-- Assi persistenti -->
+         <Transform translation="0 0 0">
+            <!-- Asse X (Rosso) -->
+            <Shape>
+                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 5 0 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Y (Verde) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 5 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Z (Blu) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 0 5" />
+                </LineSet>
+            </Shape>
+         </Transform>
+
+         <!-- Area per il modello caricato -->
+         <Transform id="modelScene">
+           <!-- Modello di default per quando nessun file � caricato -->
+           <Shape> 
+             <Appearance>
+               <Material diffuseColor='1 0 0'></Material>
+             </Appearance>
+           </Shape>
+         </Transform>
+       </scene> 
+     </x3d>
+
+     </td>
+     <td valign="top">
+     </td>
+     </tr>
+     </table>
+     Double click to set rotation center.<br>
+     <ul>
+     <li>View modes
+     <ul>
+     <li>N = Turntable (recommended)
+     <li>E = Examine
+     <li>W = Walk
+     <li>G = Immediate pan mode
+     <li>F = flight mode
+     <li>I = "Look at" mode
+     </ul>
+     <li>A = Full model view
+     <li>R = Reset view
+     <li>U = Reset flight mode
+     </ul>
+     <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+     Processed files:<br>
+     <span id="spnProcessed"></span<br>
+
+     <script type="text/javascript" src="VST2X3D-AI.js"></script>
+     <script>
+     // Handler per il click sull'area di drop
+dropArea.addEventListener('click', () => {
+    fileInput.click();
+});
+
+// Handler per il cambio del file input
+fileInput.addEventListener('change', (e) => {
+    handleFile(e.target.files[0]);
+});
+
+// Handlers per il drag and drop
+dropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropArea.classList.add('dragover');
+});
+
+dropArea.addEventListener('dragleave', () => {
+    dropArea.classList.remove('dragover');
+});
+
+dropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropArea.classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files, document.getElementById("txtFilename")); // <<<<<<<<<<<<<<<<<<<--------------- Conversion
+});
+
+
+async function getTextureFromIMG(fc) {
+   const rawFileContents = fc;
+   const fileContentsUInt8 = new Uint8Array(rawFileContents);
+   const st = new KaitaiStream(fileContentsUInt8);
+   const imgDataFromFile = new ImgGray16(st);
+   const BASE64data = processImage(imgDataFromFile);
+   return BASE64data;
+}
+
+
+
+function processImage(imgDataFromFile) {
+   return new Promise((resolve) => {
+       const width = imgDataFromFile.lines[0].samples.length;
+       const height = imgDataFromFile.lines.length;
+       canvas = document.createElement('canvas');
+       canvas.width = width;
+       canvas.height = height;
+       const ctx = canvas.getContext('2d');
+       const imageDataCanvas = ctx.createImageData(width, height);
+       const data = imageDataCanvas.data;
+
+       for (let y = 0; y < height; y++) {
+           for (let x = 0; x < width; x++) {
+               const rgb = imgDataFromFile.lines[y].samples[x] / 10;
+               const idx = (y * width + x) * 4;
+               data[idx] = rgb;     // R
+               data[idx + 1] = rgb; // G
+               data[idx + 2] = rgb; // B
+               data[idx + 3] = 255; // A
+           }
+       }
+
+       ctx.putImageData(imageDataCanvas, 0, 0);
+    let finalResult = canvas.toDataURL('image/png');
+       resolve(finalResult);
+   });
+}
+
+
+</script>
+<script>
+
+    </script>
+   </body> 
+</html>
+
