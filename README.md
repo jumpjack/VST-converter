@@ -15,8 +15,23 @@ Coordinate system (rover frame):
 
 ![image](https://github.com/user-attachments/assets/38c98274-92fd-403f-8ab4-55230ade040b)
 
+![image](https://github.com/user-attachments/assets/ac65172b-860e-4823-af59-94aefff46129)
 
-Try here: [link](https://jumpjack.github.io/VST-converter/MER-experiments.html)
+![image](https://github.com/user-attachments/assets/60872ef0-6bf6-445c-87eb-20d74e8914dc)
+
+Rotation order:
+
+1. Positive rotation ψ about the ZS axis, resulting in the primed system.
+2. Positive rotation θ about the y’ axis, resulting in the double primed system.
+3. Positive rotation φ about the x’’ axis, resulting in the final unprimed system. 
+
+ZS = unit vector that is normal to the Mars IAU Reference Ellipsoid
+
+ ([source](https://planetarydata.jpl.nasa.gov/img/data/mer2-m-pancam-5-solar-ops-v1.0/mer2po_0xxx/document/mer_pppcs_excerpts.pdf))
+
+ 
+
+Try here: [link](https://jumpjack.github.io/VST-converter/MER-experiments.html) 
 
 
 3 versions of the converter are **under development**:
