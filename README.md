@@ -11,6 +11,11 @@ Created to reconstruct the 3d model of "Troy sandtrap", the final location of NA
 
 ![troy](traverse-homeplate.png)
 
+Coordinate system (rover frame):
+
+![image](https://github.com/user-attachments/assets/38c98274-92fd-403f-8ab4-55230ade040b)
+
+
 Try here: [link](https://jumpjack.github.io/VST-converter/MER-experiments.html)
 
 
