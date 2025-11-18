@@ -11,7 +11,11 @@ These AI-generated demo pages are probably full of useless garbage, but at least
 - [Mistral demo](https://jumpjack.github.io/VST-converter/PFB/experiments/mistral.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/mistral.html))
 - [Deep Seek demo](https://jumpjack.github.io/VST-converter/PFB/experiments/deepseek_html_20251118_0c9798.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/deepseek_html_20251118_0c9798.html))
 - [Mixed AI+humans demo](https://jumpjack.github.io/VST-converter/PFB/experiments/PFB-extractor-006.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/PFB-extractor-006.html))
-- 
+
+Sample PFB files:
+ - [file 1](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/2mesh_1352_f_131_ffl_651_v1.pfb)
+ - [file 2](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/2mesh_1352_frn_131_ffl_651_v1.pfb)
+ - [NASA folder](https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/hazcam/site0131/)
 
 The "secret" pf PFB format is probably in files [pfpfb.c](https://github.com/jumpjack/SGI-OpenGL-Performer/blob/21d11bd7a6b368ac162ce3f67dcf87755dde542e/usr/share/Performer/src/lib/libpfdb/libpfpfb/pfpfb.c) and [pfpfb.h](https://github.com/jumpjack/SGI-OpenGL-Performer/blob/21d11bd7a6b368ac162ce3f67dcf87755dde542e/usr/share/Performer/src/lib/libpfdb/libpfpfb/pfpfb.h) in folder [/usr/share/Performer/src/lib/libpfdb/libpfpfb/](https://github.com/jumpjack/SGI-OpenGL-Performer/tree/21d11bd7a6b368ac162ce3f67dcf87755dde542e/usr/share/Performer/src/lib/libpfdb/libpfpfb), because there are some useful top-level functions:
 - How to store a PFB file: int **pfdStoreFile_pfb**(pfNode *root, const char *fileName)
