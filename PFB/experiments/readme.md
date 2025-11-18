@@ -56,3 +56,57 @@ pfb_write_gset()
 pfb_write_node()
 ```
 
+For parsing the gset you must take into account the PFB file version, which apparently is always 26 for NASA files; thse are all t he known versions:
+
+```
+/*
+ *  Historic versions at which specific features were added.
+ */
+#define PFBV_NODE_BSPHERE		5
+#define PFBV_GSET_DO_DP			5
+#define PFBV_LPSTATE_CALLIG		5
+#define PFBV_CLIPTEXTURE		6
+#define PFBV_GSET_BBOX_FLUX		8
+#define PFBV_FLUX_SYNC_GROUP		10
+#define PFBV_SWITCH_VAL_FLUX		11
+#define PFBV_UFUNC			12
+#define PFBV_UDATA_SLOT_FUNCS		16
+#define PFBV_FLUX_SYNC_GROUP_NAMES	17
+#define PFBV_ASD_SYNC_GROUP		17
+#define PFBV_ASD_GSTATES		18
+#define PFBV_MULTITEXTURE		19
+#define PFBV_ANISOTROPY			20
+#define PFBV_SHADER                     21
+#define PFBV_ANISOTROPY_PFA		22
+#define PFBV_IBR_TEXTURE		23
+#define PFBV_VERSION2_6                 24 /* first needed for texCoords in
+					      pfIBRnode */
+#define PFBV_REMOVE_SHADER              25 
+#define PFBV_SHADER_V2                  26 /* complete shader re-work */
+#define PFBV_GEOARRAY                   27 /* GeoArray Type */
+#define PFBV_SURFACES			28 /* parametric surface support */
+#define PFBV_TEXTURE_COMPRESSION	29 /* added tokens for compressed 
+					      external and internal texture 
+					      formats */
+#define PFBV_SHADER_OBJECTS             30 /* OpenGL shader_objects support */
+#define PFBV_MAX_TEXTURES_8             31 /* bump up max textures to 8 */
+#define PFBV_SURFACE_CLONING            32 /* fix cloning of pfParaSurfaces w/ topo info */
+#define PFBV_GEOARRAY_STRIDE_SAVE       33
+
+```
+
+Simplified reading sequence of PFB file (no encryption, no user data, version = 26):
+
+```
+fread(buf, sizeof(int), 4, glb->ifp);  // (for header, 4 x int32)
+while (pfb_fread(buf, sizeof(int), 3, glb->ifp) == 3) // 3 x int32 per list: type, number of elements, number of bytes
+  list_type = buf[0];
+  list_size = buf[1]; // number of elements
+  if (list_type == L_NODE)
+     pfb_read_node(i, glb);
+  else
+     pfb_read_func[list_type](glb);
+}
+```
+
+Note: list length in bytes, stored in buf[2], is only used if list type is not recognized, to skip it.
