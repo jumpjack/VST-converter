@@ -33,62 +33,26 @@ The "secret" is probably in files [pfpfb.c](https://github.com/jumpjack/SGI-Open
        - PFB_WRITE_LIST(L_GSET, pfb_write_gset); (**The hardest part: the geoset, which describews how to use the lists to build the mesh**)
        - PFB_WRITE_SLIST(L_NODE, pfb_write_node); (?)       
 - The "Performer version" of fread(): **pfb_fread**(void *ptr, size_t size, size_t nitems, FILE *stream)
+- The "standard list header writer": **pfb_write_slist_header**(); it always writes [listSize,0,-1] array for NASA files, because they do not contain animations.
+- "**PFB_WRITE_SLIST**": macro which turnis into different function calls depending on list:  pfb_write_slist_header() followed by specific function;
 
-"PFB_WRITE_SLIST" always call a header-writing function (pfb_write_slist_header()) followed by a specific function for each different type of list; apparently "pfb_write_slist_header()" always writes [size,0,-1] array for NASA files, because they do not contain animations.
-
-
-
-The C struct representing a PFB file (but the file is not sequential, hence these objects will not appear always in this order in the file):
+Simplified writing sequence:
 
 ```
-typedef struct {
-    list_t *l_list[L_COUNT];
-    list_t *l_list_end[L_COUNT];
-    list_t **buckets[L_COUNT];
-    int bucket_mask[L_COUNT];
-    int l_num[L_COUNT];
-    int add_comments;
-    void *arena;
-    FILE *ifp, *ofp;
-    int version;
-    int line_num;
-    char *line_buf;
-    int buf_size;
-    int *buf;
-    int read_error;
-    void **rl_list[L_COUNT];
-    int **children;
-    int *hlight_gstates;
-    morph_list_t *morph_head, *morph_tail;
-    void **unknown;
-    int unknown_size;
-    int unknown_count;
-    uint *crypt_key;
-    pfdDecryptFuncType_pfb decrypt_func;
-    pfdEncryptFuncType_pfb encrypt_func;
-    udata_func_t *udfunc;
-    int num_udata_slots;
-    int max_udata_slot;
-    int data_total;
-    udata_info_t *udi;
-    udata_fix_t *udf;
-    int udi_size;
-    custom_node_t *custom_nodes;
-    int num_custom_nodes;
-    int save_texture_image;
-    int save_texture_path;
-    int save_texture_pfi;
-    int disable_rep_save;
-    int subdivsurface_save_geosets;
-    int dont_load_user_funcs;
-    int share_gs_objects;
-    pfdShare *share;
-    int compile_gl;
-    int surface_count;
-    pfTessParaSurfaceAction *tessAction;
-    pfList *topo_map, *solid_map;
-    int maxTextures;
-    pfList *boundaryList;
-} pfa_global_t;
+fwrite(llist, sizeof(int), size, glb->ofp);
+fwrite(vlist, sizeof(pfVec3), size, glb->ofp);
+fwrite(clist, sizeof(pfVec4), size, glb->ofp);
+fwrite(nlist, sizeof(pfVec3), size, glb->ofp);
+fwrite(tlist, sizeof(pfVec2), size, glb->ofp);
+fwrite(ilist, sizeof(ushort), size, glb->ofp);
 
+Then the complicated functions:
+
+pfb_write_mtl() 
+pfb_write_tex()
+pfb_write_tenv()
+pfb_write_gstate()
+pfb_write_gset()
+pfb_write_node()
 ```
+
