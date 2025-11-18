@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PFB Parser + Point Cloud (Babylon.js)</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Arial;line-height:1.4;padding:18px}
+  button,input,textarea,select{font:inherit}
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  pre{background:#111;color:#bfc;padding:12px;border-radius:6px;overflow:auto}
+  .hint{color:#555;font-size:0.9rem}
+  .small{font-size:0.9rem;color:#666}
+  .footer{text-align:right;font-size:0.8rem;color:#888;margin-top:16px}
+  #renderCanvas{width:100%;height:500px;display:block;margin:16px 0;border:1px solid #444}
+  .view-controls{display:flex;gap:8px;margin:8px 0;align-items:center}
+  select{padding:4px}
+</style>
+</head>
+<body>
+<h2>Parser PFB + Point Cloud (Vertici come punti)</h2>
+<p class="hint">Carica un file .pfb dal tuo disco oppure scaricalo via proxy. I vertici vengono visualizzati come punti (point cloud).</p>
+<div class="controls">
+  <input id="fileInput" type="file" accept="*/*">
+  <input id="urlInput" type="text" placeholder="(opz.) URL del file da scaricare" style="width:420px">
+  <button id="fetchBtn">Scarica via proxy e analizza</button>
+  <button id="parseBtn">Analizza file selezionato</button>
+</div>
+<div class="view-controls">
+  <button id="showAllVertices">Mostra tutti i vertici (point cloud)</button>
+  <span>oppure seleziona un gruppo:</span>
+  <select id="vertexGroupSelect" disabled>
+    <option value="-1">-- Nessun gruppo --</option>
+  </select>
+  <button id="showSelectedGroup" disabled>Mostra gruppo selezionato (point cloud)</button>
+</div>
+<pre id="log">Nessun file caricato.</pre>
+<canvas id="renderCanvas"></canvas>
+<div class="footer">MISTRAL Build 2025.11</div>
+
+<!-- Babylon.js -->
+<script src="babylon.js"></script>
+
+<script src="babylon.gui.min.js"></script>
+
+<script>
+// Parser PFB (stessa logica di prima)
+const CANONICAL_MAGIC = 0xDB0ACE00;
+const CANONICAL_MAGIC_ENC = 0xDB0ACE01;
+const MEM_ARENA = 0;
+const MEM_CBUF = 1;
+const MEM_FLUX = 2;
+
+const l_name = [
+    "Material", "Texture", "TexEnv", "GeoState", "Length List", "Vertex List", "Color List", "Normal List", "TexCoord List", "Index List",
+    "GeoSet", "User Data", "Node", "Other List", "Morph", "LOD State", "Fog", "Tex Gen", "Light Model", "Light", "Color Table",
+    "Light Point State", "Highlight", "Light Source", "Frustum", "Font", "String", "Image", "Custom", "TexLOD", "ASD Data", "Queue",
+    "ImageTile", "ImageCache", "Flux", "Engine", "User Func", "User Data Slot Name", "User Data List", "Flux Sync Group Name", "Shader",
+    "IBR texture", "islAppearance", "Mesh", "GeoArray", "Vertex Array Data (bytes)", "Vertex Array Data (short)", "Vertex Array Data",
+    "Edge", "Topo", "Curve2d", "DisCurve2d", "Boundary", "Solid", "GProgram", "GProgram parameters", "Scalar", "Shader Object", "Shader Program"
+];
+
+const elemSizeByList = {};
+elemSizeByList[4] = 4;      // int (LLIST)
+elemSizeByList[5] = 3 * 4;  // pfVec3
+elemSizeByList[6] = 4 * 4;  // pfVec4
+elemSizeByList[7] = 3 * 4;  // pfVec3 (normals)
+elemSizeByList[8] = 2 * 4;  // pfVec2
+elemSizeByList[9] = 2;      // ushort
+elemSizeByList[10] = 999;   // variable (GeoSet)
+elemSizeByList[13] = 4;     // float (FLIST)
+
+function readUint32(view, offset, little) { return view.getUint32(offset, little); }
+function readInt32(view, offset, little) { return view.getInt32(offset, little); }
+function readFloat32(view, offset, little) { return view.getFloat32(offset, little); }
+function readUint16(view, offset, little) { return view.getUint16(offset, little); }
+
+function guessEndianness(buffer) {
+    const dv = new DataView(buffer);
+    const tries = [false, true];
+    for (const little of tries) {
+        const magic = readUint32(dv, 0, little) >>> 0;
+        if (magic === CANONICAL_MAGIC || magic === CANONICAL_MAGIC_ENC) {
+            return { little, encoded: (magic === CANONICAL_MAGIC_ENC) };
+        }
+    }
+    for (const little of tries) {
+        const headerSize = readInt32(dv, 12, little);
+        if (headerSize >= 16 && headerSize < 1024) return { little, encoded: false };
+    }
+    return { little: true, encoded: false };
+}
+
+function toHexPreview(buffer, len = 64) {
+    const u8 = new Uint8Array(buffer.slice(0, Math.min(len, buffer.byteLength)));
+    return Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join(' ');
+}
+
+function parsePFB(buffer) {
+    const dv = new DataView(buffer);
+    const det = guessEndianness(buffer);
+    const LE = det.little;
+    let off = 0;
+    const totalLen = buffer.byteLength;
+    if (totalLen < 16) throw new Error('File troppo corto per essere un PFB valido');
+
+    const header = {};
+    header.magic = readUint32(dv, off, LE) >>> 0; off += 4;
+    header.version = readInt32(dv, off, LE); off += 4;
+    header.flag1 = readInt32(dv, off, LE); off += 4;
+    header.header_size = readInt32(dv, off, LE); off += 4;
+    header.little_endian = LE;
+
+    const res = { header, lists: [] };
+
+    while (off + 12 <= totalLen) {
+        const list_id = readInt32(dv, off, LE); off += 4;
+        const count = readInt32(dv, off, LE); off += 4;
+        const blockLen = readInt32(dv, off, LE); off += 4;
+        const listStart = off;
+        const listEnd = Math.min(totalLen, listStart + blockLen);
+        const listObj = { id: list_id, name: (l_name[list_id] || ('List#' + list_id)), count, blockLen, entries: [] };
+
+        let entryIndex = 0;
+        while (off + 12 <= listEnd) {
+            const size_or_0 = readInt32(dv, off, LE); off += 4;
+            const memtype = readInt32(dv, off, LE); off += 4;
+            const aux = readInt32(dv, off, LE); off += 4;
+            const entry = { index: entryIndex++, Buf0_size: size_or_0, Buf1_sempre0: memtype, Buf2_sempremeno1: aux };
+
+            if (memtype === MEM_FLUX) {
+                entry.data = { note: 'flux reference; data not stored here', fluxIndex: aux };
+                listObj.entries.push(entry);
+                continue;
+            }
+
+            const elemSize = elemSizeByList[list_id];
+            if (typeof elemSize !== 'undefined') {
+                const num = size_or_0;
+                const bytesNeeded = num * elemSize;
+
+                if (off + bytesNeeded > listEnd) {
+                    const avail = Math.max(0, listEnd - off);
+                    entry.raw = new Uint8Array(buffer.slice(off, off + avail));
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off + avail).toString(16);
+                    off += avail;
+                } else {
+                    if (list_id === 5) { // L_VLIST (pfVec3)
+                        const arr = [];
+                        for (let i = 0; i < num; i++) {
+                            arr.push([
+                                readFloat32(dv, off + i * 12 + 0, LE),
+                                readFloat32(dv, off + i * 12 + 4, LE),
+                                readFloat32(dv, off + i * 12 + 8, LE)
+                            ]);
+                        }
+                        entry.data = arr;
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off + num * 3 * 4).toString(16);
+                    } else if (list_id === 4) { // L_LLIST (ints)
+                        const arr = [];
+                        for (let i = 0; i < num; i++) arr.push(readInt32(dv, off + i * 4, LE));
+                        entry.data = arr;
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off +  4 * num).toString(16);
+                    } else if (list_id === 9) { // L_ILIST (ushort)
+                        const arr = [];
+                        for (let i = 0; i < num; i++) arr.push(readUint16(dv, off + i * 2, LE));
+                        entry.data = arr;
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off +   2 * num).toString(16);
+                    } else {
+                        entry.raw = new Uint8Array(buffer.slice(off, off + bytesNeeded));
+                        entry.note = "non 4, non5, non 9";
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off +   bytesNeeded).toString(16);
+                    }
+                    off += bytesNeeded;
+                }
+            } else {
+                if (size_or_0 > 0 && off + size_or_0 <= listEnd) {
+                    entry.raw = new Uint8Array(buffer.slice(off, off + size_or_0));
+                    entry.note = "caso 1";
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off + size_or_0).toString(16);
+                    off += size_or_0;
+                } else {
+                    const remaining = listEnd - off;
+                    entry.raw = new Uint8Array(buffer.slice(off, off + remaining));
+                    entry.note = "caso 2";
+                        entry.startOffset = off.toString(16);
+                        entry.endOffset = (off + remaining).toString(16);
+                    off += remaining;
+                }
+            }
+            listObj.entries.push(entry);
+        }
+        off = listEnd;
+        res.lists.push(listObj);
+        if (listEnd <= listStart) break;
+    }
+    return res;
+}
+
+// Babylon.js scene
+let engine, scene, camera, canvas;
+let pointClouds = [];
+
+function initScene() {
+    canvas = document.getElementById("renderCanvas");
+    engine = new BABYLON.Engine(canvas, true);
+    scene = new BABYLON.Scene(engine);
+
+    // Camera (ArcRotate per pan/tilt/zoom)
+    camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2, 10, BABYLON.Vector3.Zero(), scene);
+    camera.attachControl(canvas, true);
+    camera.wheelPrecision = 50;
+    camera.panningSensibility = 200;
+    camera.minZ = 0.1;
+
+    // Light
+    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+    // Axes
+    const axes = new BABYLON.AxesViewer(scene, 2.0);
+
+    // Background
+    scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.1, 1.0);
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener('resize', () => engine.resize());
+}
+
+function clearScene() {
+    for (const pc of pointClouds) pc.dispose();
+    pointClouds = [];
+}
+
+function createPointCloud(name, vertices, color, size = 0.1) {
+    // Crea una mesh custom per i punti
+    const mesh = new BABYLON.Mesh(name, scene);
+
+    // Crea i buffer per i vertici
+    const vertexData = new BABYLON.VertexData();
+    vertexData.positions = vertices.flat();
+    vertexData.indices = vertices.map((_, i) => i); // Ogni vertice è un punto
+    vertexData.applyToMesh(mesh);
+
+    // Imposta il tipo di primitiva a "punti"
+    mesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, vertexData.positions, true);
+    mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, vertices.map(() => [color.r, color.g, color.b, 1.0]).flat(), true);
+
+const material = new BABYLON.StandardMaterial("pointMaterial", scene);
+material.pointsCloud = true;
+material.pointSize = size;
+material.emissiveColor = new BABYLON.Color3(1, 0, 0); // colore dei punti
+mesh.material = material;
+    return mesh;
+}
+
+function showAllVerticesAsPointCloud(pfbData) {
+    clearScene();
+
+    // Trova la lista dei vertici (L_VLIST)
+    const vlist = pfbData.lists.find(list => list.id === 5);
+    if (!vlist || !vlist.entries.length) {
+        alert("Nessuna lista di vertici (VLIST) trovata!");
+        return;
+    }
+
+    // Combina tutti i vertici di tutte le entry
+    let allVertices = [];
+    for (const entry of vlist.entries) {
+        if (entry.data) allVertices.push(...entry.data);
+    }
+
+    // Crea un point cloud con tutti i vertici
+    const pointCloud = createPointCloud("allVertices", allVertices, new BABYLON.Color3(1, 0, 0), 0.1);
+    pointClouds.push(pointCloud);
+}
+
+function showVertexGroupAsPointCloud(pfbData, groupIndex) {
+    clearScene();
+
+    // Trova la lista dei vertici (L_VLIST)
+    const vlist = pfbData.lists.find(list => list.id === 5);
+    if (!vlist || !vlist.entries.length || groupIndex >= vlist.entries.length) {
+        alert("Gruppo di vertici non valido!");
+        return;
+    }
+
+    // Prendi i vertici del gruppo selezionato
+    const entry = vlist.entries[groupIndex];
+    if (!entry.data) {
+        alert("Nessun dato nel gruppo selezionato!");
+        return;
+    }
+
+    // Crea un point cloud con i vertici del gruppo
+    const r = Math.random();
+    const g = Math.random();
+    const b = Math.random();
+    const pointCloud = createPointCloud(`group_${groupIndex}`, entry.data, new BABYLON.Color3(r, g, b), 0.1);
+    pointClouds.push(pointCloud);
+}
+
+// UI wiring
+const fileInput = document.getElementById('fileInput');
+const parseBtn = document.getElementById('parseBtn');
+const fetchBtn = document.getElementById('fetchBtn');
+const urlInput = document.getElementById('urlInput');
+const log = document.getElementById('log');
+const showAllVerticesBtn = document.getElementById('showAllVertices');
+const vertexGroupSelect = document.getElementById('vertexGroupSelect');
+const showSelectedGroupBtn = document.getElementById('showSelectedGroup');
+
+let pfbData = null;
+
+parseBtn.addEventListener('click', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) { alert('Seleziona prima un file.'); return; }
+    const fr = new FileReader();
+    fr.onload = function(e) {
+        try {
+            const buf = e.target.result;
+            log.textContent = 'Preview (prima parte): ' + toHexPreview(buf, 128);
+            pfbData = parsePFB(buf);
+            console.log(pfbData);
+
+            // Popola il menu a tendina con i gruppi di vertici
+            vertexGroupSelect.innerHTML = '<option value="-1">-- Nessun gruppo --</option>';
+            const vlist = pfbData.lists.find(list => list.id === 5);
+            if (vlist && vlist.entries.length) {
+                vlist.entries.forEach((entry, index) => {
+                    const opt = document.createElement('option');
+                    opt.value = index;
+                    opt.textContent = `Gruppo ${index} (${entry.data ? entry.data.length : 0} vertici)`;
+                    vertexGroupSelect.appendChild(opt);
+                });
+                vertexGroupSelect.disabled = false;
+                showSelectedGroupBtn.disabled = false;
+            }
+
+            log.textContent += '\nParsing completato. Guarda la console (DevTools) per il JSON completo.';
+        } catch(err) {
+            console.error(err);
+            log.textContent = 'Errore: ' + (err && err.message);
+        }
+    };
+    fr.readAsArrayBuffer(f);
+});
+
+fetchBtn.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url) { alert('Inserisci un URL nel campo di testo.'); return; }
+    const proxyURL = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+    try {
+        const resp = await fetch(proxyURL + encodeURIComponent(url));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const buf = await resp.arrayBuffer();
+        log.textContent = 'Preview (prima parte): ' + toHexPreview(buf, 128);
+        pfbData = parsePFB(buf);
+        console.log(pfbData);
+
+        // Popola il menu a tendina con i gruppi di vertici
+        vertexGroupSelect.innerHTML = '<option value="-1">-- Nessun gruppo --</option>';
+        const vlist = pfbData.lists.find(list => list.id === 5);
+        if (vlist && vlist.entries.length) {
+            vlist.entries.forEach((entry, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = `Gruppo ${index} (${entry.data ? entry.data.length : 0} vertici)`;
+                vertexGroupSelect.appendChild(opt);
+            });
+            vertexGroupSelect.disabled = false;
+            showSelectedGroupBtn.disabled = false;
+        }
+
+        log.textContent += '\nScaricato e parse eseguito. Guarda la console (DevTools) per il JSON completo.';
+    } catch(err) {
+        console.error(err);
+        log.textContent = 'Errore fetch: ' + (err && err.message);
+    }
+});
+
+showAllVerticesBtn.addEventListener('click', () => {
+    if (!pfbData) { alert("Nessun file PFB caricato!"); return; }
+    showAllVerticesAsPointCloud(pfbData);
+});
+
+showSelectedGroupBtn.addEventListener('click', () => {
+    if (!pfbData) { alert("Nessun file PFB caricato!"); return; }
+    const groupIndex = parseInt(vertexGroupSelect.value);
+    if (groupIndex === -1) { alert("Seleziona un gruppo!"); return; }
+    showVertexGroupAsPointCloud(pfbData, groupIndex);
+});
+
+// Inizializza la scena 3D
+initScene();
+</script>
+</body>
+</html>

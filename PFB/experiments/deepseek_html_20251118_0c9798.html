@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PF B Parser — Ricostruzione Mesh Corretta</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; padding:18px; color:#111; }
+  header { margin-bottom:12px; }
+  input[type=file] { margin-bottom:12px; }
+  pre { background:#f4f4f4; padding:10px; border-radius:6px; max-height:44vh; overflow:auto; white-space:pre-wrap; }
+  button { margin-right:8px; }
+  .ok { color: #0a0; }
+  .warn { color: #a60; }
+  table { border-collapse: collapse; width:100%; margin-top:8px; }
+  th, td { border:1px solid #ddd; padding:6px; font-size:0.9rem; }
+  th { background:#eee; text-align:left; }
+  code { background:#eef; padding:2px 4px; border-radius:3px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>PF B parser — Ricostruzione Mesh Corretta</h1>
+    <div>Carica un file <code>.pfb</code> (assunto versione 26). Parsing strutturale e ricostruzione mesh.</div>
+    <div style="margin-top:6px; font-size:0.9rem; color:#444;">
+      Nota: Ricostruzione mesh basata su GSet, VLIST e LLIST corrette.
+    </div>
+  </header>
+
+  <input id="file" type="file" accept=".pfb,.PFB" />
+  <button id="parseBtn" disabled>Analizza</button>
+  <button id="pointCloudBtn" disabled>PointCloud & Mesh</button>
+  <button id="downloadJson" disabled>Scarica JSON</button>
+  <div id="status"></div>
+
+  <h3>Anteprima JSON</h3>
+  <pre id="out">Nessun file caricato.</pre>
+  
+  <h3>3D Viewer</h3>
+  <canvas id="babylonCanvas" style="width:100%; height:500px; border:1px solid #888;"></canvas>
+
+<script src="babylon.js"></script>
+<script src="babylon.gui.js"></script>
+<script src="earcut.min.js"></script>
+
+<script>
+const N_CUSTOM             = 0x10000000;
+const N_CUSTOM_MASK        = 0x0fff0000;
+const N_NOT_CUSTOM_MASK    = 0x0000ffff;
+const N_CUSTOM_SHIFT       = 16;
+
+const node_names = [
+  "LightPoint", "Text", "Geode", "Billboard", "LightSource", "Group",
+  "SCS", "DCS", "Partition", "Scene", "Switch", "LOD", "Sequence", "Layer",
+  "Morph", "ASD", "FCS", "DoubleDCS", "DoubleSCS", "IBRnode",
+  "SubdivSurface", "TorusSurface", "NurbsSurface", "NurbCurve2d", "Line2d",
+  "PieceWisePolyCurve2d", "PieceWisePolySurface", "PlaneSurface", "SphereSurface",
+  "ConeSurface", "CylinderSurface", "Line3d", "NurbCurve3d", "PieceWisePolyCurve3d",
+  "HsplineSurface", "SweptSurface", "FrenetSweptSurface", "CoonsSurface",
+  "CompositeCurve3d", "Circle2d", "SuperQuadCurve2d", "RuledSurface", "Circle3d",
+  "SuperQuadCurve3d", "OrientedLine3d"
+];
+
+const L_NAMES = {
+  0: "Material",
+  1: "Texture",
+  2: "TexEnv",
+  3: "GeoState",
+  4: "Length List",
+  5: "Vertex List",
+  6: "Color List",
+  7: "Normal List",
+  8: "TexCoord List",
+  9: "Index List",
+  10: "GeoSet",
+  11: "User Data",
+  12: "Node",
+};
+
+const SLIST_IDS = new Set([4,5,6,7,8,9]);
+const LIST_IDS  = new Set([0,1,2,3,10]);
+
+// helper DOM
+const fileInput = document.getElementById('file');
+const parseBtn = document.getElementById('parseBtn');
+const out = document.getElementById('out');
+const status = document.getElementById('status');
+const downloadJson = document.getElementById('downloadJson');
+const pointCloudBtn = document.getElementById("pointCloudBtn");
+const babylonCanvas = document.getElementById("babylonCanvas");
+
+let currentJSON = null;
+let storedVertices = [];
+let meshData = [];
+
+fileInput.addEventListener('change', () => {
+  parseBtn.disabled = !fileInput.files.length;
+  downloadJson.disabled = true;
+  pointCloudBtn.disabled = true;
+  out.textContent = 'Pronto per analizzare il file...';
+});
+
+parseBtn.addEventListener('click', async () => {
+  const f = fileInput.files[0];
+  console.log(f);
+  if (!f) return;
+  out.textContent = 'Leggo file...';
+  status.textContent = '';
+  const ab = await f.arrayBuffer();
+  try {
+    const result = parsePFB(ab);
+    currentJSON = result.json;
+    extractVerticesFromParsedJSON(currentJSON);
+    //out.textContent = JSON.stringify(currentJSON, null, 2);
+    downloadJson.disabled = false;
+    status.innerHTML = `<div class="ok">Parsing completato — ${result.listsParsed} liste analizzate.</div>`;
+  } catch (e) {
+    out.textContent = 'Errore: ' + (e && e.message ? e.message : String(e));
+    status.innerHTML = `<div class="warn">Parsing fallito: ${e}</div>`;
+  }
+});
+
+downloadJson.addEventListener('click', () => {
+  if (!currentJSON) return;
+  const blob = new Blob([JSON.stringify(currentJSON, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pfb-parsed-struct.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* --- helpers --- */
+function readInt32(view, offset, little) { return view.getInt32(offset, little); }
+function readUint32(view, offset, little) { return view.getUint32(offset, little); }
+function readFloat32(view, offset, little) { return view.getFloat32(offset, little); }
+function toHex32(n) { return '0x' + (n >>> 0).toString(16).padStart(8,'0'); }
+function bytesToTextString(bytes) {
+  let out = "";
+  for (let i=0;i<bytes.length;i++){
+    const b = bytes[i];
+    if (b >= 32 && b <= 126) out += String.fromCharCode(b);
+    else out += ".";
+  }
+  return out;
+}
+function bytesToHex(bytes, maxChars) {
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+  if (maxChars && hex.length > maxChars) return hex.slice(0,maxChars) + '...';
+  return hex;
+}
+
+/* sizes (bytes) for unit types */
+const UNIT_SIZES = {
+  L_LLIST: 4,
+  L_VLIST: 12,
+  L_CLIST: 16,
+  L_NLIST: 12,
+  L_TLIST: 8,
+  L_ILIST: 2,
+};
+
+/* parse high-level file and lists */
+function parsePFB(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  const len = arrayBuffer.byteLength;
+  if (len < 16) throw new Error('File troppo piccolo.');
+
+  const hLE = [readInt32(view,0,true), readInt32(view,4,true), readInt32(view,8,true), readInt32(view,12,true)];
+  const hBE = [readInt32(view,0,false), readInt32(view,4,false), readInt32(view,8,false), readInt32(view,12,false)];
+  let little;
+  if (hLE[1] === 26 && hLE[3] >= 0 && hLE[3] < len) little = true;
+  else if (hBE[1] === 26 && hBE[3] >= 0 && hBE[3] < len) little = false;
+  else {
+    little = true;
+    status.innerHTML = `<div class="warn">Impossibile trovare chiaramente versione 26 in header: assumo little-endian.</div>`;
+  }
+  const header = little ? hLE : hBE;
+  const version = header[1];
+  const listsStart = header[3];
+  if (listsStart < 0 || listsStart >= len) throw new Error('Offset liste invalido: ' + listsStart);
+
+  let pos = listsStart;
+  const lists = [];
+  let parsed = 0;
+
+  while (pos + 12 <= len) {
+    const list_id = readInt32(view, pos, little);
+    const list_count = readInt32(view, pos+4, little);
+    const data_byte_size = readInt32(view, pos+8, little);
+    if (list_id === 0 && list_count === 0 && data_byte_size === 0) break;
+
+    const headerStart = pos;
+    const dataStart = pos + 12;
+    const dataEnd = dataStart + data_byte_size;
+    if (dataEnd > len) break;
+
+    const listObj = {
+      list_id,
+      list_name: L_NAMES[list_id] || ('Unknown('+list_id+')'),
+      count: list_count,
+      offset_header: toHex32(headerStart),
+      offset_data_start: toHex32(dataStart),
+      offset_end: toHex32(dataEnd - 1),
+      length_bytes: 12 + data_byte_size,
+      raw_data_length: data_byte_size,
+      struct: null,
+      elements: []
+    };
+
+    if (SLIST_IDS.has(list_id)) {
+      parseSListElements(arrayBuffer, view, dataStart, dataEnd, list_id, little, listObj);
+    } else if (list_id === 0 || list_id === 1 || list_id === 2) {
+      parseListFixedElements(arrayBuffer, view, dataStart, dataEnd, list_id, list_count, little, listObj);
+    } else {
+      const rawBytes = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+      listObj.elements.push({
+        index: 0,
+        offset: toHex32(dataStart),
+        offset_dec: dataStart,
+        length: rawBytes.length,
+        dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length,256)), 1024),
+        textString: bytesToTextString(rawBytes),
+        struct: { note: "Lista non decodificata (opzione B). Raw preserved." },
+        raw: rawBytes
+      });
+    }
+
+    lists.push(listObj);
+    parsed++;
+    pos = dataEnd;
+  }
+
+  const json = {
+    parsed_at: (new Date()).toISOString(),
+    file_size: len,
+    detected_version: version,
+    little_endian_assumed: little,
+    lists: lists
+  };
+  return { json, listsParsed: parsed };
+}
+
+/* --- parse S-LIST --- */
+function parseSListElements(arrayBuffer, view, start, end, list_id, little, listObj) {
+  let p = start;
+  const total = end;
+  const unitSize = (() => {
+    switch(list_id) {
+      case 4: return UNIT_SIZES.L_LLIST;
+      case 5: return UNIT_SIZES.L_VLIST;
+      case 6: return UNIT_SIZES.L_CLIST;
+      case 7: return UNIT_SIZES.L_NLIST;
+      case 8: return UNIT_SIZES.L_TLIST;
+      case 9: return UNIT_SIZES.L_ILIST;
+      default: return 1;
+    }
+  })();
+
+  let index = 0;
+  while (p + 12 <= total) {
+    const elem_count = readInt32(view, p, little);
+    const memtype = readInt32(view, p+4, little);
+    const udata   = readInt32(view, p+8, little);
+    const headerPos = p;
+    p += 12;
+
+    let bytesLen = elem_count * unitSize;
+    if (bytesLen < 0) bytesLen = 0;
+    if (p + bytesLen > total) {
+      listObj.elements.push({
+        index,
+        offset: toHex32(headerPos),
+        offset_dec: headerPos,
+        length: (total - p) + 12,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(headerPos, total)), 512),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(headerPos, total))),
+        struct: { error: "Troncamento dati nell'elemento S-LIST" }
+      });
+      break;
+    }
+
+    let elemStruct = null;
+    let rawBytes = new Uint8Array(arrayBuffer.slice(p, p + bytesLen));
+    
+    if (list_id === 4) {
+      const ints = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        ints.push(readInt32(dv, i*4, little));
+      }
+      elemStruct = { ints };
+    } else if (list_id === 5) {
+      const verts = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        verts.push({ x: readFloat32(dv, base, little), y: readFloat32(dv, base+4, little), z: readFloat32(dv, base+8, little) });
+      }
+      elemStruct = { vertices: verts };
+    } else if (list_id === 6) {
+      const cols = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*16;
+        cols.push({ r: readFloat32(dv, base, little), g: readFloat32(dv, base+4, little), b: readFloat32(dv, base+8, little), a: readFloat32(dv, base+12, little) });
+      }
+      elemStruct = { colors: cols };
+    } else if (list_id === 7) {
+      const normals = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        normals.push({ nx: readFloat32(dv, base, little), ny: readFloat32(dv, base+4, little), nz: readFloat32(dv, base+8, little) });
+      }
+      elemStruct = { normals };
+    } else if (list_id === 8) {
+      const tcs = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*8;
+        tcs.push({ u: readFloat32(dv, base, little), v: readFloat32(dv, base+4, little) });
+      }
+      elemStruct = { texcoords: tcs };
+    } else if (list_id === 9) {
+      const idx = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        idx.push(dv.getUint16(i*2, little));
+      }
+      elemStruct = { indices: idx };
+    }
+
+    listObj.elements.push({
+      index,
+      offset: toHex32(headerPos),
+      offset_dec: headerPos,
+      header: { elem_count, memtype, udata },
+      length: 12 + bytesLen,
+      dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p + Math.min(bytesLen,256))), 1024),
+      textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p + Math.min(bytesLen,256)))),
+      struct: elemStruct
+    });
+
+    p += bytesLen;
+    index++;
+  }
+  listObj.struct = { note: "SList decoded into per-element structs (unit-based) if applicable." };
+}
+
+/* --- parse LIST (fixed-size structs) --- */
+function parseListFixedElements(arrayBuffer, view, start, end, list_id, count, little, listObj) {
+  let p = start;
+  let idx = 0;
+  while (p < end && idx < Math.max(1,count)) {
+    if (list_id === 0) {
+      const needed = 72;
+      if (p + needed > end) {
+        const raw = new Uint8Array(arrayBuffer.slice(p, end));
+        listObj.elements.push({
+          index: idx,
+          offset: toHex32(p),
+          offset_dec: p,
+          length: raw.length,
+          dataHex_preview: bytesToHex(raw.subarray(0,256)),
+          textString: bytesToTextString(raw),
+          struct: { error: "MTL truncated" }
+        });
+        break;
+      }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const side = readInt32(dv, 0, little);
+      const alpha = readFloat32(dv, 4, little);
+      const shininess = readFloat32(dv, 8, little);
+      const ambient = { x: readFloat32(dv, 12, little), y: readFloat32(dv, 16, little), z: readFloat32(dv, 20, little) };
+      const diffuse = { x: readFloat32(dv, 24, little), y: readFloat32(dv, 28, little), z: readFloat32(dv, 32, little) };
+      const specular = { x: readFloat32(dv, 36, little), y: readFloat32(dv, 40, little), z: readFloat32(dv, 44, little) };
+      const emission = { x: readFloat32(dv, 48, little), y: readFloat32(dv, 52, little), z: readFloat32(dv, 56, little) };
+      const cmode0 = readInt32(dv, 60, little);
+      const cmode1 = readInt32(dv, 64, little);
+      const udata = readInt32(dv, 68, little);
+      const s = {
+        side, alpha, shininess,
+        ambient, diffuse, specular, emission,
+        cmode: [cmode0, cmode1],
+        udata
+      };
+      listObj.elements.push({
+        index: idx,
+        offset: toHex32(p),
+        offset_dec: p,
+        length: needed,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256))), 1024),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256)))),
+        struct: s
+      });
+      p += needed;
+      idx++;
+    } else if (list_id === 2) {
+      const needed = 28;
+      if (p + needed > end) {
+        const raw = new Uint8Array(arrayBuffer.slice(p, end));
+        listObj.elements.push({
+          index: idx, offset: toHex32(p), offset_dec: p, length: raw.length,
+          dataHex_preview: bytesToHex(raw.subarray(0,256)),
+          textString: bytesToTextString(raw),
+          struct: { error: "TENV truncated" }
+        });
+        break;
+      }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const mode = readInt32(dv, 0, little);
+      const component = readInt32(dv, 4, little);
+      const color = [readFloat32(dv, 8, little), readFloat32(dv, 12, little), readFloat32(dv, 16, little), readFloat32(dv, 20, little)];
+      const udata = readInt32(dv, 24, little);
+      const s = { mode, component, color, udata };
+      listObj.elements.push({
+        index: idx, offset: toHex32(p), offset_dec: p, length: needed,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256))), 1024),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256)))),
+        struct: s
+      });
+      p += needed;
+      idx++;
+    } else {
+      const raw = new Uint8Array(arrayBuffer.slice(p, end));
+      listObj.elements.push({
+        index: idx, offset: toHex32(p), offset_dec: p, length: raw.length,
+        dataHex_preview: bytesToHex(raw.subarray(0,256)),
+        textString: bytesToTextString(raw.subarray(0,256)),
+        struct: { note: "Lista fissa non decodificata (opzione B)." }
+      });
+      break;
+    }
+  }
+  listObj.struct = { note: "LIST strutturata (parsing applicato per MTL/TEX/TENV)" };
+}
+
+// === FUNZIONI PER LA RICOSTRUZIONE MESH CORRETTA ===
+
+function parseGSet(rawBytes) {
+  function readInt32LE(offset) {
+    return rawBytes[offset] | (rawBytes[offset + 1] << 8) | 
+           (rawBytes[offset + 2] << 16) | (rawBytes[offset + 3] << 24);
+  }
+
+  const ptype = readInt32LE(0);
+  const pcount = readInt32LE(4);
+  const llist = readInt32LE(8);
+  
+  const vlist = [
+    readInt32LE(12), readInt32LE(16), readInt32LE(20)
+  ];
+  
+  const primTypeNames = {
+    0: 'POINTS', 1: 'LINES', 2: 'LINE_STRIP', 
+    3: 'TRI_STRIP', 4: 'TRIS', 5: 'QUADS', 
+    6: 'QUAD_STRIP', 7: 'POLYGON'
+  };
+
+  return {
+    primType: ptype,
+    primTypeName: primTypeNames[ptype] || 'UNKNOWN',
+    primCount: pcount,
+    llistIndex: llist === -1 ? null : llist,
+    vlistIndex: vlist[0] === -1 ? null : vlist[0],
+    usesStrips: (ptype === 2 || ptype === 3 || ptype === 6)
+  };
+}
+
+function extractVerticesForMeshes(parsed) {
+    const meshData = [];
+    
+    // 1. Trova tutti i GSet
+    const gsets = [];
+    for (const lst of parsed.lists) {
+        if (lst.list_id === 10) { // L_GSET
+            for (const elem of lst.elements) {
+                if (elem.raw) {
+                    const gset = parseGSet(elem.raw);
+                    gsets.push(gset);
+                }
+            }
+        }
+    }
+
+    // 2. Per ogni GSet, trova i vertici CORRETTI
+    for (const gset of gsets) {
+        if (gset.llistIndex === null || gset.vlistIndex === null) {
+            console.warn(`GSet senza llist o vlist: ${gset.primTypeName}`);
+            continue;
+        }
+        
+        // Trova la VLIST specifica per questo GSet
+        const vlistData = parsed.lists.find(lst => 
+            lst.list_id === 5 && lst.elements[gset.vlistIndex]
+        );
+        
+        if (!vlistData) {
+            console.warn(`VLIST non trovata per indice ${gset.vlistIndex}`);
+            continue;
+        }
+        
+        const vertices = vlistData.elements[gset.vlistIndex].struct.vertices;
+        
+        // Trova la LLIST specifica per questo GSet
+        const llistData = parsed.lists.find(lst => 
+            lst.list_id === 4 && lst.elements[gset.llistIndex]
+        );
+        
+        if (!llistData) {
+            console.warn(`LLIST non trovata per indice ${gset.llistIndex}`);
+            continue;
+        }
+        
+        const lengths = llistData.elements[gset.llistIndex].struct.ints;
+        
+        meshData.push({
+            gset: gset,
+            vertices: vertices, // SOLO i vertici per QUESTA mesh
+            lengths: lengths
+        });
+        
+        console.log(`GSet ${gset.primTypeName}: ${vertices.length} vertici, ${lengths.length} primitive`);
+    }
+    
+    return meshData;
+}
+
+function extractVerticesFromParsedJSON(parsed) {
+    storedVertices = [];
+    meshData = extractVerticesForMeshes(parsed);
+    
+    // Per la point cloud, mostra SOLO i vertici usati nelle mesh
+    for (const mesh of meshData) {
+        for (const vertex of mesh.vertices) {
+            storedVertices.push([vertex.x, vertex.y, vertex.z]);
+        }
+    }
+    
+    updatePointCloudButton();
+    console.log(`Estratti ${storedVertices.length} vertici da ${meshData.length} mesh`);
+}
+
+function updatePointCloudButton() {
+    pointCloudBtn.disabled = storedVertices.length === 0;
+}
+
+// === BABYLON.JS SCENE ===
+
+pointCloudBtn.addEventListener("click", () => {
+    createPointCloudAndMeshes();
+});
+
+function buildMeshesFromGSet(scene) {
+    const meshes = [];
+    
+    for (let i = 0; i < meshData.length; i++) {
+        const { gset, vertices, lengths } = meshData[i];
+        
+        let positions = [];
+        let indices = [];
+        let vertexCursor = 0;
+
+        console.log(`Costruendo mesh ${i}: ${gset.primTypeName}, ${lengths.length} primitive`);
+
+        // Costruisci SOLO le facce specificate dalle lengths
+        for (let j = 0; j < lengths.length; j++) {
+            const polyLen = lengths[j];
+            
+            if (vertexCursor + polyLen > vertices.length) {
+                console.warn(`Mesh ${i}: polyLen ${polyLen} eccede vertici disponibili`);
+                break;
+            }
+
+            const base = positions.length / 3;
+            
+            // Aggiungi i vertici di QUESTA faccia
+            for (let k = 0; k < polyLen; k++) {
+                const v = vertices[vertexCursor + k];
+                positions.push(v.x, v.y, v.z);
+            }
+            
+            // Crea gli indici in base al tipo di primitiva
+            if (gset.primType === 4 && polyLen === 3) { // TRIS
+                indices.push(base, base + 1, base + 2);
+            } 
+            else if (gset.primType === 5 && polyLen === 4) { // QUADS
+                indices.push(base, base + 1, base + 2);
+                indices.push(base, base + 2, base + 3);
+            }
+            else if (gset.primType === 7 && polyLen >= 3) { // POLYGON
+                const polyVerts = [];
+                for (let k = 0; k < polyLen; k++) {
+                    const v = vertices[vertexCursor + k];
+                    polyVerts.push(v.x, v.y);
+                }
+                const triangles = earcut(polyVerts, [], 2);
+                for (const t of triangles) {
+                    indices.push(base + t);
+                }
+            }
+            
+            vertexCursor += polyLen;
+        }
+
+        // Crea la mesh solo se ha dati validi
+        if (positions.length > 0 && indices.length > 0) {
+            const mesh = new BABYLON.Mesh(`mesh_${i}`, scene);
+            const vertexData = new BABYLON.VertexData();
+            
+            vertexData.positions = positions;
+            vertexData.indices = indices;
+            
+            // Calcola le normali
+            BABYLON.VertexData.ComputeNormals(positions, indices, vertexData.normals);
+            vertexData.applyToMesh(mesh);
+
+            const material = new BABYLON.StandardMaterial(`mat_${i}`, scene);
+            material.diffuseColor = new BABYLON.Color3(
+                Math.random() * 0.7 + 0.3, 
+                Math.random() * 0.7 + 0.3, 
+                Math.random() * 0.7 + 0.3
+            );
+            material.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            material.backFaceCulling = false;
+            mesh.material = material;
+
+            meshes.push(mesh);
+            console.log(`Mesh ${i} creata: ${positions.length/3} vertici, ${indices.length/3} triangoli`);
+        } else {
+            console.warn(`Mesh ${i}: nessun dato valido`);
+        }
+    }
+    
+    return meshes;
+}
+
+function createPointCloudAndMeshes() {
+    const engine = new BABYLON.Engine(babylonCanvas, true);
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.95, 0.95, 0.95, 1);
+
+    const camera = new BABYLON.ArcRotateCamera(
+        "cam", -Math.PI/2, Math.PI/2.5, 50,
+        BABYLON.Vector3.Zero(), scene
+    );
+    camera.attachControl(babylonCanvas, true);
+    camera.lowerRadiusLimit = 1;
+    camera.upperRadiusLimit = 1000;
+    camera.wheelPrecision = 50;
+
+    new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    new BABYLON.DirectionalLight("light2", new BABYLON.Vector3(-1, -1, -1), scene);
+
+    createAxes(scene);
+
+    // Crea point cloud
+    if (storedVertices.length > 0) {
+        const pcs = new BABYLON.PointsCloudSystem("pcs", { 
+            capacity: storedVertices.length, 
+            scene 
+        });
+
+        pcs.addPoints(storedVertices.length, (particle, i) => {
+            const v = storedVertices[i];
+            particle.position.set(v[0], v[1], v[2]);
+            particle.color = new BABYLON.Color4(0, 0, 1, 0.3);
+        });
+
+        pcs.buildMeshAsync().then(() => {
+            pcs.mesh.material.pointSize = 2;
+        });
+    }
+
+    // Costruisci le mesh CORRETTE
+    const meshes = buildMeshesFromGSet(scene);
+    console.log(`Costruite ${meshes.length} mesh da ${meshData.length} GSet`);
+
+    // GUI per controlli
+    const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    const panel = new BABYLON.GUI.StackPanel();
+    panel.width = "220px";
+    panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+    panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    panel.background = "white";
+    panel.paddingLeft = "10px";
+    advancedTexture.addControl(panel);
+
+    const title = new BABYLON.GUI.TextBlock();
+    title.text = "Controlli Visualizzazione";
+    title.color = "black";
+    title.fontSize = "14px";
+    title.fontWeight = "bold";
+    title.paddingTop = "10px";
+    panel.addControl(title);
+
+    // Toggle point cloud
+    const pointCloudToggle = createToggle("Point Cloud", true, (value) => {
+        const pcsMesh = scene.getMeshByName("pcs");
+        if (pcsMesh) pcsMesh.setEnabled(value);
+    });
+    panel.addControl(pointCloudToggle.panel);
+
+    // Toggle mesh
+    const meshToggle = createToggle("Mesh", true, (value) => {
+        meshes.forEach(mesh => mesh.setEnabled(value));
+    });
+    panel.addControl(meshToggle.panel);
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+
+    return { engine, scene, meshes };
+}
+
+function createToggle(label, checked, callback) {
+    const panel = new BABYLON.GUI.StackPanel();
+    panel.isVertical = false;
+    panel.height = "25px";
+    panel.paddingTop = "5px";
+
+    const toggle = new BABYLON.GUI.Checkbox();
+    toggle.width = "20px";
+    toggle.height = "20px";
+    toggle.isChecked = checked;
+    toggle.color = "green";
+    toggle.onIsCheckedChangedObservable.add(callback);
+
+    const header = new BABYLON.GUI.TextBlock();
+    header.text = label;
+    header.color = "black";
+    header.width = "120px";
+    header.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+    header.paddingLeft = "5px";
+
+    panel.addControl(toggle);
+    panel.addControl(header);
+
+    return { panel, toggle };
+}
+
+function createAxes(scene) {
+    function makeAxis(start, end, color) {
+        const pts = [start, end];
+        const lines = BABYLON.MeshBuilder.CreateLines("axis", { points: pts }, scene);
+        lines.color = color;
+        return lines;
+    }
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(5, 0, 0),
+        new BABYLON.Color3(1, 0, 0)
+    ); // X
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(0, 5, 0),
+        new BABYLON.Color3(0, 1, 0)
+    ); // Y
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(0, 0, 5),
+        new BABYLON.Color3(0, 0, 1)
+    ); // Z
+}
+
+</script>
+</body>
+</html>
