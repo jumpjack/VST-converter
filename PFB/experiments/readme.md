@@ -6,6 +6,16 @@ In this folder tou find some experiments: none is fully working, most are partia
 - https://techpubs.jurassic.nl/library/manuals/3000/007-3560-005/sgi_html/ch08.html
 - https://techpubs.jurassic.nl/library/manuals/3000/007-3560-005/sgi_html/ch09.html
 
+
+Working pages:
+
+- [PFB parser - v.0.1.4](https://jumpjack.github.io/VST-converter/PFB/experiments/PFB-extractor-014.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/PFB-extractor-014.html)) - Reads a PFB file, shows its structure and saves meshes data into JSON file, for further processing/debugging
+- [Mesh loader - v.0.1.0](https://jumpjack.github.io/VST-converter/PFB/experiments/qwen-json-loader-010.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/qwen-json-loader-010.html) - Loads the JSON file created by the other page and shows wireframe or tesselated version of selected meshes
+
+
+
+---------
+
 These AI-generated demo pages are probably full of useless garbage, but at least they can properly read the high level structure of a PFB file and display the pointcloud using Babylon.js ;  I prefer babylon to three.js because it can work totally offline, withoyt modules, import, node.js,...:
 
 - [Mistral demo](https://jumpjack.github.io/VST-converter/PFB/experiments/mistral.html) ([source](https://github.com/jumpjack/VST-converter/blob/main/PFB/experiments/mistral.html))
