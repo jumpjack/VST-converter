@@ -1,0 +1,600 @@
+<!--
+010: solid faces work!
+-->
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizzatore Poligoni Babylon.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/5.57.1/babylon.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+            z-index: 100;
+            max-height: 80vh;
+            overflow-y: auto;
+            max-width: 360px;
+        }
+        .progress-container {
+            margin: 10px 0;
+            display: none;
+        }
+        .progress-label {
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        #fileInput, #lodFileInput {
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #info {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #555;
+            min-height: 18px;
+        }
+        .mesh-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            flex-wrap: wrap;
+        }
+        .mesh-row input[type="checkbox"] {
+            margin: 0;
+        }
+        .mesh-row input[type="number"] {
+            width: 50px;
+        }
+        .sub-pieces {
+            margin-left: 20px;
+            margin-top: 4px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: none;
+        }
+        .piece-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+        label {
+            display: block;
+            margin: 6px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3 style="margin-top: 0;">Carica dati</h3>
+        <input type="file" id="fileInput" accept=".json">
+        
+        <label>
+            Max mesh da caricare (0 = tutte):
+            <input type="number" id="maxMeshes" min="0" value="0" style="width: 60px;">
+        </label>
+
+        <button id="clearBtn">Pulisci Tutto</button>
+
+        <label style="margin-top: 12px; display: block;">
+            Carica LOD da file:
+            <input type="file" id="lodFileInput" accept=".json">
+        </label>
+
+        <div id="fileProgress" class="progress-container">
+            <div class="progress-label">Caricamento file...</div>
+            <div class="progress-bar"><div class="progress-fill" id="fileProgressFill"></div></div>
+        </div>
+
+        <div id="info"></div>
+        <div id="metadata"></div>
+        <div id="meshControls"></div>
+
+        <!-- Filtro LOD -->
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee;">
+            <label>
+                Filtra per LOD:
+                <input type="number" id="globalLODFilter" min="0" max="7" value="0" style="width: 60px;">
+            </label>
+            <button id="applyLODFilterBtn" style="background:#6f42c1;">Applica filtro</button>
+        </div>
+
+        <button id="exportBtn" style="background:#28a745; margin-top:10px;">Esporta con LOD</button>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+
+    <script>
+        const XOFFSET = 40;
+        const ZOFFSET = 40;
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        let scene, camera;
+        let meshGroups = [];
+        let globalMetadata = {};
+        let globalLODValues = [];
+
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(1, 1, 1);
+
+            camera = new BABYLON.ArcRotateCamera(
+                "camera",
+                Math.PI / 4,
+                Math.PI / 3,
+                100,
+                new BABYLON.Vector3(0, 0, 0),
+                scene
+            );
+            camera.attachControl(canvas, true);
+            camera.wheelPrecision = 50;
+            camera.minZ = 0.1;
+
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            light.intensity = 0.7;
+
+            createAxes(scene);
+            return scene;
+        }
+
+        function createAxes(scene) {
+            const axisSize = 10;
+            const colors = [new BABYLON.Color3(1,0,0), new BABYLON.Color3(0,1,0), new BABYLON.Color3(0,0,1)];
+            const axes = ['X', 'Y', 'Z'];
+            axes.forEach((axis, i) => {
+                const end = new BABYLON.Vector3(0,0,0);
+                end[axis.toLowerCase()] = axisSize;
+                const line = BABYLON.MeshBuilder.CreateLines(`axis${axis}`, {
+                    points: [BABYLON.Vector3.Zero(), end]
+                }, scene);
+                line.color = colors[i];
+            });
+        }
+
+        function addPolygons(obj, lengths) {
+            const polygons = [];
+            let currentIndex = 0;
+            for (const length of lengths) {
+                const polygon = [];
+                for (let i = 0; i < length; i++) {
+                    polygon.push(obj.vertices[currentIndex]);
+                    currentIndex++;
+                }
+                polygons.push(polygon);
+            }
+            obj.Polygons = polygons;
+            return obj;
+        }
+
+        // Crea wireframe per un pezzo
+        function createWireframe(groupIndex, polyIndex, polygon) {
+            const points3D = polygon.map(v =>
+                new BABYLON.Vector3(v.x + XOFFSET, v.y, v.z + ZOFFSET)
+            );
+            const wire = BABYLON.MeshBuilder.CreateLines(
+                `g${groupIndex}_p${polyIndex}_wire`,
+                { points: points3D },
+                scene
+            );
+            wire.color = new BABYLON.Color3(0, 0, 0);
+            return wire;
+        }
+
+        // Crea mesh solida per un pezzo (STRIP DI TRIANGOLI)
+        function createSolidMeshFromStrip(groupIndex, polyIndex, polygon) {
+            if (polygon.length < 3) return null;
+
+            const positions = [];
+            const indices = [];
+
+            // Ogni 3 vertici consecutivi formano un triangolo
+            for (let i = 0; i < polygon.length; i++) {
+                const v = polygon[i];
+                positions.push(v.x + XOFFSET, v.y, v.z + ZOFFSET);
+            }
+
+            // Genera gli indici: triangoli consecutivi (strip)
+            for (let i = 0; i < polygon.length - 2; i++) {
+                if (i % 2 === 0) {
+                    indices.push(i, i+1, i+2);
+                } else {
+                    indices.push(i, i+2, i+1); // alternanza per orientamento
+                }
+            }
+
+            const mesh = new BABYLON.Mesh(`g${groupIndex}_p${polyIndex}_solid`, scene);
+            const vertexData = new BABYLON.VertexData();
+            vertexData.positions = positions;
+            vertexData.indices = indices;
+            vertexData.normals = [];
+            BABYLON.VertexData.ComputeNormals(vertexData.positions, vertexData.indices, vertexData.normals);
+            vertexData.applyToMesh(mesh);
+
+            const mat = new BABYLON.StandardMaterial(`mat_${groupIndex}_${polyIndex}`, scene);
+            mat.diffuseColor = new BABYLON.Color3(0.2, 0.4, 0.8);
+            mat.alpha = 0.7;
+            mat.backFaceCulling = false;
+            mesh.material = mat;
+            return mesh;
+        }
+
+        function updatePieceVisibility(groupIndex, polyIndex, polygon, wireEnabled, solidEnabled) {
+            const group = meshGroups[groupIndex];
+            let piece = group.pieces[polyIndex];
+            if (!piece) {
+                piece = { wireMesh: null, solidMesh: null };
+                group.pieces[polyIndex] = piece;
+            }
+
+            // Crea wireframe se attivato e non esiste
+            if (wireEnabled && !piece.wireMesh) {
+                piece.wireMesh = createWireframe(groupIndex, polyIndex, polygon);
+            }
+            // Crea solid se attivato e non esiste
+            if (solidEnabled && !piece.solidMesh) {
+                piece.solidMesh = createSolidMeshFromStrip(groupIndex, polyIndex, polygon);
+            }
+
+            // Aggiorna visibilità
+            if (piece.wireMesh) piece.wireMesh.setEnabled(wireEnabled);
+            if (piece.solidMesh) piece.solidMesh.setEnabled(solidEnabled);
+        }
+
+        function updateGroupVisibility(groupIndex) {
+            const group = meshGroups[groupIndex];
+            if (!group) return;
+
+            const data = group.originalData;
+            if (!data.Polygons) return;
+
+            if (!Array.isArray(group.pieces)) {
+                group.pieces = new Array(data.Polygons.length);
+            }
+
+            data.Polygons.forEach((polygon, polyIndex) => {
+                if (polygon.length < 2) return;
+                updatePieceVisibility(groupIndex, polyIndex, polygon, group.wireCheckbox.checked, group.solidCheckbox.checked);
+            });
+        }
+
+        function toggleSubPieces(groupIndex) {
+            const group = meshGroups[groupIndex];
+            const subDiv = group.subPiecesDiv;
+            if (subDiv.style.display === 'none') {
+                subDiv.style.display = 'block';
+                // Crea i pezzi se non esistono
+                if (!group.subPiecesInitialized) {
+                    populateSubPieces(groupIndex);
+                    group.subPiecesInitialized = true;
+                }
+            } else {
+                subDiv.style.display = 'none';
+            }
+        }
+
+        function populateSubPieces(groupIndex) {
+            const group = meshGroups[groupIndex];
+            const data = group.originalData;
+            const subDiv = group.subPiecesDiv;
+
+            data.Polygons.forEach((polygon, polyIndex) => {
+                const pieceRow = document.createElement('div');
+                pieceRow.className = 'piece-row';
+
+                const label = document.createElement('span');
+                label.textContent = `Pezzo ${polyIndex} (${polygon.length} vertici)`;
+
+                const wireCheckbox = document.createElement('input');
+                wireCheckbox.type = 'checkbox';
+                wireCheckbox.onchange = () => {
+                    updatePieceVisibility(groupIndex, polyIndex, polygon, wireCheckbox.checked, group.solidCheckbox.checked);
+                };
+
+                const solidCheckbox = document.createElement('input');
+                solidCheckbox.type = 'checkbox';
+                solidCheckbox.onchange = () => {
+                    updatePieceVisibility(groupIndex, polyIndex, polygon, group.wireCheckbox.checked, solidCheckbox.checked);
+                };
+
+                pieceRow.appendChild(label);
+                pieceRow.appendChild(wireCheckbox);
+                pieceRow.appendChild(solidCheckbox);
+                subDiv.appendChild(pieceRow);
+
+                // Salva riferimenti per future modifiche
+                if (!group.pieceCheckboxes) group.pieceCheckboxes = [];
+                group.pieceCheckboxes[polyIndex] = { wire: wireCheckbox, solid: solidCheckbox };
+            });
+        }
+
+        function loadJSON(file) {
+            const reader = new FileReader();
+            const fileProgress = document.getElementById('fileProgress');
+            const fileFill = document.getElementById('fileProgressFill');
+
+            fileProgress.style.display = 'block';
+            fileFill.style.width = '0%';
+
+            reader.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    fileFill.style.width = percent + '%';
+                }
+            };
+
+            reader.onload = function(e) {
+                fileFill.style.width = '100%';
+                setTimeout(() => {
+                    fileProgress.style.display = 'none';
+                    try {
+                        const root = JSON.parse(e.target.result);
+                        if (!root || typeof root !== 'object' || !Array.isArray(root.meshes)) {
+                            alert('Formato errato: deve essere { "data":{...}, "LODdata":[...], "meshes":[...] }');
+                            return;
+                        }
+
+                        const dataList = root.meshes;
+                        globalMetadata = root.data || {};
+                        globalLODValues = Array.isArray(root.LODdata)
+                            ? root.LODdata.map(v => Math.max(0, Math.min(7, parseInt(v) || 0)))
+                            : [];
+
+                        const maxToShow = parseInt(document.getElementById('maxMeshes').value) || 0;
+                        const limit = maxToShow > 0 ? Math.min(dataList.length, maxToShow) : dataList.length;
+
+                        meshGroups = [];
+                        const meshControlsDiv = document.getElementById('meshControls');
+                        meshControlsDiv.innerHTML = '';
+
+                        // Metadati
+                        const metadataDiv = document.getElementById('metadata');
+                        metadataDiv.innerHTML = '<h4 style="margin:12px 0 6px 0;">Metadati:</h4>';
+                        if (Object.keys(globalMetadata).length === 0) {
+                            metadataDiv.innerHTML += '<p>Nessun metadato.</p>';
+                        } else {
+                            const ul = document.createElement('ul');
+                            ul.style.fontSize = '13px';
+                            ul.style.margin = '6px 0';
+                            ul.style.paddingLeft = '20px';
+                            for (const [k, v] of Object.entries(globalMetadata)) {
+                                const li = document.createElement('li');
+                                li.innerHTML = `<strong>${k}:</strong> ${typeof v === 'object' ? JSON.stringify(v) : v}`;
+                                ul.appendChild(li);
+                            }
+                            metadataDiv.appendChild(ul);
+                        }
+
+                        for (let i = 0; i < limit; i++) {
+                            const data = dataList[i];
+                            if (!data.vertices || !data.lengths) continue;
+                            addPolygons(data, data.lengths);
+
+                            if (globalLODValues[i] === undefined) globalLODValues[i] = 0;
+
+                            const row = document.createElement('div');
+                            row.className = 'mesh-row';
+
+                            const label = document.createElement('span');
+                            label.textContent = `Mesh ${i} (${data.Polygons.length} pezzi)`;
+
+                            const wireCheckbox = document.createElement('input');
+                            wireCheckbox.type = 'checkbox';
+                            wireCheckbox.onchange = () => updateGroupVisibility(i);
+
+                            const solidCheckbox = document.createElement('input');
+                            solidCheckbox.type = 'checkbox';
+                            solidCheckbox.onchange = () => updateGroupVisibility(i);
+
+                            const lodSpan = document.createElement('span');
+                            lodSpan.textContent = 'LOD:';
+
+                            const lodInput = document.createElement('input');
+                            lodInput.type = 'number';
+                            lodInput.min = 0;
+                            lodInput.max = 7;
+                            lodInput.value = globalLODValues[i];
+                            lodInput.style.width = '50px';
+                            lodInput.onchange = function () {
+                                let val = parseInt(this.value);
+                                if (isNaN(val)) val = 0;
+                                val = Math.max(0, Math.min(7, val));
+                                this.value = val;
+                                globalLODValues[i] = val;
+                            };
+
+                            const expandBtn = document.createElement('button');
+                            expandBtn.textContent = '?';
+                            expandBtn.style.padding = '2px 6px';
+                            expandBtn.style.fontSize = '12px';
+                            expandBtn.onclick = () => toggleSubPieces(i);
+
+                            row.appendChild(label);
+                            row.appendChild(wireCheckbox);
+                            row.appendChild(solidCheckbox);
+                            row.appendChild(lodSpan);
+                            row.appendChild(lodInput);
+                            row.appendChild(expandBtn);
+
+                            meshControlsDiv.appendChild(row);
+
+                            const subDiv = document.createElement('div');
+                            subDiv.className = 'sub-pieces';
+                            meshControlsDiv.appendChild(subDiv);
+
+                            meshGroups[i] = {
+                                originalData: data,
+                                wireCheckbox: wireCheckbox,
+                                solidCheckbox: solidCheckbox,
+                                lodInput: lodInput,
+                                pieces: null,
+                                subPiecesDiv: subDiv,
+                                subPiecesInitialized: false,
+                                pieceCheckboxes: []
+                            };
+                        }
+
+                        document.getElementById('info').textContent = `${limit} gruppi caricati`;
+                    } catch (error) {
+                        console.error(error);
+                        alert('Errore JSON: ' + error.message);
+                    }
+                }, 50);
+            };
+
+            reader.onerror = () => {
+                fileProgress.style.display = 'none';
+                alert('Errore lettura file');
+            };
+
+            reader.readAsText(file);
+        }
+
+        function loadLODFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const obj = JSON.parse(e.target.result);
+                    if (!obj.LODdata || !Array.isArray(obj.LODdata)) {
+                        alert('File LOD deve contenere: { "LODdata": [...] }');
+                        return;
+                    }
+                    globalLODValues = obj.LODdata.map(v => Math.max(0, Math.min(7, parseInt(v) || 0)));
+                    applyLODValuesToUI();
+                    document.getElementById('info').textContent = `LOD caricati (${globalLODValues.length} valori)`;
+                } catch (err) {
+                    alert('Errore file LOD: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function applyLODValuesToUI() {
+            meshGroups.forEach((group, idx) => {
+                if (group?.lodInput) {
+                    group.lodInput.value = Math.max(0, Math.min(7, globalLODValues[idx] ?? 0));
+                }
+            });
+        }
+
+        function exportJSONWithLOD() {
+            if (meshGroups.length === 0) {
+                alert("Nessuna mesh caricata");
+                return;
+            }
+            applyLODValuesToUI();
+            const exportedMeshes = meshGroups.map(group => JSON.parse(JSON.stringify(group.originalData)));
+            const exportObj = {
+                 globalMetadata,
+                LOD: [...globalLODValues], // ? Corretto: con i due punti!
+                meshes: exportedMeshes
+            };
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'scene_with_lod.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function applyLODFilter() {
+            const filterValue = parseInt(document.getElementById('globalLODFilter').value);
+            if (isNaN(filterValue) || filterValue < 0 || filterValue > 7) {
+                alert("LOD deve essere tra 0 e 7");
+                return;
+            }
+            meshGroups.forEach((group, idx) => {
+                if (!group) return;
+                const show = (globalLODValues[idx] ?? 0) === filterValue;
+                group.wireCheckbox.checked = show;
+                group.solidCheckbox.checked = show;
+                updateGroupVisibility(idx);
+            });
+            document.getElementById('info').textContent = `Filtro LOD ${filterValue} applicato`;
+        }
+
+        // Event listeners
+        document.getElementById('fileInput').addEventListener('change', e => e.target.files[0] && loadJSON(e.target.files[0]));
+        document.getElementById('lodFileInput').addEventListener('change', e => e.target.files[0] && loadLODFile(e.target.files[0]));
+        document.getElementById('exportBtn').addEventListener('click', exportJSONWithLOD);
+        document.getElementById('applyLODFilterBtn').addEventListener('click', applyLODFilter);
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            meshGroups.forEach(group => {
+                if (group?.pieces) {
+                    group.pieces.forEach(piece => {
+                        if (piece) {
+                            if (piece.wireMesh) piece.wireMesh.dispose();
+                            if (piece.solidMesh) piece.solidMesh.dispose();
+                        }
+                    });
+                }
+                if (group?.subPiecesDiv) {
+                    group.subPiecesDiv.innerHTML = '';
+                    group.subPiecesDiv.style.display = 'none';
+                }
+            });
+            meshGroups = [];
+            globalLODValues = [];
+            globalMetadata = {};
+            document.getElementById('meshControls').innerHTML = '';
+            document.getElementById('metadata').innerHTML = '';
+            document.getElementById('info').textContent = 'Tutto pulito';
+        });
+
+        createScene();
+        engine.runRenderLoop(() => scene.render());
+        window.addEventListener('resize', () => engine.resize());
+    </script>
+</body>
+</html>
