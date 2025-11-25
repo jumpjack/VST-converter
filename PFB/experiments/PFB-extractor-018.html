@@ -1,0 +1,3074 @@
+<!--
+add raw32 to json output
+015: nodes list extraction successful
+016: LOD extraction successful
+017: no way to understand LOD structure, passing to AI...
+-->
+
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PFB Parser</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; padding:18px; color:#111; }
+  header { margin-bottom:12px; }
+  input[type=file] { margin-bottom:12px; }
+  pre { background:#f4f4f4; padding:10px; border-radius:6px; max-height:44vh; overflow:auto; white-space:pre-wrap; }
+  button { margin-right:8px; }
+  .ok { color: #0a0; }
+  .warn { color: #a60; }
+  .controls { position: absolute; left: 12px; top: 80px; z-index: 1000; background: rgba(255,255,255,0.95); padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);}
+  .controls label { display:block; font-size:0.9rem; margin-bottom:6px;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>PFB parser</h1>
+    <div>Select PFB file (version 26)</div>
+  </header>
+
+  <input id="file" type="file" accept=".pfb,.PFB" />
+  <button id="parseBtn" disabled>Parse</button>
+  <button id="downloadJson" disabled>Export meshes to JSON</button><br>
+
+  <button id="showTreeBtn" disabled>Show nodes tree</button><br>
+
+  <button id="pointCloudBtn" disabled>Show Pointcloud</button><br>
+
+  <button id="showLODSbtn" disabled>Show LODS centers</button>
+  <button id="clearLODSbtn" disabled>Clear LODS</button><br>
+
+  <button id="showBBOXbtn" disabled> Show bounding boxes of geosets</button>
+  <button id="clearBBOXbtn" disabled>Clear bounding boxes</button>
+
+  <div id="status"></div>
+
+  <h3>PointCloud Viewer</h3>
+  <canvas id="babylonCanvas" style="width:100%; height:600px; border:1px solid #888;"></canvas>
+
+  <script src="babylon.js"></script>
+  <script src="babylon.gui.js"></script>
+  <script src="babylonjs.loaders.js"></script>
+  <script src="earcut.min.js"></script>
+
+<script>
+// Geoset Binding:
+const BindNames = {
+    0 : "undefined",
+    1: "PFGS_OFF",
+    2: "PFGS_PER_VERTEX",
+    3: "PFGS_PER_PRIM",
+    4: "PFGS_OVERALL"
+};
+
+// --- Primitive types ---
+const PrimTypeNames = {
+    0:  "undefined",
+    1: "PFGS_TRISTRIPS",
+    2: "PFGS_TRIS",
+    3: "PFGS_POINTS",
+    4: "PFGS_LINES",
+    5: "PFGS_LINESTRIPS",
+    6: "PFGS_FLAT_LINESTRIPS",
+    7: "PFGS_QUADS",
+    8: "PFGS_FLAT_TRISTRIPS",
+    9: "PFGS_POLYS",
+   10: "PFGS_TRIFANS",
+   11: "PFGS_FLAT_TRIFANS"
+};
+
+// --- On/Off ---
+const OO = {
+    0: "PF_OFF",
+    1: "PF_ON"
+};
+
+const DrawModeNames = {
+    2: "PFGS_FLATSHADE",
+    3: "PFGS_WIREFRAME",
+    4: "PFGS_COMPILE_GL",
+    6: "PFGS_DRAW_GLOBJ"
+};
+
+const BBoxModeNames = {
+    1: "PFBOUND_STATIC",
+    2: "PFBOUND_DYNAMIC"
+};
+
+const L_NAMES = {
+  0: "Material",1:"Texture",2:"TexEnv",3:"GeoState",4:"Length List",5:"Vertex List",
+  6:"Color List",7:"Normal List",8:"TexCoord List",9:"Index List",10:"GeoSet",11:"User Data",12:"Node"
+};
+
+
+
+    // Usa i nomi ufficiali da Performer (pi� affidabili)
+    const NodeTypes = [
+        "LightPoint", "Text", "Geode", "Billboard", "LightSource", "Group", "SCS", "DCS",
+        "Partition", "Scene", "Switch", "LOD", "Sequence", "Layer", "Morph", "ASD", "FCS",
+        "DoubleDCS", "DoubleFCS", "DoubleSCS", "IBRnode", "SubdivSurface", "TorusSurface",
+        "NurbsSurface", "NurbCurve2d", "Line2d", "PieceWisePolyCurve2d", "PieceWisePolySurface",
+        "PlaneSurface", "SphereSurface", "ConeSurface", "CylinderSurface", "Line3d",
+        "NurbCurve3d", "PieceWisePolyCurve3d", "HsplineSurface", "SweptSurface",
+        "FrenetSweptSurface", "CoonsSurface", "CompositeCurve3d", "Circle2d", "SuperQuadCurve2d",
+        "RuledSurface", "Circle3d", "SuperQuadCurve3d", "OrientedLine3d"
+    ];
+    
+const N_CUSTOM = 0x10000000;
+const N_CUSTOM_MASK = 0x0fff0000;
+const N_CUSTOM_SHIFT = 16;
+
+const PFBOUND_DYNAMIC = 1; // perch� bound_table = [PFBOUND_STATIC, PFBOUND_DYNAMIC]
+
+const PFB_SWITCH_OFF = -2;
+const PFB_SWITCH_ON = -1;
+
+// Tabella tipi nodo ? nome
+const NODE_NAMES = [
+  "LightPoint", "Text", "Geode", "Billboard", "LightSource", "Group", "SCS", "DCS",
+  "Partition", "Scene", "Switch", "LOD", "Sequence", "Layer", "Morph", "ASD", "FCS",
+  "DoubleDCS", "DoubleFCS", "DoubleSCS", "IBRnode", "SubdivSurface", "TorusSurface",
+  "NurbsSurface", "NurbCurve2d", "Line2d", "PieceWisePolyCurve2d", "PieceWisePolySurface",
+  "PlaneSurface", "SphereSurface", "ConeSurface", "CylinderSurface", "Line3d",
+  "NurbCurve3d", "PieceWisePolyCurve3d", "HsplineSurface", "SweptSurface",
+  "FrenetSweptSurface", "CoonsSurface", "CompositeCurve3d", "Circle2d", "SuperQuadCurve2d",
+  "RuledSurface", "Circle3d", "SuperQuadCurve3d", "OrientedLine3d"
+];
+
+// Tabelle inverse (valore ? nome)
+const BBR_TABLE = [ /* PFBB_AXIAL_ROT = 0, PFBB_POINT_ROT_EYE = 1, PFBB_POINT_ROT_WORLD = 2 */ ];
+const SQI_TABLE = [ "PFSEQ_CYCLE", "PFSEQ_SWING" ];
+const SQM_TABLE = [ "PFSEQ_STOP", "PFSEQ_START", "PFSEQ_PAUSE", "PFSEQ_RESUME" ];
+const LAYER_TABLE = [
+  "PFDECAL_OFF", "PFDECAL_LAYER", "PFDECAL_BASE", "PFDECAL_BASE_FAST",
+  "PFDECAL_BASE_HIGH_QUALITY", "PFDECAL_BASE_STENCIL", "PFDECAL_BASE_DISPLACE",
+  "PFDECAL_LAYER_FAST", "PFDECAL_LAYER_HIGH_QUALITY", "PFDECAL_LAYER_STENCIL",
+  "PFDECAL_LAYER_DISPLACE", "PFDECAL_LAYER_DISPLACE_AWAY"
+];
+const BOUND_TABLE = [ "PFBOUND_STATIC", "PFBOUND_DYNAMIC" ];
+const MAT_TABLE = [
+  "PFMAT_TRANS", "PFMAT_ROT", "PFMAT_SCALE", "PFMAT_NONORTHO",
+  "PFMAT_PROJ", "PFMAT_HOM_SCALE", "PFMAT_MIRROR"
+];
+const ASD_EM_TABLE = [ "PFASD_DIST", "PFASD_DIST_SQUARE", "PFASD_CALLBACK" ];    
+
+
+const SLIST_IDS = new Set([4,5,6,7,8,9]);
+
+
+nodesCounter = [];
+lodsPerRanges = [];
+LODSlist = [];
+
+/* --- helpers --- */
+function readInt32(view, offset, little) { return view.getInt32(offset, little); }
+function readUint32(view, offset, little) { return view.getUint32(offset, little); }
+function readFloat32(view, offset, little) { return view.getFloat32(offset, little); }
+function toHex32(n) { return '0x' + (n >>> 0).toString(16).padStart(8,'0'); }
+function bytesToHex(bytes, maxChars) {
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+  if (maxChars && hex.length > maxChars) return hex.slice(0,maxChars) + '...';
+  return hex;
+}
+function bytesToTextString(bytes) {
+  let out = "";
+  for (let i=0;i<bytes.length;i++){
+    const b = bytes[i];
+    if (b >= 32 && b <= 126) out += String.fromCharCode(b); else out += ".";
+  }
+  return out;
+}
+const UNIT_SIZES = { L_LLIST:4, L_VLIST:12, L_CLIST:16, L_NLIST:12, L_TLIST:8, L_ILIST:2 };
+
+let currentJSON = null;
+let storedVertices = [];
+let llist = [], vlist = [];
+let meshData = [];
+let meshes = [];
+let nodesTable = null;
+
+const fileInput = document.getElementById('file');
+const parseBtn = document.getElementById('parseBtn');
+const pointCloudBtn = document.getElementById('pointCloudBtn');
+const downloadJson = document.getElementById('downloadJson');
+const showTreeBtn = document.getElementById('showTreeBtn');
+const showLODSbtn = document.getElementById('showLODSbtn');
+const clearLODSbtn = document.getElementById('clearLODSbtn');
+const showBBOXbtn = document.getElementById('showBBOXbtn');
+const clearBBOXbtn = document.getElementById('clearBBOXbtn');
+
+
+const status = document.getElementById('status');
+
+fileInput.addEventListener('change', () => {
+  parseBtn.disabled = !fileInput.files.length;
+  downloadJson.disabled = true;
+  pointCloudBtn.disabled = true;
+  showTreeBtn.disabled = true;
+  showLODSbtn.disabled = true;
+  clearLODSbtn.disabled = true;
+  showBBOXbtn.disabled = true;
+  clearBBOXbtn.disabled = true;
+  //document.getElementById('meshControls').style.display = 'none';
+});
+
+parseBtn.addEventListener('click', async () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  fileData = f;
+console.log("FILE:", fileData);
+  status.textContent = 'Reading file...';
+  const ab = await f.arrayBuffer();
+  try {
+    const res = parsePFB(ab);
+    currentJSON = res.json;
+    nodesTable = res.nodesTable;
+    console.log("Overall PFB file structure", currentJSON);
+    console.log("   GEOSTATE example:", currentJSON.lists[8].elements[0].raw32);
+    const getListById = id => currentJSON.lists.find(l => l.list_id === id);
+    const llist = getListById(4); // Length List
+    const vlist = getListById(5); // Vertex List
+    const clist = getListById(6); // Color List
+    const nlist = getListById(7); // Normal List
+    const tlist = getListById(8); // TexCoord List
+    const gsets = getListById(10); // GeoSet
+
+    for (elemIndex = 0; elemIndex < gsets.count; elemIndex++) {
+      try {
+        const GMAIN = gsets.elements[elemIndex].struct;
+        const myMesh = {};
+        if (llist.elements[GMAIN.llist]) {
+          myMesh.lengths = llist.elements[GMAIN.llist].struct.ints;
+          myMesh.vertices = vlist.elements[GMAIN.vlist[1]].struct.vertices;
+          meshes.push(myMesh);
+        }
+      } catch (e) {
+          console.log("Errore ",e, "llist=", llist.elements[gsets.elements[elemIndex].struct.llist], ", vlist = ", vlist.elements[gsets.elements[elemIndex].struct.vlist] );
+      }
+    }
+
+    extractVerticesFromParsedJSON(currentJSON);
+    status.innerHTML = `<div class="ok">Parsing completed.</div>`;
+
+    (function makeGsetTable(){
+        const gsetsList = currentJSON.lists.find(l => l.list_id === 10);
+        if (!gsetsList) return;
+
+        const container = document.createElement("div");
+        container.style.marginTop = "20px";
+        const title = document.createElement("h2");
+        title.textContent = "GSETS in file";
+        container.appendChild(title);
+        const table = document.createElement("table");
+        table.style.borderCollapse = "collapse";
+        table.style.width = "100%";
+        table.style.fontSize = "13px";
+        function th(txt){
+            const e = document.createElement("th");
+            e.textContent = txt;
+            e.style.border = "1px solid #777";
+            e.style.padding = "4px 6px";
+            e.style.background = "#eee";
+            return e;
+        }
+        function td(txt){
+            const e = document.createElement("td");
+            e.textContent = txt;
+            e.style.border = "1px solid #ccc";
+            e.style.padding = "4px 6px";
+            return e;
+        }
+
+        const headerGroup = document.createElement("tr");
+        headerGroup.appendChild(th(" "));
+
+        const primGroup = th("Primitives");
+        primGroup.colSpan = 3;
+        primGroup.style.textAlign = "center";
+        headerGroup.appendChild(primGroup);
+
+        const groups = ["Coordinates", "Colors", "Normals", "Textures"];
+        for (const g of groups){
+            const thGroup = th(g);
+            thGroup.colSpan = 3;
+            thGroup.style.textAlign = "center";
+            headerGroup.appendChild(thGroup);
+        }
+
+        const drawGroup = th("Drawing modes");
+        drawGroup.colSpan = 3;
+        drawGroup.style.textAlign = "center";
+        headerGroup.appendChild(drawGroup);
+
+        const gstateGroup = th("gstate");
+        gstateGroup.colSpan = 2;
+        gstateGroup.style.textAlign = "center";
+        headerGroup.appendChild(gstateGroup);
+
+        const simpleGroup = th("Drawing");
+        simpleGroup.colSpan = 5;
+        simpleGroup.style.textAlign = "center";
+        headerGroup.appendChild(simpleGroup);
+
+        const bboxGroup = th("Bounding box");
+        bboxGroup.colSpan = 2;
+        bboxGroup.style.textAlign = "center";
+        headerGroup.appendChild(bboxGroup);
+
+        const userGroup = th("userData");
+        userGroup.colSpan = 1;
+        userGroup.style.textAlign = "center";
+        headerGroup.appendChild(userGroup);
+
+        const drawGroup2 = th("Decaling");
+        drawGroup2.colSpan = 6;
+        drawGroup2.style.textAlign = "center";
+        headerGroup.appendChild(drawGroup2);
+
+        headerGroup.appendChild(th("bbox_flux"));
+
+        table.appendChild(headerGroup);
+
+        const header = document.createElement("tr");
+        header.appendChild(th("N."));
+        header.appendChild(th("Type"));
+        header.appendChild(th("Count"));
+        header.appendChild(th("Pointer to list of primitve lengths"));
+
+        const A = [
+            ["Binding","Pointer to list of coordinates","Pointer to list of indexes"],
+            ["Binding","Pointer to list of colors","Pointer to list of indexes"],
+            ["Binding","Pointer to list of normals","Pointer to list of indexes"],
+            ["Binding","Pointer to list of textures","Pointer to list of indexes"]
+        ];
+        for (const triple of A){
+            header.appendChild(th(triple[0]));
+            header.appendChild(th(triple[1]));
+            header.appendChild(th(triple[2]));
+        }
+
+        header.appendChild(th("Flatshade"));
+        header.appendChild(th("Wireframe"));
+        header.appendChild(th("Compile GL"));
+
+        header.appendChild(th("Reference"));
+        header.appendChild(th("Index"));
+
+        header.appendChild(th("Line Wdith"));
+        header.appendChild(th("Point Size"));
+        header.appendChild(th("Drawing bin"));
+        /*  bin identifies a drawing bin to which the pfGeoSet belongs and is used for
+           controlling the rendering order of a database.  The pfGeoSet draw bin is
+           currently used only by libpf applications (see pfChannel::setBinOrder)
+           and is ignored by libpr-only applications. The default pfGeoSet draw bin
+           identifier is -1. ::getDrawBin returns the draw bin identifier of gset.
+           https://help.graphica.com.au/irix-6.5.30/man/3pf/pfGSetDrawBin
+        */
+
+        header.appendChild(th("Intersection Mask"));
+        /*
+             Intersection Mask
+             setIsectMask enables intersections and sets the intersection
+             mask for the pfGeoSet.  mask is a 32-bit mask used to determine whether a
+             particular pfGeoSet should be examined during a particular intersection
+             request.  A non-zero bit-wise AND of the pfGeoSet's mask with the mask of
+             the intersection request (pfGeoSet::isect) indicates that the pfGeoSet
+             should be tested.  The default mask is all 1's, i.e.  0xffffffff.
+        */
+        header.appendChild(th("Gset highlighting"));
+        /*
+            Gset highlighting
+           setHlight sets hlight to be the highlighting structure used for
+           the pfGeoSet.  When this flag is not PFHL_OFF, this gset will be drawn as
+           highlighted unless highlighting has been overridden as off with
+           pfOverride.  See the pfHighlight manual page for information of creating
+           and configuring a highlighting state structure.  pfGeoSet::getHlight
+           returns the current GeoSet highlight definition.
+        */
+        header.appendChild(th("Mode"));
+        header.appendChild(th("____Values____"));
+        header.appendChild(th("User data"));
+        header.appendChild(th("Draw order"));
+        header.appendChild(th("Plane"));
+
+        header.appendChild(th("Plane nx"));
+        header.appendChild(th("Plane ny"));
+        header.appendChild(th("Plane nz"));
+        header.appendChild(th("Plane offset"));
+
+        header.appendChild(th("bbox_flux"));
+
+/*        for (let unit = 1; unit <= 6; unit++){
+            header.appendChild(th(`tex${unit}_bind`));
+            header.appendChild(th(`tex${unit}_list`));
+            header.appendChild(th(`tex${unit}_ilist`));
+        }
+
+        header.appendChild(th("appearance"));*/
+
+
+        table.appendChild(header);
+
+        gsetcounter = 0;
+for (const elem of gsetsList.elements){
+    const g = elem.struct;
+    const row = document.createElement("tr");
+    row.appendChild(td(`${gsetcounter})`));
+
+    const primName = PrimTypeNames[g.ptype] || "?";
+    row.appendChild(td(`${g.ptype} (${primName})`));
+    row.appendChild(td(g.pcount));
+    row.appendChild(td(g.llist));
+
+    function emitTriple(arr){
+        const bind = arr[0];
+        const list = arr[1];
+        const ilist = arr[2];
+        const bname = BindNames[bind] || "?";
+
+        // Controllo per -1 nei valori della tripletta
+        const displayList = list === -1 ? "[unused]" : list;
+        const displayIlist = ilist === -1 ? "[unused]" : ilist;
+
+        row.appendChild(td(`${bind} (${bname})`));
+        row.appendChild(td(displayList));
+        row.appendChild(td(displayIlist));
+    }
+
+    emitTriple(g.vlist);
+    emitTriple(g.clist);
+    emitTriple(g.nlist);
+    emitTriple(g.tlist);
+
+    function drawMode(val, index, compileGLSetting = 2) {
+        const oo_table = [2, 0, 1];
+        if (val < 0 || val > 2) return "UNKNOWN";
+        const converted = oo_table[val];
+        if (index === 2) {
+            if (compileGLSetting === 1 || (compileGLSetting === 2 && converted === 1)) {
+                return "ON";
+            } else {
+                return "OFF";
+            }
+        } else {
+            return converted === 1 ? "ON" : "OFF";
+        }
+    }
+
+    const compileGLSetting = 2;
+    row.appendChild(td(drawMode(g.draw_mode[0], 0, compileGLSetting)));
+    row.appendChild(td(drawMode(g.draw_mode[1], 1, compileGLSetting)));
+    row.appendChild(td(drawMode(g.draw_mode[2], 2, compileGLSetting)));
+
+    // Funzione helper per controllare e sostituire -1
+    function checkValue(val) {
+        return val === -1 ? "[unused]" : val;
+    }
+
+    row.appendChild(td(checkValue(g.gstate[0])));
+    row.appendChild(td(checkValue(g.gstate[1])));
+    row.appendChild(td(checkValue(g.line_width)));
+    row.appendChild(td(checkValue(g.point_size)));
+    row.appendChild(td(checkValue(g.draw_bin)));
+
+    const mask = g.isect_mask >>> 0;
+    const bmask = "0b" + mask.toString(2).padStart(32, "0");
+    row.appendChild(td(bmask));
+    row.appendChild(td(checkValue(g.hlight)));
+
+    const bboxModeName = BBoxModeNames[g.bbox_mode] || "?";
+    row.appendChild(td(`${g.bbox_mode} (${bboxModeName})`));
+
+    let bboxTxt = "[not used]";
+    if (g.bbox && typeof g.bbox === 'object') {
+        const { min, max } = g.bbox;
+        if (Array.isArray(min) && Array.isArray(max) && min.length === 3 && max.length === 3) {
+            const allValues = [...min, ...max];
+            if (allValues.some(v => v === -1)) {
+                bboxTxt = "[not used]";
+            } else if (allValues.every(v => Number.isFinite(v))) {
+                bboxTxt = `x: ${g.bbox.min[0].toFixed(1)}, ${g.bbox.max[0].toFixed(1)}\n
+                           y: ${g.bbox.min[1].toFixed(1)}, ${g.bbox.max[1].toFixed(1)}\n
+                           z: ${g.bbox.min[2].toFixed(1)}, ${g.bbox.max[2].toFixed(1)}\n `
+            } else {
+                bboxTxt = JSON.stringify(g.bbox);
+            }
+        }
+    }
+    row.appendChild(td(bboxTxt));
+
+    row.appendChild(td(checkValue(g.udata)));
+    row.appendChild(td(checkValue(g.draw_order)));
+    row.appendChild(td(checkValue(g.decal_plane)));
+
+    if (Array.isArray(g.decal_plane_normal)){
+        row.appendChild(td(checkValue(g.decal_plane_normal[0])));
+        row.appendChild(td(checkValue(g.decal_plane_normal[1])));
+        row.appendChild(td(checkValue(g.decal_plane_normal[2])));
+    } else {
+        row.appendChild(td(""));
+        row.appendChild(td(""));
+        row.appendChild(td(""));
+    }
+    row.appendChild(td(checkValue(g.decal_plane_offset)));
+    row.appendChild(td(checkValue(g.bbox_flux)));
+
+    table.appendChild(row);
+    gsetcounter++;
+}
+        container.appendChild(table);
+
+    const title2 = document.createElement("h2");
+    title2.textContent = "Nodes in PFB file (ERROR)";
+    container.appendChild(title2);
+
+        container.appendChild(nodesTable);
+        document.body.appendChild(container);
+    })();
+
+    downloadJson.disabled = false;
+    pointCloudBtn.disabled = storedVertices.length > 0 ? false : true;
+    showTreeBtn.disabled = storedVertices.length > 0 ? false : true;
+    showLODSbtn.disabled = storedVertices.length > 0 ? false : true;
+    clearLODSbtn.disabled = storedVertices.length > 0 ? false : true;
+    showBBOXbtn.disabled = storedVertices.length > 0 ? false : true;
+    clearBBOXbtn.disabled = storedVertices.length > 0 ? false : true;
+
+  } catch(e) {
+    status.innerHTML = `<div class="warn">Parsing fallito: ${e}</div>`;
+    console.error(e);
+  }
+});
+
+function addPolygons(obj) {
+  const polygons = [];
+  let currentIndex = 0;
+  for (const length of obj.lengths) {
+    const polygon = [];
+    for (let i = 0; i < length; i++) {
+      polygon.push(obj.vertices[currentIndex]);
+      currentIndex++;
+    }
+    polygons.push(polygon);
+  }
+  obj.Polygons = polygons;
+  return obj;
+}
+
+downloadJson.addEventListener('click', () => {
+  if (!meshes) return;
+console.log(meshes,fileData)  
+  annotatedMeshes = {
+    data : {
+        filename: fileData.name,
+        fileDate: fileData.lastModifiedDate,
+        fileSize: fileData.size
+    },
+    meshes:  meshes,
+    LODdata : []
+  };
+console.log(meshes,fileData)  
+  const blob = new Blob([JSON.stringify(annotatedMeshes, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'annotatedMeshes.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* --- parsePFB --- */
+
+// ---------------------------------------------------------
+// FUNZIONI DI UTILIT� (CONVERSIONE DATI)
+// ---------------------------------------------------------
+
+function toInt32LE(raw) {
+    // console.log("Converto ", raw);
+    const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+    const count = raw.byteLength / 4;
+    const result = [];
+    // Esclude gli ultimi 32 byte (8 int) come da logica originale
+    for (let i = 0; ((i < count - 32) && (i + 4 < count - 32)); i++) {
+        result.push(view.getInt32(i * 4, true));
+    }
+    return result;
+}
+
+function toHex32LE(raw) {
+    const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+    const count = raw.byteLength / 4;
+    const result = [];
+    for (let i = 0; ((i < count - 32) && (i + 4 < count - 32)); i++) {
+        const val = view.getUint32(i * 4, true);
+        result.push("0x" + val.toString(16).padStart(8, "0"));
+    }
+    return result;
+}
+
+// ---------------------------------------------------------
+// PROCESSORI SPECIFICI PER TIPO DI LISTA
+// ---------------------------------------------------------
+
+function processGSetList(listObj, arrayBuffer, dataStart, dataEnd, list_count, little) {
+    const raw = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+    const raw32 = new Uint32Array(arrayBuffer.slice(dataStart, dataEnd));
+    const elemByteSize = Math.floor(raw.length / list_count);
+
+    for (let i = 0; i < list_count; i++) {
+        const off = i * elemByteSize;
+        const chunk = raw.subarray(off, off + elemByteSize);
+        const parsedG = parseGSetElement(chunk, little);
+        
+        listObj.elements.push({
+            index: i,
+            offset: toHex32(dataStart + off),
+            offset_dec: dataStart + off,
+            length: chunk.length,
+            struct: parsedG.elements,
+            debug8: parsedG.debug8,
+            debug32: parsedG.debug32,
+            chunk: chunk,
+            raw: raw,
+            raw32: raw32
+        });
+    }
+    listObj.struct = { note: `GSET parsed into ${list_count} elements, each ${elemByteSize} bytes` };
+}
+
+function processNodeList(listObj, arrayBuffer, dataStart, dataEnd) {
+    const raw = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+    const parseResults = parseNodesInList(raw);
+    const nodes = parseResults.elements;
+
+    const intsDec = toInt32LE(raw);
+    const intsHex = toHex32LE(raw);
+
+    for (let i = 0; i < nodes.length; i++) {
+        listObj.elements.push({
+            index: i,
+            offset: toHex32(dataStart + nodes[i].offset_dec),
+            offset_dec: nodes[i].offset_dec,
+            length: nodes[i].length,
+            struct: nodes[i].struct,
+            name: nodes[i].name,
+            typeName: nodes[i].type,
+            raw_int32Dec: intsDec,
+            raw_int32Hex: intsHex,
+            rawFullList: raw
+        });
+    }
+    listObj.struct = { note: `Node list parsed into ${nodes.length} elements` };
+
+//  console.log("DEBUG:", nodes);
+
+    // Restituisce la tabella nodi per aggiornare lo stato globale
+    return parseResults.table;
+}
+
+function processRawList(listObj, arrayBuffer, dataStart, dataEnd) {
+    const rawBytes = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+    const rawBytes32 = new Uint32Array(arrayBuffer.slice(dataStart, dataEnd));
+    
+    listObj.elements.push({
+        index: 0,
+        offset: toHex32(dataStart),
+        offset_dec: dataStart,
+        length: rawBytes.length,
+        dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length, 256)), 1024),
+        textString: bytesToTextString(rawBytes),
+        struct: { note: "Lista non decodificata (raw preserved)." },
+        raw8: rawBytes,
+        raw32: rawBytes32
+    });
+}
+
+function printDataViewPreview(view, vstart, vend, group = 8) {
+    // PRIMA PARTE: Stampa tutti gli int8 in formato hex
+    console.log("HEX DUMP (int8):");
+    let hexLine = "";
+    let asciiLine = "";
+
+    for (let i = vstart; i < vend; i++) {
+        if (i >= view.byteLength) break;
+
+        const val8 = view.getUint8(i);
+        const hex = val8.toString(16).toUpperCase().padStart(2, '0');
+        hexLine += hex + " ";
+
+        // Carattere ASCII (solo caratteri stampabili)
+        const char = (val8 >= 32 && val8 <= 126) ? String.fromCharCode(val8) : ".";
+        asciiLine += char + " ";
+
+        // Raggruppa per 'group' byte
+        if ((i - vstart + 1) % group === 0) {
+            const addr = `0x${i.toString(16).toUpperCase().padStart(4, '0')}`;
+            console.log(`${addr}: ${hexLine.padEnd(group * 3)} | ${asciiLine}`);
+            hexLine = "";
+            asciiLine = "";
+        }
+    }
+
+    // Stampa l'ultima riga se incompleta
+    if (hexLine.length > 0) {
+        const lastAddr = `0x${(vend - 1).toString(16).toUpperCase().padStart(4, '0')}`;
+        console.log(`${lastAddr}: ${hexLine.padEnd(group * 3)} | ${asciiLine}`);
+    }
+
+    console.log(""); // Linea vuota di separazione
+
+    // SECONDA PARTE: La visualizzazione originale con int32
+    console.log("DETAILED VIEW (int32):");
+    let lineAll = "";
+
+    for (let i = vstart; i < vend; i += 4) {
+        if (i + 3 >= view.byteLength) break;
+
+        val32 = view.getUint32(i, true);
+        val32hex = "0x" + val32.toString(16).toUpperCase().padStart(8, '0');
+
+        const idxStr = `0x${i.toString(16).toUpperCase()}`;
+
+        lineAll += parseInt((i - vstart) / 4) + "/" + (i - vstart) + ") " +
+                   idxStr.padEnd(10, " ") + " " +
+                   val32hex.padEnd(12, " ") + " " +
+                   val32.toString().padEnd(12, " ") + "\n";
+    }
+
+    console.log(lineAll);
+}
+
+// ---------------------------------------------------------
+// GESTORE CICLO LISTE
+// ---------------------------------------------------------
+
+function parseDataLists(arrayBuffer, view, startPos, len, little) {
+    let pos = startPos;
+    const lists = [];
+    let parsePFBnodesTable = null;
+
+// console.log("   [parseDataLists] Start cycle")
+// console.log("   [parseDataLists] Using data:")
+// console.log("   [parseDataLists] startPos: 0x", startPos.toString(16))
+// console.log("   [parseDataLists] len:", len)
+// console.log("   [parseDataLists] little:", little)
+    while (pos + 12 <= len) {
+        // Lettura Header Lista
+        const list_id = readInt32(view, pos, little);
+        const list_count = readInt32(view, pos + 4, little);
+        const data_byte_size = readInt32(view, pos + 8, little);
+// console.log("     [parseDataLists cycle] =======================")
+// console.log("     [parseDataLists cycle] list_id: ", list_id + " (" + L_NAMES[list_id] + ")")
+// console.log("     [parseDataLists cycle] list_count: ", list_count)
+// console.log("     [parseDataLists cycle] data_byte_size: ",data_byte_size)
+
+
+        // Check fine file o lista vuota
+        if (list_id === 0 && list_count === 0 && data_byte_size === 0) break;
+
+        const dataStart = pos + 12;
+        const dataEnd = dataStart + data_byte_size;
+        if (dataEnd > len) break;
+
+
+        // Creazione Oggetto Lista Base
+        const listObj = {
+            list_id,
+            list_name: L_NAMES[list_id] || ('Unknown(' + list_id + ')'),
+            count: list_count,
+            offset_header: toHex32(pos),
+            offset_data_start: toHex32(dataStart),
+            offset_end: toHex32(dataEnd - 1),
+            length_bytes: 12 + data_byte_size,
+            raw_data_length: data_byte_size,
+            struct: null,
+            elements: []
+        };
+
+        // --- DISPATCHER LOGICA DI PARSING ---
+        if (list_id === 10 && list_count > 0) {
+            processGSetList(listObj, arrayBuffer, dataStart, dataEnd, list_count, little);
+
+        } else if (list_id === 12 && list_count > 0) { // nodes list (SCS,...?)
+            // NodeList ritorna una tabella che serve all'esterno
+            parsePFBnodesTable = processNodeList(listObj, arrayBuffer, dataStart, dataEnd);
+        } else if (SLIST_IDS.has(list_id)) {
+            parseSListElements(arrayBuffer, view, dataStart, dataEnd, list_id, little, listObj);
+
+        } else if (list_id === 0 || list_id === 1 || list_id === 2) {
+            parseListFixedElements(arrayBuffer, view, dataStart, dataEnd, list_id, list_count, little, listObj);
+
+        } else {
+            processRawList(listObj, arrayBuffer, dataStart, dataEnd);
+        }
+
+        lists.push(listObj);
+        pos = dataEnd; // Avanzamento cursore
+//console.log("     [parseDataLists cycle] next parse will start at ", pos, "0x"+pos.toString(16) )
+    }
+
+    return { lists, parsePFBnodesTable };
+}
+
+// ---------------------------------------------------------
+// FUNZIONE PRINCIPALE
+// ---------------------------------------------------------
+
+
+// Dopo aver parsato tutti i nodi:
+function buildHierarchy(allNodes) {
+    console.log("=== COSTRUZIONE GERARCHIA COMPLETA ===");
+
+    const hierarchy = {
+        nodes: [],
+        rootNodes: [],
+        stats: {
+            totalNodes: allNodes.length,
+            byType: {},
+            lodsWithChildren: 0,
+            groupsWithChildren: 0
+        }
+    };
+
+    // Prima passata: crea tutti i nodi nella gerarchia
+    allNodes.forEach((originalNode, index) => {
+        const node = {
+            id: index,
+            type: originalNode.type,
+            typeName: originalNode.typeName,
+            name: originalNode.name || `node_${index}`,
+            originalStruct: originalNode.struct,
+            children: [], // Sarà popolato con riferimenti ai nodi figli
+            parent: null,
+            byteLength: originalNode.byteLength,
+            offset: originalNode.offset
+        };
+
+        // Statistiche per tipo
+        if (!hierarchy.stats.byType[node.typeName]) {
+            hierarchy.stats.byType[node.typeName] = 0;
+        }
+        hierarchy.stats.byType[node.typeName]++;
+
+        hierarchy.nodes.push(node);
+    });
+
+    // Seconda passata: collega i figli
+    hierarchy.nodes.forEach((node, index) => {
+        const originalNode = allNodes[index];
+
+        if (originalNode.struct && originalNode.struct.children) {
+            const childIndices = originalNode.struct.children;
+
+//console.log(`Nodo ${index} (${node.typeName} "${node.name}") ha ${childIndices.length} figli:`, childIndices);
+
+            childIndices.forEach(childIndex => {
+                // Gli indici potrebbero essere 0-based o 1-based
+                // Proviamo entrambi se necessario
+                let actualIndex = childIndex;
+
+                // Se l'indice è fuori range, prova come 0-based
+                if (actualIndex < 0 || actualIndex >= hierarchy.nodes.length) {
+                    console.warn(`  Indice figlio ${actualIndex} fuori range, skipping`);
+                    return;
+                }
+
+                const childNode = hierarchy.nodes[actualIndex];
+                if (childNode) {
+                    node.children.push(childNode);
+                    childNode.parent = node;
+
+                    // Statistiche
+                    if (node.typeName === "LOD") hierarchy.stats.lodsWithChildren++;
+                    if (node.typeName === "GROUP") hierarchy.stats.groupsWithChildren++;
+
+//console.log(`  -> Collegato a figlio: ${actualIndex} (${childNode.typeName} "${childNode.name}")`);
+                } else {
+//console.warn(`  Figlio ${actualIndex} non trovato`);
+                }
+            });
+        }
+    });
+
+    // Terza passata: trova i nodi radice (senza parent)
+    hierarchy.rootNodes = hierarchy.nodes.filter(node => node.parent === null);
+
+//     console.log("=== GERARCHIA COMPLETATA ===");
+//     console.log("Statistiche:", hierarchy.stats);
+//     console.log("Nodi radice:", hierarchy.rootNodes.length);
+//     console.log("Nodi totali nella gerarchia:", hierarchy.nodes.length);
+
+    return hierarchy;
+}
+
+// Funzione helper per esplorare la gerarchia in console
+function exploreHierarchy(hierarchy, maxDepth = 3) {
+    console.log("=== ESPLORAZIONE GERARCHIA ===");
+
+    function printNode(node, depth = 0, prefix = "") {
+        if (depth > maxDepth) return;
+
+        const indent = "  ".repeat(depth);
+        const childInfo = node.children.length > 0 ? ` [${node.children.length} figli]` : "";
+        console.log(`${indent}${prefix}${node.typeName} "${node.name}" (id:${node.id})${childInfo}`);
+
+        if (node.typeName === "LOD" && node.originalStruct) {
+            console.log(`${indent}  Ranges: ${node.originalStruct.ranges}`);
+            console.log(`${indent}  Center: ${node.originalStruct.coords}`);
+        }
+
+        node.children.forEach((child, idx) => {
+            const isLast = idx === node.children.length - 1;
+            const newPrefix = isLast ? "└── " : "├── ";
+            printNode(child, depth + 1, newPrefix);
+        });
+    }
+
+    hierarchy.rootNodes.forEach((rootNode, idx) => {
+        console.log(`\n--- ALBERO RADICE ${idx + 1} ---`);
+        printNode(rootNode);
+    });
+
+    return hierarchy;
+}
+
+
+
+
+function parsePFB(arrayBuffer) {
+    const view = new DataView(arrayBuffer);
+    const len = arrayBuffer.byteLength;
+
+console.log("[parsePFB] start");
+    if (len < 16) throw new Error('File troppo piccolo.');
+
+    // 1. Parsing Header File
+    const hLE = [readInt32(view, 0, true), readInt32(view, 4, true), readInt32(view, 8, true), readInt32(view, 12, true)];
+    const hBE = [readInt32(view, 0, false), readInt32(view, 4, false), readInt32(view, 8, false), readInt32(view, 12, false)];
+
+    let little;
+    if (hLE[1] === 26 && hLE[3] >= 0 && hLE[3] < len) little = true;
+    else if (hBE[1] === 26 && hBE[3] >= 0 && hBE[3] < len) little = false;
+    else { little = true; console.warn("Non trovato header versione 26; assumo little-endian"); }
+
+    const version = (little ? hLE[1] : hBE[1]);
+    const listsStart = (little ? hLE[3] : hBE[3]);
+
+    if (listsStart < 0 || listsStart >= len) throw new Error('Offset liste invalido: ' + listsStart);
+
+console.log("[parsePFB] Parsing lists...");
+
+    // 2. Parsing Liste Dati (Logica estratta)
+    const { lists, parsePFBnodesTable } = parseDataLists(arrayBuffer, view, listsStart, len, little);
+
+console.log("[parsePFBMain] lists", lists);
+
+sceneHierarchy = buildHierarchy(lists[10].elements);
+
+/*
+// USO:
+const allNodes = parseNodesInList(raw); // Il tuo codice esistente
+const hierarchy = buildHierarchy(allNodes.elements);
+const explorableHierarchy = exploreHierarchy(hierarchy);
+
+// Salva in una variabile globale per esplorazione in console
+window.sceneHierarchy = explorableHierarchy;
+
+console.log("💡 Usa 'sceneHierarchy' in console per esplorare la scena!");
+console.log("💡 Esempi:");
+console.log("   sceneHierarchy.nodes[0] - primo nodo");
+console.log("   sceneHierarchy.rootNodes - tutti i nodi radice");
+console.log("   sceneHierarchy.stats - statistiche");
+*/
+    // 3. Costruzione JSON finale
+    const json = {
+        parsed_at: (new Date()).toISOString(),
+        file_size: len,
+        detected_version: version,
+        little_endian_assumed: little,
+        lists: lists
+    };
+
+    // Debug info
+    GSETSlist = lists.filter(l => l.list_id === 10).flatMap(l => l.elements.map(e => e.struct));
+    if (GSETSlist.length) console.log("[parsePFB] Gsets found in file:", GSETSlist);
+
+    return { json, nodesTable: parsePFBnodesTable };
+}
+
+function parseSListElements(arrayBuffer, view, start, end, list_id, little, listObj) {
+  let p = start;
+  const total = end;
+  const unitSize = (() => {
+    switch(list_id) {
+      case 4: return UNIT_SIZES.L_LLIST;
+      case 5: return UNIT_SIZES.L_VLIST;
+      case 6: return UNIT_SIZES.L_CLIST;
+      case 7: return UNIT_SIZES.L_NLIST;
+      case 8: return UNIT_SIZES.L_TLIST;
+      case 9: return UNIT_SIZES.L_ILIST;
+      default: return 1;
+    }
+  })();
+
+  let index = 0;
+  while (p + 12 <= total) {
+    const elem_count = readInt32(view, p, little);
+    const memtype = readInt32(view, p+4, little);
+    const udata   = readInt32(view, p+8, little);
+    const headerPos = p;
+    p += 12;
+    let bytesLen = elem_count * unitSize;
+    if (bytesLen < 0) bytesLen = 0;
+    if (p + bytesLen > total) {
+      const raw = new Uint8Array(arrayBuffer.slice(headerPos, total));
+      listObj.elements.push({
+        index, offset: toHex32(headerPos), offset_dec: headerPos, length: raw.length,
+        dataHex_preview: bytesToHex(raw.subarray(0,256)),
+        textString: bytesToTextString(raw), struct: { error: "Troncamento S-LIST" }, raw
+      });
+      break;
+    }
+
+    const rawBytes = new Uint8Array(arrayBuffer.slice(p, p+bytesLen));
+    let elemStruct = null;
+
+    if (list_id === 4) {
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      const ints = [];
+      for (let i=0;i<elem_count;i++) ints.push(readInt32(dv, i*4, little));
+      elemStruct = { ints };
+    } else if (list_id === 5) {
+      const verts = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        verts.push({ x: readFloat32(dv, base, little), y: readFloat32(dv, base+8, little), z: readFloat32(dv, base+4, little)});
+      }
+      elemStruct = { vertices: verts };
+    } else if (list_id === 6) {
+      const cols = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*16;
+        cols.push({ r: readFloat32(dv, base, little), g: readFloat32(dv, base+4, little), b: readFloat32(dv, base+8, little), a: readFloat32(dv, base+12, little) });
+      }
+      elemStruct = { colors: cols };
+    } else if (list_id === 7) {
+      const normals = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){ const base=i*12; normals.push({ nx: readFloat32(dv, base, little), ny: readFloat32(dv, base+4, little), nz: readFloat32(dv, base+8, little)}); }
+      elemStruct = { normals };
+    } else if (list_id === 8) {
+      const tcs = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){ const base=i*8; tcs.push({ u: readFloat32(dv, base, little), v: readFloat32(dv, base+4, little)}); }
+      elemStruct = { texcoords: tcs };
+    } else if (list_id === 9) {
+      const idx = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++) idx.push(dv.getUint16(i*2, little));
+      elemStruct = { indices: idx };
+    }
+
+    listObj.elements.push({
+      index, offset: toHex32(headerPos), offset_dec: headerPos, header: { elem_count, memtype, udata },
+      length: 12 + bytesLen,
+      dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length,256))), textString: bytesToTextString(rawBytes),
+      struct: elemStruct, raw: rawBytes
+    });
+    p += bytesLen;
+    index++;
+  }
+  listObj.struct = { note: "SList decoded into per-element structs (unit-based) if applicable." };
+}
+
+function parseListFixedElements(arrayBuffer, view, start, end, list_id, count, little, listObj) {
+  let p = start; let idx = 0;
+  while (p < end && idx < Math.max(1,count)) {
+    if (list_id === 0) {
+      const needed = 72;
+      if (p + needed > end) { const raw = new Uint8Array(arrayBuffer.slice(p, end)); listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { error: "MTL truncated" } }); break; }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const side = readInt32(dv,0,true);
+      const alpha = readFloat32(dv,4,true);
+      const shininess = readFloat32(dv,8,true);
+      const ambient = { x: readFloat32(dv,12,true), y: readFloat32(dv,16,true), z: readFloat32(dv,20,true) };
+      const diffuse = { x: readFloat32(dv,24,true), y: readFloat32(dv,28,true), z: readFloat32(dv,32,true) };
+      const specular = { x: readFloat32(dv,36,true), y: readFloat32(dv,40,true), z: readFloat32(dv,44,true) };
+      const emission = { x: readFloat32(dv,48,true), y: readFloat32(dv,52,true), z: readFloat32(dv,56,true) };
+      const cmode0 = readInt32(dv,60,true), cmode1 = readInt32(dv,64,true), udata = readInt32(dv,68,true);
+      const s = { side, alpha, shininess, ambient, diffuse, specular, emission, cmode:[cmode0,cmode1], udata };
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: needed, dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), struct: s });
+      p += needed; idx++;
+    } else if (list_id === 2) {
+      const needed = 28;
+      if (p + needed > end) { const raw = new Uint8Array(arrayBuffer.slice(p, end)); listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { error: "TENV truncated" } }); break; }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const mode = readInt32(dv,0,true), component = readInt32(dv,4,true);
+      const color = [readFloat32(dv,8,true), readFloat32(dv,12,true), readFloat32(dv,16,true), readFloat32(dv,20,true)];
+      const udata = readInt32(dv,24,true);
+      const s = { mode, component, color, udata };
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: needed, dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), struct: s });
+      p+=needed; idx++;
+    } else {
+      const raw = new Uint8Array(arrayBuffer.slice(p, end));
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { note: "Lista fissa non decodificata (opzione B)." } });
+      break;
+    }
+  }
+  listObj.struct = { note: "LIST strutturata (parsing applicato per MTL/TEX/TENV)" };
+}
+
+function parseGSetElement(chunkBytes, little) {
+  const view = new DataView(chunkBytes.buffer, chunkBytes.byteOffset, chunkBytes.byteLength);
+  let offset = 0;
+  const version = 26;
+  const result = {};
+
+ // --- Debug arrays ---
+  // debug8: tutti i byte come interi 0-255
+  const debug8 = Array.from(chunkBytes);
+
+  // debug32: interi a 32 bit (little-endian), quanti ne entrano nel buffer
+  const debug32 = [];
+  for (let i = 0; i + 3 < chunkBytes.length; i += 4) {
+    debug32.push(view.getInt32(i, true)); // true = little-endian
+  }
+
+
+  function readInt32() {
+      const value = view.getInt32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readUint32() {
+      const value = view.getUint32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readFloat32() {
+      const value = view.getFloat32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readFloat64() {
+      const value = view.getFloat64(offset, true);
+      offset += 8;
+      return value;
+  }
+  function readInt32Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readInt32());
+      }
+      return arr;
+  }
+  function readFloat32Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readFloat32());
+      }
+      return arr;
+  }
+  function readFloat64Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readFloat64());
+      }
+      return arr;
+  }
+
+  if (version >= 26) {
+      result.ptype = readInt32();
+      result.pcount = readInt32();
+      result.llist = readInt32();
+      result.vlist = readInt32Array(3);
+      result.clist = readInt32Array(3);
+      result.nlist = readInt32Array(3);
+      result.tlist = readInt32Array(3);
+      result.draw_mode = readInt32Array(3);
+      result.gstate = readInt32Array(2);
+      result.line_width = readFloat32();
+      result.point_size = readFloat32();
+      result.draw_bin = readInt32();
+      result.isect_mask = readUint32();
+      result.hlight = readInt32();
+      result.bbox_mode = readInt32();
+      result.bbox = {
+          min: readFloat32Array(3),
+          max: readFloat32Array(3)
+      };
+      result.udata = readInt32();
+      result.draw_order = readInt32();
+      result.decal_plane = readInt32();
+      result.decal_plane_normal = readFloat32Array(3);
+      result.decal_plane_offset = readFloat32();
+      result.bbox_flux = readInt32();
+  }
+
+  return {
+    elements: result,
+    debug8: debug8,
+    debug32: debug32};
+}
+
+
+
+
+
+
+
+
+
+
+
+function parseNodesInList(raw) {
+    const dv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+    const elements = [];
+    let pos = 0;
+    let idx = 0;
+
+
+    const container = document.createElement("div");
+    container.style.marginTop = "20px";
+    const table = document.createElement("table");
+    table.style.borderCollapse = "collapse";
+    table.style.width = "100%";
+    table.style.fontSize = "13px";
+
+    function th(txt) {
+        const e = document.createElement("th");
+        e.textContent = txt;
+        e.style.border = "1px solid #777";
+        e.style.padding = "4px 6px";
+        e.style.background = "#eee";
+        return e;
+    }
+
+    function td(txt) {
+        const e = document.createElement("td");
+        e.textContent = txt;
+        e.style.border = "1px solid #ccc";
+        e.style.padding = "4px 6px";
+        return e;
+    }
+
+    const header = document.createElement("tr");
+    header.appendChild(th("Index"));
+    header.appendChild(th("Offset"));
+    header.appendChild(th("Length"));
+    header.appendChild(th("Type"));
+    header.appendChild(th("Type Name"));
+    header.appendChild(th("Name"));
+    header.appendChild(th("Raw Preview"));
+    table.appendChild(header);
+
+    //  Loop con parsePfbNode
+    nodeNum = 0;
+    while (pos < dv.byteLength && idx < 10000) {
+        const result = parsePfbNode(dv, pos);
+        nodeNum++;
+
+        if (!result) {
+            console.log(`Failed to parse node at offset ${pos}`);
+            break;
+        }
+
+        const { node, nodeLen, nodeStruct } = result;
+
+        elements.push({
+            index: idx,
+            offset_dec: pos,
+            length: node.byteLength,
+            raw: new Uint8Array(dv.buffer, dv.byteOffset + pos, node.byteLength),
+            struct: nodeStruct,
+            name: node.name,
+            type: node.typeName
+        });
+
+
+
+        // Aggiungi alla tabella HTML
+        const row = document.createElement("tr");
+        row.appendChild(td(idx));
+        row.appendChild(td(pos.toString(16)));
+        row.appendChild(td(nodeLen));
+        row.appendChild(td(node.type));
+        row.appendChild(td(node.typeName + "(" + nodesCounter[node.typeName] +  ")"));
+        row.appendChild(td(node.name || "(unnamed)"));
+        row.appendChild(td(JSON.stringify(nodeStruct,null,4)));
+        table.appendChild(row);
+        pos = pos + nodeLen;
+        idx++;
+
+
+    }
+
+console.log(nodesCounter);
+console.log("lodsPerRanges=",lodsPerRanges);
+
+    container.appendChild(table);
+    document.body.appendChild(container);
+
+    return {
+        elements: elements,
+        table: table
+    };
+}
+
+
+function dump(dataView, offset, bufSize, payloadStart, payloadEnd) {
+    // HEX DUMP (int8) - una riga sola
+    let hexLine = "HEX: ";
+    const bytesToPrint = Math.min(bufSize * 4, 128);
+    bufferSize = -1;
+    nodeType = -1;
+    nodeElementsCount = -1;
+    for (let i = offset; i < offset + bytesToPrint; i++) {
+        if (i >= dataView.byteLength) break;
+        hexLine += dataView.getUint8(i).toString(16).toUpperCase().padStart(2, '0') + " ";
+    }
+    console.log(hexLine);
+
+    // INT32 SEQUENCE - una riga sola
+    let int32Line = "INT32: ";
+    const int32ToPrint = Math.min(bufSize, 128);
+    for (let i = 0; i < int32ToPrint; i++) {
+        const currentOffset = offset + i * 4;
+        if (currentOffset + 3 >= dataView.byteLength) break;
+        int32Line += dataView.getInt32(currentOffset, true) + " ";
+    }
+    console.log(int32Line);
+}
+
+function parsePfbNode(dataView, offset) {
+    let nodeStruct = "not implemented";
+
+    if (offset + 4 > dataView.byteLength) {
+        return null;
+    }
+
+    const bufSize = dataView.getInt32(offset, true);
+    if (bufSize <= 0 || bufSize > 2000000) {
+        console.log("ERRORE, dimensioni nodo impossibili:", bufSize);
+        return null;
+    }
+
+
+    const payloadStart = offset + 4;
+    const payloadEnd = payloadStart + bufSize * 4 - 4;
+    if (payloadEnd > dataView.byteLength) return null;
+
+
+/// STAMPA SEQUENZA RAW in INT8 e INT32
+//console.log("*******************************");
+//dump(dataView, offset, bufSize, payloadStart, payloadEnd)
+
+    // --- Legge il nome del nodo, se disponibile ---
+    let name = "n/a";
+    const nameLenOffset = payloadEnd + 4;
+    let nameStart = nameLenOffset + 4;
+    let nameEnd = nameStart;
+    let nodeLen = 4 + bufSize*4;
+    const nameLen = dataView.getInt32(nameLenOffset, true);
+    if (nameLen != -1) {
+//console.log("Nome: Sì, estraggo...");
+      nodeLen = nodeLen + 4 +  nameLen;
+      nameStart = nameLenOffset + 4;
+      nameEnd = nameStart +  nameLen - 1;
+      try {
+        name = new TextDecoder().decode( new Uint8Array(dataView.buffer, nameStart, nameLen) );
+//console.log("    Nome:", name);
+
+      } catch (e) {
+          console.log("Niente nome...");
+      }
+    } else {
+//console.log("Nome: no");
+
+        nodeLen += 4; // salta il -1 che  dice  che non c'è nome
+        // nodo senza nome
+    }
+
+
+    // --- Leggi il tipo ---
+    const nodeType = dataView.getInt32(payloadStart, true);
+
+    children = [];
+
+const nodeTypeName = NodeTypes[nodeType];
+
+if (typeof nodesCounter[nodeTypeName] === 'undefined') {
+    nodesCounter[nodeTypeName] = 0;  // Inizia da 1 per il primo nodo
+} else {
+    nodesCounter[nodeTypeName]++;
+}
+
+
+    // --- Elabora nodo in base al tipo ---
+if (nodeType === 11) { // LOD
+    let ranges = [];
+    let trans = [];
+    let coords = [];
+    let lodState = -1;
+    let lodStateIndex = -1;
+    let children = [];
+    let offset = payloadStart;
+
+    // SKIP: I primi 4 byte sono il nodeType (11) che abbiamo già letto
+    offset += 4;
+
+    // LEGGI count
+    const count = dataView.getUint32(offset, true);
+//console.log(nodeNum,"    =============== Nodo LOD di ", count, " ranges/transizioni.");
+
+    if (!lodsPerRanges[count]) {
+        lodsPerRanges[count] = { 
+            lodsCount: 0,
+            sum : 0
+        };
+    }
+    lodsPerRanges[count].lodsCount++;
+    lodsPerRanges[count].sum += count;
+    
+    offset += 4;
+
+    // Leggi ranges
+    for (let i = 0; i <= count; i++) {
+        const val = dataView.getFloat32(offset, true);
+        ranges.push(val);
+        offset += 4;
+    }
+
+    // Leggi transitions
+    for (let i = 0; i <= count; i++) {
+        const val = dataView.getFloat32(offset, true);
+        trans.push(val);
+        offset += 4;
+    }
+
+    // Leggi center coordinates (3 float)
+    for (let i = 0; i < 3; i++) {
+        const coord = dataView.getFloat32(offset, true);
+        coords.push(coord);
+        offset += 4;
+    }
+
+    // Leggi lodState e lodStateIndex (come byte)
+    lodState = dataView.getInt8(offset);
+    offset += 1;
+    lodStateIndex = dataView.getInt8(offset);
+    offset += 1;
+
+    // --- CORREZIONE: I FIGLI SONO INDICI, NON NODI COMPLETI ---
+//console.log("    LOD: cercando INDICI dei figli a offset", offset.toString(16));
+
+    // Leggi il numero di figli (potrebbe essere -1 = nessun figlio)
+    const numChildren = dataView.getInt32(offset, true);
+    offset += 4;
+
+    if (numChildren === -1) {
+//console.log("    LOD: nessun figlio (terminatore -1)");
+    } else {
+//console.log("    LOD ha", numChildren, "figli (riferimenti)");
+
+        // Leggi gli INDICI dei figli
+        for (let i = 0; i < numChildren; i++) {
+            const childIndex = dataView.getInt32(offset, true);
+            offset += 4;
+            children.push(childIndex);
+//console.log("    -> Figlio", i, "indice:", childIndex);
+        }
+    }
+
+    const LODstruct = {
+        ranges,
+        trans,
+        coords,
+        lodState,
+        lodStateIndex,
+        children: children, // Ora sono INDICI, non nodi completi
+        name: name,
+        typeName: "LOD"
+    };
+    nodeStruct = LODstruct;
+    
+LODSlist.push(LODstruct)    
+//console.log(LODstruct);
+
+    } else if (nodeType === 2) { // GEODE
+        offset += 8;
+
+        const count = dataView.getUint32(offset, true);
+//console.log("==============================");
+//console.log(nodeNum,"    Nodo GEODE  di ", count , " oggetti.");
+        offset += 4;
+
+} else if (nodeType === 5) { // GROUP
+    children = [];
+    offset += 8; // Skip type e altri dati
+
+    const numChildren = dataView.getInt32(offset, true);
+    offset += 4;
+
+    if (numChildren === -1) {
+//console.log(nodeNum,"    GROUP: nessun figlio (terminatore -1)");
+    } else {
+//console.log(nodeNum,"    GROUP di", numChildren, "figli (indici)");
+
+        // Leggi gli INDICI dei figli
+        for (let i = 0; i < numChildren; i++) {
+            const childIndex = dataView.getInt32(offset, true);
+            offset += 4;
+            children.push(childIndex);
+//console.log("    -> Figlio gruppo", i, "indice:", childIndex);
+        }
+    }
+
+    nodeStruct = {
+        children: children, // INDICI, non nodi completi
+        name: name,
+        typeName: "GROUP"
+    };
+
+
+//console.log("Struttura ", nodeNum, ":", nodeStruct);
+} else {
+//console.log(nodeNum," - nodo di tipo ",NodeTypes[nodeType])
+}
+
+
+    const isCustom = (nodeType & 0x10000000) !== 0;
+    const cleanType = isCustom ? (nodeType & 0xFFFF) : nodeType;
+    const typeName = NODE_NAMES[cleanType] || `Unknown(${cleanType})`;
+
+    nodeStruct.typeName = typeName;
+
+    return {
+        node: {
+            type: cleanType,
+            typeName : typeName,
+            name : name,
+            custom: isCustom,
+            data: {},
+            children: children,
+            byteLength: nodeLen
+        },
+        nodeLen,
+        nodeStruct
+    };
+}
+
+
+
+
+////////////////////////
+
+
+function parseLODPayload(payload) {
+    const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+    const tlods = [];
+    let pos = 0;
+    while (pos + 4*5 <= payload.length) {
+        const r0 = dv.getFloat32(pos, true); pos += 4;
+        const r1 = dv.getFloat32(pos, true); pos += 4;
+        const b0 = dv.getFloat32(pos, true); pos += 4;
+        const b1 = dv.getFloat32(pos, true); pos += 4;
+        const b2 = dv.getFloat32(pos, true); pos += 4;
+        const udata = dv.getInt32(pos, true); pos += 4;
+        tlods.push({
+            range: [r0.toFixed(4), r1.toFixed(4)],
+            bias: [b0.toFixed(4), b1.toFixed(4), b2.toFixed(4)],
+            udata: udata
+        });
+    }
+console.log(tlods)    
+    return tlods;
+}
+
+function extractVerticesFromParsedJSON(parsed) {
+  storedVertices = [];
+  llist = []; vlist = [];
+  meshData = [];
+
+  for (const lst of parsed.lists) {
+    if (lst.list_id === 5) {
+      vlist = lst.elements;
+      for (const elem of lst.elements) {
+        if (elem.struct && elem.struct.vertices) {
+          for (const v of elem.struct.vertices) {
+            storedVertices.push([v.x || 0, v.y || 0, v.z || 0]);
+          }
+        }
+      }
+    }
+    if (lst.list_id === 4) {
+      llist = lst.elements;
+    }
+  }
+
+  const gsetLists = parsed.lists.filter(l=>l.list_id===10);
+  for (const gList of gsetLists) {
+    for (let gi = 0; gi < gList.elements.length; gi++) {
+      const el = gList.elements[gi];
+      const g = el.struct;
+      if (!g) continue;
+
+      const lidx = (typeof g.llistIndex === 'number' && g.llistIndex >=0) ? g.llistIndex : null;
+      const vidx = (typeof g.vlistIndex === 'number' && g.vlistIndex >=0) ? g.vlistIndex : null;
+      let lengths = [];
+      if (lidx !== null && parsed.lists.some(l=>l.list_id===4 && l.elements[lidx])) {
+        const ll = parsed.lists.find(l=>l.list_id===4);
+        if (ll && ll.elements[lidx] && ll.elements[lidx].struct && ll.elements[lidx].struct.ints) lengths = ll.elements[lidx].struct.ints.slice();
+      }
+      let verts = [];
+      if (vidx !== null && parsed.lists.some(l=>l.list_id===5 && l.elements[vidx])) {
+        const vl = parsed.lists.find(l=>l.list_id===5);
+        if (vl && vl.elements[vidx] && vl.elements[vidx].struct && vl.elements[vidx].struct.vertices) verts = vl.elements[vidx].struct.vertices.slice();
+      }
+      meshData.push({ gset: g, lengths, vertices: verts, gsetListIndex: gi });
+    }
+  }
+
+
+}
+
+const canvas = document.getElementById('babylonCanvas');
+canvas.addEventListener('wheel', function(event) {
+  event.preventDefault();
+}, { passive: false });
+
+let engineRef = null, sceneRef = null, createdMeshes = [];
+
+
+showTreeBtn.addEventListener('click', () => {
+    displayFullHierarchy(sceneHierarchy);
+});
+
+pointCloudBtn.addEventListener('click', () => {
+  if (!currentJSON) return;
+  if (engineRef) { try { engineRef.dispose(); } catch(e){} }
+  engineRef = new BABYLON.Engine(canvas, true);
+  const scene = new BABYLON.Scene(engineRef);
+  sceneRef = scene;
+  scene.clearColor = new BABYLON.Color4(0.98,0.98,0.98,1);
+  const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2, Math.PI/2.5, 50, BABYLON.Vector3.Zero(), scene);
+  camera.attachControl(canvas, true);
+  new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0,1,0), scene);
+
+  if (storedVertices.length > 0) {
+    const pcs = new BABYLON.PointsCloudSystem("pcs", { capacity: storedVertices.length, scene });
+    pcs.addPoints(storedVertices.length, (p,i) => { const v = storedVertices[i]; p.position.set(v[0], v[1], v[2]); p.color = new BABYLON.Color4(0.1,0.1,0.1,0.6); });
+    pcs.buildMeshAsync().then(()=>{ pcs.mesh.material.pointSize = 1; });
+  }
+
+  createdMeshes.forEach(m=>m.dispose && m.dispose());
+  createdMeshes = buildMeshesFromGSet(scene);
+
+
+  engineRef.runRenderLoop(()=>scene.render());
+  window.addEventListener('resize', ()=>engineRef.resize());
+});
+
+
+
+
+showLODSbtn.addEventListener('click', () => {
+  if (!engineRef || !sceneRef) return;
+  
+  const scene = sceneRef;
+  
+  // Rimuovi le sferette precedenti se esistono
+  if (window.lodSpheres) {
+    window.lodSpheres.forEach(sphere => sphere.dispose());
+  }
+  window.lodSpheres = [];
+  
+  // Colori diversi in base al numero di ranges
+  const colorScheme = {
+    2: new BABYLON.Color4(1, 0, 0, 1),     // Rosso - 2 ranges
+    3: new BABYLON.Color4(0, 1, 0, 1),     // Verde - 3 ranges  
+    4: new BABYLON.Color4(0, 0, 1, 1),     // Blu - 4 ranges
+    5: new BABYLON.Color4(1, 1, 0, 1),     // Giallo - 5 ranges
+    6: new BABYLON.Color4(1, 0, 1, 1)      // Magenta - 6 ranges
+  };
+  
+  // Itera su tutti i LOD
+  LODSlist.forEach((lod, index) => {
+    // Converti le coordinate da stringhe a numeri
+    const x = parseFloat(lod.coords[0]);
+    const z = parseFloat(lod.coords[1]); 
+    const y = -parseFloat(lod.coords[2]);    
+    // Crea la sferetta
+    const sphere = BABYLON.MeshBuilder.CreateBox(`lodBox_${index}`, {
+      width: 1,    // base
+      depth: 1,    // base
+      height: 3 * lod.ranges.length
+    }, scene);
+    
+    // Posiziona la sfera al centro del LOD
+    sphere.position = new BABYLON.Vector3(x, y + 1.5* lod.ranges.length, z);
+    
+    // Crea materiale con colore in base al numero di ranges
+    const material = new BABYLON.StandardMaterial(`lodMat_${index}`, scene);
+    const rangeCount = lod.ranges.length;
+    const color = new BABYLON.Color4(0.5, 0.5, 0.5, 1); // Grigio per altri valori
+
+    material.diffuseColor = new BABYLON.Color3(color.r, color.g, color.b);
+    material.alpha = color.a;
+    sphere.material = material;
+    
+    // Aggiungi etichetta con informazioni del LOD
+    const label = createLODLabel(scene, sphere, lod, index, rangeCount,x,y,z,3 * lod.ranges.length);
+    
+    window.lodSpheres.push(sphere);
+  });
+  
+  console.log(`Visualizzati ${window.lodSpheres.length} centri LOD`);
+});
+
+
+
+
+showBBOXbtn.addEventListener('click', () => {
+  if (!engineRef || !sceneRef) return;
+
+  const scene = sceneRef;
+
+  // Rimuovi i bounding box precedenti se esistono
+  if (window.bboxMeshes) {
+    window.bboxMeshes.forEach(mesh => mesh.dispose());
+  }
+  window.bboxMeshes = [];
+
+  // Colori diversi per i bounding box
+  const colorScheme = [
+    new BABYLON.Color4(1, 0, 0, 0.3),     // Rosso trasparente
+    new BABYLON.Color4(0, 1, 0, 0.3),     // Verde trasparente
+    new BABYLON.Color4(0, 0, 1, 0.3),     // Blu trasparente
+    new BABYLON.Color4(1, 1, 0, 0.3),     // Giallo trasparente
+    new BABYLON.Color4(1, 0, 1, 0.3),     // Magenta trasparente
+    new BABYLON.Color4(0, 1, 1, 0.3)      // Ciano trasparente
+  ];
+
+  // Itera su tutti i GSET
+  GSETSlist.forEach((gset, index) => {
+    if (gset.bbox) {
+      const bbox = gset.bbox;
+
+      // Converti le coordinate min e max
+      const minX = parseFloat(bbox.min[0]);
+      const minY = parseFloat(bbox.min[2]); // Inverti Z per Y
+      const minZ = parseFloat(bbox.min[1]);
+
+      const maxX = parseFloat(bbox.max[0]);
+      const maxY = parseFloat(bbox.max[2]); // Inverti Z per Y
+      const maxZ = parseFloat(bbox.max[1]);
+
+      // Calcola dimensioni del bounding box
+      const width = maxX - minX;
+      const height = maxY - minY;
+      const depth = maxZ - minZ;
+
+      // Calcola centro del bounding box
+      const centerX = minX + width / 2;
+      const centerY = minY + height / 2;
+      const centerZ = minZ + depth / 2;
+
+      // Crea il box per il bounding volume
+      const bboxMesh = BABYLON.MeshBuilder.CreateBox(`bbox_${index}`, {
+        width: width,
+        height: height,
+        depth: depth
+      }, scene);
+
+      // Posiziona il box al centro del bounding volume
+      bboxMesh.position = new BABYLON.Vector3(centerX, centerY, centerZ);
+
+      // Crea materiale trasparente
+      const material = new BABYLON.StandardMaterial(`bboxMat_${index}`, scene);
+      const color = colorScheme[index % colorScheme.length];
+
+      material.diffuseColor = new BABYLON.Color3(color.r, color.g, color.b);
+      material.alpha = color.a;
+      material.specularColor = new BABYLON.Color3(0, 0, 0);
+
+      // Rendi il materiale trasparente e wireframe per vedere attraverso
+      material.wireframe = true;
+      material.backFaceCulling = false;
+
+      bboxMesh.material = material;
+
+      // Aggiungi etichetta con informazioni del GSET
+      const label = createBBoxLabel(scene, bboxMesh, gset, index, minX, minY, minZ, maxX, maxY, maxZ);
+
+      window.bboxMeshes.push(bboxMesh);
+
+      console.log(`GSET ${index}: BBox [${bbox.min}] -> [${bbox.max}], Dim: ${width.toFixed(2)}x${height.toFixed(2)}x${depth.toFixed(2)}`);
+    }
+  });
+
+  console.log(`Visualizzati ${window.bboxMeshes.length} bounding box GSET`);
+});
+
+// Funzione per creare etichette per i bounding box
+function createBBoxLabel(scene, bboxMesh, gset, index, minX, minY, minZ, maxX, maxY, maxZ) {
+  // Crea un piano per il testo
+  const plane = BABYLON.MeshBuilder.CreatePlane(`bboxLabel_${index}`, {
+    width: 6,
+    height: 2
+  }, scene);
+
+  // Posiziona il piano sopra il bounding box
+  plane.position = bboxMesh.position.clone();
+  plane.position.x -=1
+  plane.position.y += (maxY - minY) / 2 - 2;
+
+  // Crea texture dinamica per il testo
+  const dynamicTexture = new BABYLON.DynamicTexture(`bboxTexture_${index}`, {
+    width: 256,
+    height: 128
+  }, scene);
+
+  const material = new BABYLON.StandardMaterial(`bboxLabelMat_${index}`, scene);
+  material.diffuseTexture = dynamicTexture;
+  material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+  material.specularColor = new BABYLON.Color3(0, 0, 0);
+  material.backFaceCulling = false;
+  plane.material = material;
+
+  // Disegna il testo sulla texture
+  const context = dynamicTexture.getContext();
+  context.font = "bold 20px Arial";
+  context.fillStyle = "white";
+  context.strokeStyle = "black";
+  context.lineWidth = 2;
+  context.textAlign = "center";
+
+  // Testo dell'etichetta
+  const lines = [
+    `GSET ${index}`,
+    `LOD: ${gset.LODS ? gset.LODS.length : 0}`,
+    `Size: ${(maxX - minX).toFixed(1)}x${(maxY - minY).toFixed(1)}x${(maxZ - minZ).toFixed(1)}`
+  ];
+
+  context.clearRect(0, 0, 256, 128);
+  context.fillStyle = "rgba(0,0,0,0.8)";
+  context.fillRect(0, 0, 256, 128);
+
+  context.fillStyle = "white";
+  lines.forEach((line, i) => {
+    context.strokeText(line, 128, 30 + i * 30);
+    context.fillText(line, 128, 30 + i * 30);
+  });
+
+  dynamicTexture.update();
+
+  // Fai sempre fronte alla camera
+  plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+  return plane;
+}
+
+// Funzione per rimuovere i bounding box
+function clearBBoxMeshes() {
+  if (window.bboxMeshes) {
+    window.bboxMeshes.forEach(mesh => {
+      mesh.dispose();
+      // Rimuovi anche le etichette
+      const label = sceneRef.getMeshByName(`bboxLabel_${mesh.name.split('_')[1]}`);
+      if (label) label.dispose();
+    });
+    window.bboxMeshes = [];
+  }
+}
+
+// Aggiungi anche un pulsante per pulire i bounding box
+clearBBOXbtn.addEventListener('click', clearBBoxMeshes);
+
+
+
+
+// Funzione per creare etichette per i LOD
+function createLODLabel(scene, sphere, lod, index, rangeCount,x,y,z,h) {
+  // Crea un piano per il testo
+  const plane = BABYLON.MeshBuilder.CreatePlane(`lodLabel_${index}`, {
+    width: 4,
+    height: 1
+  }, scene);
+  
+  // Posiziona il piano sopra la sfera
+  plane.position = sphere.position.clone();
+  plane.position.y = y+h+2;
+
+  // Crea texture dinamica per il testo
+  const dynamicTexture = new BABYLON.DynamicTexture(`lodTexture_${index}`, {
+    width: 256,
+    height: 64
+  }, scene);
+  
+  const material = new BABYLON.StandardMaterial(`lodLabelMat_${index}`, scene);
+  material.diffuseTexture = dynamicTexture;
+  material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+  material.specularColor = new BABYLON.Color3(0, 0, 0);
+  material.backFaceCulling = false;
+  plane.material = material;
+  
+  // Disegna il testo sulla texture
+  const context = dynamicTexture.getContext();
+  context.font = "bold 24px Arial";
+  context.fillStyle = "white";
+  context.strokeStyle = "black";
+  context.lineWidth = 2;
+  context.textAlign = "center";
+  
+  // Testo dell'etichetta
+  const text = `LOD ${index}\nRanges: ${rangeCount}`;
+  const lines = text.split('\n');
+  
+  context.clearRect(0, 0, 256, 64);
+  context.fillStyle = "rgba(0,0,0,0.7)";
+  context.fillRect(0, 0, 256, 64);
+  
+  context.fillStyle = "white";
+  lines.forEach((line, i) => {
+    context.strokeText(line, 128, 25 + i * 25);
+    context.fillText(line, 128, 25 + i * 25);
+  });
+  
+  dynamicTexture.update();
+  
+  // Fai sempre fronte alla camera
+  plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+  return plane;
+}
+
+// Funzione per rimuovere le sferette LOD
+function clearLODSpheres() {
+  if (window.lodSpheres) {
+    window.lodSpheres.forEach(sphere => {
+      sphere.dispose();
+      // Rimuovi anche le etichette
+      const label = sceneRef.getMeshByName(`lodLabel_${sphere.name.split('_')[1]}`);
+      if (label) label.dispose();
+    });
+    window.lodSpheres = [];
+  }
+}
+
+// Aggiungi anche un pulsante per pulire
+clearLODSbtn.addEventListener('click', clearLODSpheres);
+
+function buildMeshesFromGSet(scene) {
+return
+console.log("[buildMeshesFromGSet]", meshData);
+  const outMeshes = [];
+  for (let i=0; i < meshData.length; i++){
+    const entry = meshData[i];
+    const g = entry.gset;
+
+const getListById = id => currentJSON.lists.find(l => l.list_id === id);
+const llist = getListById(4); // Length List
+const vlist = getListById(5); // Vertex List
+const clist = getListById(6); // Color List
+const nlist = getListById(7); // Normal List
+const tlist = getListById(8); // TexCoord List
+const gsets = getListById(10); // GeoSet
+
+    const lengths = llist
+    const verts = vlist
+    //const lengths = entry.lengths || [];
+    //const verts = entry.vertices || [];
+    let positions = [], indices = [];
+    let cursor = 0;
+    const ptype = g.primType;
+    const prim = ptype;
+
+console.log("[buildMeshesFromGSet] currentJSON", currentJSON);
+console.log("[buildMeshesFromGSet] lengths", lengths);
+console.log("[buildMeshesFromGSet] verts", verts);
+    for (let j=0; j < lengths.length; j++){
+      const polyLen = lengths[j];
+      if (cursor + polyLen > verts.length) { console.warn(`mesh ${i} face ${j} exceeds verts`); break; }
+      const base = positions.length/3;
+      for (let k=0;k<polyLen;k++){
+        const v = verts[cursor + k];
+        positions.push((v.x||0), (v.y||0), (v.z||0));
+      }
+      if (prim === 3 && polyLen === 3) { indices.push(base, base+1, base+2); }
+      else if (prim === 4 && polyLen === 4) { indices.push(base, base+1, base+2); indices.push(base, base+2, base+3); }
+      else if ((prim === 5 || prim === 7) && polyLen >= 3) {
+        for (let k=2;k<polyLen;k++){
+          if ((k%2)===0) indices.push(base+k-2, base+k-1, base+k); else indices.push(base+k-2, base+k, base+k-1);
+        }
+      }
+      else if ((prim === 9 || prim === 10) && polyLen >=3) {
+        for (let k=2;k<polyLen;k++) indices.push(base, base+k-1, base+k);
+      }
+      else if (prim === 8 && polyLen >= 3) {
+        const flat2 = []; for (let k=0;k<polyLen;k++){ const v=verts[cursor+k]; flat2.push(v.x||0, v.y||0); }
+        const tris = earcut(flat2, [], 2);
+        for (const t of tris) indices.push(base + t);
+      } else {
+        if (polyLen === 3) indices.push(base, base+1, base+2);
+      }
+      cursor += polyLen;
+    }
+
+    if (positions.length > 0 && indices.length > 0) {
+      const mesh = new BABYLON.Mesh(`mesh_${i}`, scene);
+      const vd = new BABYLON.VertexData();
+      vd.positions = positions; vd.indices = indices;
+      vd.normals = []; BABYLON.VertexData.ComputeNormals(positions, indices, vd.normals);
+      vd.applyToMesh(mesh);
+      const mat = new BABYLON.StandardMaterial(`mat_${i}`, scene);
+      mat.diffuseColor = new BABYLON.Color3(0.85,0.85,0.85);
+      mat.backFaceCulling = false;
+      mesh.material = mat;
+
+      const lines = BABYLON.MeshBuilder.CreateLineSystem(`lines_${i}`, { lines: buildEdgesFromIndices(positions, indices) }, scene);
+      lines.color = new BABYLON.Color3(0.1,0.1,0.1);
+
+      const pivot = new BABYLON.TransformNode(`group_${i}`, scene);
+      mesh.parent = pivot; lines.parent = pivot;
+      outMeshes.push(pivot);
+    } else {
+      console.warn(`mesh ${i} invalid (no positions/indices)`);
+    }
+  }
+
+  console.log(`Built ${outMeshes.length} meshes from GSETs`);
+  return outMeshes;
+}
+
+function buildEdgesFromIndices(positions, indices) {
+  const lines = []; const edges = new Set();
+  for (let t=0;t<indices.length;t+=3){
+    const a = indices[t], b = indices[t+1], c = indices[t+2];
+    [[a,b],[b,c],[c,a]].forEach(pair=>{
+      const key = pair[0]<pair[1] ? `${pair[0]}_${pair[1]}` : `${pair[1]}_${pair[0]}`;
+      if (!edges.has(key)){ edges.add(key); const p0 = [positions[pair[0]*3], positions[pair[0]*3+1], positions[pair[0]*3+2]]; const p1 = [positions[pair[1]*3], positions[pair[1]*3+1], positions[pair[1]*3+2]]; lines.push([ new BABYLON.Vector3(...p0), new BABYLON.Vector3(...p1) ]); }
+    });
+  }
+  return lines;
+}
+
+function exportMeshToOBJ(transformNode) {
+  const meshes = [];
+  transformNode.getChildMeshes && transformNode.getChildMeshes().forEach(m=>meshes.push(m));
+  if (transformNode.getVerticesData) meshes.push(transformNode);
+
+  let out = "";
+  let vcount = 1;
+  for (const m of meshes) {
+    const pos = m.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    const idx = m.getIndices();
+    if (!pos || !idx) continue;
+    out += `o ${m.name}\n`;
+    for (let i=0;i<pos.length;i+=3) out += `v ${pos[i]} ${pos[i+1]} ${pos[i+2]}\n`;
+    const nrm = m.getVerticesData(BABYLON.VertexBuffer.NormalKind);
+    if (nrm) for (let i=0;i<nrm.length;i+=3) out += `vn ${nrm[i]} ${nrm[i+1]} ${nrm[i+2]}\n`;
+    for (let f=0; f<idx.length; f+=3) {
+      const a = idx[f] + vcount, b = idx[f+1] + vcount, c = idx[f+2] + vcount;
+      out += `f ${a}//${a} ${b}//${b} ${c}//${c}\n`;
+    }
+    vcount += pos.length/3;
+  }
+  return out;
+}
+
+function extractGeoSetsFromSCS(scsNode, allNodes) {
+    function getChildNodes(parentNode, allNodes) {
+        const children = [];
+        const parentOffset = parentNode.offset_dec;
+        const parentEnd = parentOffset + parentNode.length;
+        for (const n of allNodes) {
+            if (n.offset_dec > parentOffset && n.offset_dec < parentEnd) {
+                children.push(n);
+            }
+        }
+        return children;
+    }
+
+    const children = getChildNodes(scsNode, allNodes);
+    const geodes = children.filter(n => n.struct.nodeType === 2);
+    const gsetsCollected = [];
+    for (const geode of geodes) {
+        console.log("Skipping GeoSet extraction from GEODE: no parser implemented.");
+    }
+    console.log(`Nodo SCS '${scsNode.struct.name}' contiene ${geodes.length} GEODE e ${gsetsCollected.length} GeoSet`);
+    return gsetsCollected;
+}
+
+
+
+
+
+
+
+
+
+//////////////////////////
+//// lodviewer
+
+function selectOptimalLODs(hierarchy, strategy = "medium") {
+    console.log("=== SELEZIONE LOD OTTIMALI (STRUTTURA CORRETTA) ===");
+
+    const optimalLODs = new Map();
+
+    // 1. Trova tutti i Group che hanno Lod come figli (case insensitive)
+    const groupsWithLODs = hierarchy.nodes.filter(node =>
+        node.typeName &&
+        node.typeName.toLowerCase() === "group" &&
+        node.children.some(child =>
+            child.typeName &&
+            child.typeName.toLowerCase() === "lod"
+        )
+    );
+
+    console.log("groupsWithLODs trovati:", groupsWithLODs.length);
+    console.log("Dettaglio groupsWithLODs:", groupsWithLODs);
+
+    // 2. Per ogni Group, seleziona un Lod dai suoi figli
+    groupsWithLODs.forEach(group => {
+        const lodChildren = group.children.filter(child =>
+            child.typeName &&
+            child.typeName.toLowerCase() === "lod"
+        );
+
+        if (lodChildren.length > 0) {
+            const selectedLOD = selectLODFromGroup(lodChildren, strategy);
+            const groupSignature = group.name || `group_${group.id}`;
+
+            optimalLODs.set(groupSignature, selectedLOD);
+
+            console.log(`\nGroup "${groupSignature}" (id:${group.id}):`);
+            console.log(`  - Lod disponibili: ${lodChildren.length}`);
+            console.log(`  - Selezionato: Lod con ${selectedLOD.originalStruct.ranges.length - 1} ranges`);
+
+            // Analizza cosa c'è sotto il Lod selezionato
+            const geosetsUnderLOD = extractAllGeosetsFromNode(selectedLOD);
+            console.log(`  - GeoSet sotto questo Lod: ${geosetsUnderLOD.length}`);
+        }
+    });
+
+    return optimalLODs;
+}
+
+
+// Funzione per estrarre tutti i GeoSet da qualsiasi nodo (ricorsiva)
+function extractAllGeosetsFromNode(node) {
+    const geosets = [];
+
+    function traverse(currentNode) {
+        if (currentNode.typeName === "GEOSET") {
+            geosets.push(currentNode);
+        }
+        // Continua a cercare nei figli
+        currentNode.children.forEach(traverse);
+    }
+
+    traverse(node);
+    return geosets;
+}
+
+// La stessa funzione di selezione LOD di prima
+function selectLODFromGroup(lods, strategy) {
+    if (lods.length === 1) return lods[0];
+
+    const sortedLODs = lods.sort((a, b) => {
+        const aRanges = a.originalStruct.ranges.length - 1;
+        const bRanges = b.originalStruct.ranges.length - 1;
+        return aRanges - bRanges;
+    });
+
+    switch(strategy) {
+        case "low": return sortedLODs[0];
+        case "medium": return sortedLODs[Math.floor(sortedLODs.length / 2)];
+        case "high": return sortedLODs[sortedLODs.length - 1];
+        default: return sortedLODs[Math.floor(sortedLODs.length / 2)];
+    }
+}
+
+function groupLODsByParentGroup(hierarchy) {
+    console.log("=== RAGGRUPPAMENTO LOD PER PARENT GROUP ===");
+
+    const lodGroups = new Map(); // key: parentGroup -> value: array di LOD
+
+    // Trova tutti i LOD
+    const allLODs = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes("lod")
+    );
+
+    console.log(`LOD totali trovati: ${allLODs.length}`);
+
+    // Raggruppa i LOD per il loro parent Group
+    allLODs.forEach(lod => {
+        if (lod.parent && lod.parent.typeName &&
+            lod.parent.typeName.toLowerCase().includes("group")) {
+
+            const parentGroup = lod.parent;
+            const groupKey = parentGroup.name || `group_${parentGroup.id}`;
+
+            if (!lodGroups.has(groupKey)) {
+                lodGroups.set(groupKey, {
+                    parent: parentGroup,
+                    lods: []
+                });
+            }
+
+            lodGroups.get(groupKey).lods.push(lod);
+        }
+    });
+
+    console.log(`Group con LOD trovati: ${lodGroups.size}`);
+
+    // Stampa i gruppi
+    lodGroups.forEach((groupInfo, groupKey) => {
+        console.log(`\n📦 ${groupKey}:`);
+        console.log(`   Parent: ${groupInfo.parent.typeName} ${groupInfo.parent.id}`);
+        console.log(`   LOD figli: ${groupInfo.lods.length}`);
+
+        groupInfo.lods.forEach(lod => {
+            const rangeCount = lod.originalStruct.ranges.length - 1;
+            console.log(`     - LOD ${lod.id}: ${rangeCount} ranges`);
+        });
+    });
+
+    return lodGroups;
+}
+
+function selectLODPerGroup(lodGroups, strategy = "medium") {
+    console.log("=== SELEZIONE LOD PER GROUP ===");
+
+    const selectedLODs = new Map(); // key: group -> value: selected LOD
+
+    lodGroups.forEach((groupInfo, groupKey) => {
+        const lods = groupInfo.lods;
+
+        if (lods.length === 0) return;
+
+        let selectedLOD;
+
+        if (lods.length === 1) {
+            selectedLOD = lods[0];
+        } else {
+            // Ordina per numero di ranges (livelli di dettaglio)
+            const sortedLODs = lods.sort((a, b) => {
+                const aRanges = a.originalStruct.ranges.length - 1;
+                const bRanges = b.originalStruct.ranges.length - 1;
+                return aRanges - bRanges;
+            });
+
+            switch(strategy) {
+                case "lowest":
+                    selectedLOD = sortedLODs[0]; // Meno dettagli
+                    break;
+                case "medium":
+                    selectedLOD = sortedLODs[Math.floor(sortedLODs.length / 2)]; // Medio
+                    break;
+                case "highest":
+                    selectedLOD = sortedLODs[sortedLODs.length - 1]; // Più dettagli
+                    break;
+                case "most_common":
+                    // Prendi quello con 2-3 ranges (più comune)
+                    const commonLOD = sortedLODs.find(lod => {
+                        const ranges = lod.originalStruct.ranges.length - 1;
+                        return ranges >= 2 && ranges <= 3;
+                    });
+                    selectedLOD = commonLOD || sortedLODs[Math.floor(sortedLODs.length / 2)];
+                    break;
+                default:
+                    selectedLOD = sortedLODs[Math.floor(sortedLODs.length / 2)];
+            }
+        }
+
+        selectedLODs.set(groupKey, {
+            group: groupInfo.parent,
+            lod: selectedLOD
+        });
+
+        const rangeCount = selectedLOD.originalStruct.ranges.length - 1;
+        console.log(`✅ ${groupKey}: selezionato LOD con ${rangeCount} ranges`);
+    });
+
+    return selectedLODs;
+}
+
+
+
+function displayFullHierarchy(hierarchy) {
+    console.log("=== VISUALIZZAZIONE GERARCHIA COMPLETA ===");
+
+    const container = document.createElement("div");
+    container.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        width: 600px;
+        height: 90vh;
+        background: white;
+        border: 2px solid #333;
+        padding: 10px;
+        overflow: auto;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    `;
+
+    const title = document.createElement("h3");
+    title.textContent = "GERARCHIA COMPLETA SCENA";
+    title.style.cssText = `
+        margin: 0 0 10px 0;
+        padding: 5px;
+        background: #333;
+        color: white;
+        text-align: center;
+    `;
+    container.appendChild(title);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "CHIUDI";
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: red;
+        color: white;
+        border: none;
+        padding: 2px 8px;
+        cursor: pointer;
+    `;
+    closeBtn.onclick = () => container.remove();
+    container.appendChild(closeBtn);
+
+    const stats = document.createElement("div");
+    stats.innerHTML = `
+        <div><strong>Nodi totali:</strong> ${hierarchy.nodes.length}</div>
+        <div><strong>Nodi radice:</strong> ${hierarchy.rootNodes.length}</div>
+        <div><strong>LOD trovati:</strong> ${hierarchy.nodes.filter(n => n.typeName && n.typeName.toLowerCase().includes('lod')).length}</div>
+        <div><strong>Group trovati:</strong> ${hierarchy.nodes.filter(n => n.typeName && n.typeName.toLowerCase().includes('group')).length}</div>
+        <div><strong>GeoSet trovati:</strong> ${hierarchy.nodes.filter(n => n.typeName && n.typeName.toLowerCase().includes('geoset')).length}</div>
+    `;
+    stats.style.cssText = `
+        background: #f0f0f0;
+        padding: 8px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        font-size: 11px;
+    `;
+    container.appendChild(stats);
+
+    const treeContainer = document.createElement("div");
+    treeContainer.id = "hierarchy-tree";
+
+    // Funzione per creare un elemento nodo
+
+function createNodeElement(node, depth = 0) {
+    const nodeDiv = document.createElement("div");
+    nodeDiv.style.cssText = `
+        margin-left: ${depth * 20}px;
+        padding: 2px 5px;
+        border-left: 1px solid #ccc;
+        cursor: ${node.children.length > 0 ? 'pointer' : 'default'};
+        user-select: none;
+    `;
+
+    const isLOD = node.typeName && node.typeName.toLowerCase().includes('lod');
+    const isGroup = node.typeName && node.typeName.toLowerCase().includes('group');
+    const isGeoset = node.typeName && node.typeName.toLowerCase().includes('geoset');
+
+    // Colori per tipo di nodo
+    let bgColor = '#fff';
+    if (isLOD) bgColor = '#e3f2fd';
+    if (isGroup) bgColor = '#f3e5f5';
+    if (isGeoset) bgColor = '#e8f5e8';
+    nodeDiv.style.background = bgColor;
+
+    const hasChildren = node.children.length > 0;
+    const icon = hasChildren ? '📁' : '📄';
+    const typeIcon = isLOD ? '🎯' : isGroup ? '📦' : isGeoset ? '⭐' : '🔹';
+
+    let nodeInfo = `${icon} ${typeIcon} ${node.typeName} [${node.id}]`;
+    if (node.name && node.name !== "n/a") {
+        nodeInfo += ` "${node.name}"`;
+    }
+
+    if (isLOD && node.originalStruct) {
+        const rangeCount = node.originalStruct.ranges.length - 1;
+        nodeInfo += ` | ${rangeCount} ranges`;
+    }
+
+    if (isGroup) {
+        const lodChildren = node.children.filter(c => c.typeName && c.typeName.toLowerCase().includes('lod'));
+        if (lodChildren.length > 0) {
+            nodeInfo += ` | ${lodChildren.length} LOD figli`;
+        }
+    }
+
+    // Usiamo un elemento span separato per il contenuto
+    const contentSpan = document.createElement("span");
+    contentSpan.textContent = nodeInfo;
+    nodeDiv.appendChild(contentSpan);
+
+    if (hasChildren) {
+        const childrenContainer = document.createElement("div");
+        childrenContainer.style.display = 'block';
+        childrenContainer.className = 'children-container';
+
+        node.children.forEach(child => {
+            childrenContainer.appendChild(createNodeElement(child, depth + 1));
+        });
+
+        nodeDiv.onclick = (e) => {
+            e.stopPropagation();
+            const isVisible = childrenContainer.style.display === 'block';
+            childrenContainer.style.display = isVisible ? 'none' : 'block';
+
+            // Aggiorna solo l'icona nel contentSpan
+            const currentText = contentSpan.textContent;
+            const newText = isVisible ?
+                currentText.replace('📁', '📂') :
+                currentText.replace('📂', '📁');
+            contentSpan.textContent = newText;
+        };
+
+        nodeDiv.appendChild(childrenContainer);
+    }
+
+    return nodeDiv;
+}
+
+
+
+    // Aggiungi tutti i nodi radice
+    hierarchy.rootNodes.forEach(rootNode => {
+        treeContainer.appendChild(createNodeElement(rootNode));
+    });
+
+    // Se non ci sono nodi radice, mostra tutti i nodi
+    if (hierarchy.rootNodes.length === 0) {
+        hierarchy.nodes.forEach(node => {
+            if (!node.parent) { // Mostra solo nodi senza parent
+                treeContainer.appendChild(createNodeElement(node));
+            }
+        });
+    }
+
+    container.appendChild(treeContainer);
+    document.body.appendChild(container);
+
+    // Auto-espandi tutti i nodi Group e LOD
+    setTimeout(() => {
+        const expandAll = document.createElement("button");
+        expandAll.textContent = "ESPANDI TUTTO";
+        expandAll.style.cssText = `
+            position: absolute;
+            top: 35px;
+            right: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-size: 10px;
+        `;
+        expandAll.onclick = () => {
+            const allContainers = treeContainer.querySelectorAll('div > div');
+            allContainers.forEach(container => {
+                container.style.display = 'block';
+            });
+            // Cambia tutte le icone a cartella aperta
+            const allIcons = treeContainer.querySelectorAll('div');
+            allIcons.forEach(div => {
+                if (div.textContent.includes('📂')) {
+                    div.textContent = div.textContent.replace('📂', '📁');
+                }
+            });
+        };
+        container.appendChild(expandAll);
+    }, 100);
+}
+
+
+
+// E anche una versione compatta per debug rapido
+function debugHierarchyStructure(hierarchy) {
+    console.log("=== STRUTTURA COMPATTA ===");
+
+    const groupsWithLODs = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('group') &&
+        node.children.some(child => child.typeName && child.typeName.toLowerCase().includes('lod'))
+    );
+
+    console.log(`Group con LOD: ${groupsWithLODs.length}`);
+
+    groupsWithLODs.forEach(group => {
+        console.log(`\n📦 Group ${group.id} "${group.name}":`);
+
+        const lods = group.children.filter(child =>
+            child.typeName && child.typeName.toLowerCase().includes('lod')
+        );
+
+        console.log(`   LOD figli: ${lods.length}`);
+
+        lods.forEach(lod => {
+            const rangeCount = lod.originalStruct.ranges.length - 1;
+            console.log(`     🎯 LOD ${lod.id}: ${rangeCount} ranges`);
+
+            // Cosa c'è sotto ogni LOD?
+            if (lod.children.length > 0) {
+                console.log(`        Figli del LOD: ${lod.children.length}`);
+                lod.children.forEach(child => {
+                    console.log(`        - ${child.typeName} ${child.id} "${child.name}"`);
+                });
+            } else {
+                console.log(`        ⚠️  Nessun figlio diretto`);
+            }
+        });
+
+        // Cosa c'è oltre ai LOD in questo Group?
+        const otherChildren = group.children.filter(child =>
+            !child.typeName.toLowerCase().includes('lod')
+        );
+
+        if (otherChildren.length > 0) {
+            console.log(`   Altri figli del Group: ${otherChildren.length}`);
+            otherChildren.forEach(child => {
+                console.log(`     - ${child.typeName} ${child.id} "${child.name}"`);
+            });
+        }
+    });
+}
+
+
+
+function correlateLODsWithGeoSets(hierarchy) {
+    console.log("=== CORRELAZIONE LOD-GEOSET ===");
+
+    // Trova tutti i Geode (che contengono i GeoSet)
+    const allGeodes = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('geode')
+    );
+
+    console.log(`Geode trovati: ${allGeodes.length}`);
+
+    // Mappa Geode -> GeoSet contenuti
+    const geodeToGeoSets = new Map();
+
+    allGeodes.forEach(geode => {
+        const geosets = geode.children.filter(child =>
+            child.typeName && child.typeName.toLowerCase().includes('geoset')
+        );
+        geodeToGeoSets.set(geode.id, geosets);
+
+        if (geosets.length > 0) {
+            console.log(`Geode ${geode.id} "${geode.name}": ${geosets.length} GeoSet`);
+            geosets.forEach(geoset => {
+                console.log(`  - GeoSet ${geoset.id} "${geoset.name}"`);
+            });
+        }
+    });
+
+    // Ora trova quali LOD puntano a quali Geode
+    const allLODs = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('lod')
+    );
+
+    console.log(`\nAnalisi LOD -> Geode:`);
+
+    const lodToGeodeMap = new Map();
+
+    allLODs.forEach(lod => {
+        // I LOD potrebbero avere Geode come figli diretti
+        const childGeodes = lod.children.filter(child =>
+            child.typeName && child.typeName.toLowerCase().includes('geode')
+        );
+
+        if (childGeodes.length > 0) {
+            lodToGeodeMap.set(lod.id, childGeodes[0]); // Prendi il primo Geode
+            console.log(`LOD ${lod.id} → Geode ${childGeodes[0].id} "${childGeodes[0].name}"`);
+        } else {
+            console.log(`LOD ${lod.id}: ⚠️ Nessun Geode figlio diretto`);
+        }
+    });
+
+    return { geodeToGeoSets, lodToGeodeMap, allGeodes, allLODs };
+}
+
+
+
+function selectGeoSetsByDetailLevel(hierarchy, targetDetail = "medium") {
+    console.log("=== SELEZIONE GEOSET PER LIVELLO DETTAGLIO ===");
+
+    const correlation = correlateLODsWithGeoSets(hierarchy);
+    const selectedGeoSets = new Set();
+
+    // Raggruppa i LOD per parent Group
+    const groupsWithLODs = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('group') &&
+        node.children.some(child => child.typeName && child.typeName.toLowerCase().includes('lod'))
+    );
+
+    groupsWithLODs.forEach(group => {
+        const lods = group.children.filter(child =>
+            child.typeName && child.typeName.toLowerCase().includes('lod')
+        ).sort((a, b) => a.id - b.id); // Ordina per ID (assumendo che ID più alto = più dettaglio)
+
+        if (lods.length === 4) {
+            let selectedLOD;
+
+            switch(targetDetail) {
+                case "lowest": selectedLOD = lods[0]; break;
+                case "low": selectedLOD = lods[1]; break;
+                case "medium": selectedLOD = lods[2]; break;
+                case "high": selectedLOD = lods[3]; break;
+                default: selectedLOD = lods[2];
+            }
+
+            // Trova il Geode associato a questo LOD
+            const geode = correlation.lodToGeodeMap.get(selectedLOD.id);
+
+            if (geode) {
+                // Estrai i GeoSet da questo Geode
+                const geosets = correlation.geodeToGeoSets.get(geode.id) || [];
+
+                geosets.forEach(geoset => {
+                    selectedGeoSets.add(geoset);
+                    console.log(`✅ Selezionato: ${geoset.typeName} ${geoset.id} "${geoset.name}" (da LOD ${selectedLOD.id})`);
+                });
+            } else {
+                console.log(`⚠️  LOD ${selectedLOD.id} non ha Geode associato`);
+            }
+        }
+    });
+
+    console.log(`\n🎯 GEOSET SELEZIONATI: ${selectedGeoSets.size}`);
+    return Array.from(selectedGeoSets);
+}
+
+
+function manualLODSelection(hierarchy, detailLevel = "medium") {
+    console.log("=== SELEZIONE MANUALE LOD ===");
+
+    // 1. Trova tutti i Group che contengono LOD
+    const groupsWithLODs = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('group') &&
+        node.children.some(child => child.typeName && child.typeName.toLowerCase().includes('lod'))
+    );
+
+    // 2. Trova tutti i Geode con GeoSet
+    const allGeodesWithGeoSets = hierarchy.nodes.filter(node =>
+        node.typeName && node.typeName.toLowerCase().includes('geode') &&
+        node.children.some(child => child.typeName && child.typeName.toLowerCase().includes('geoset'))
+    );
+
+    console.log(`Group con LOD: ${groupsWithLODs.length}`);
+    console.log(`Geode con GeoSet: ${allGeodesWithGeoSets.length}`);
+
+    // 3. ASSUNZIONE: I Geode sono organizzati in modo simile ai LOD
+    //    Es: Group [5] ha LOD [6,7,8,9] → Geode [13,14,15,16]
+    const selectedGeoSets = new Set();
+
+    groupsWithLODs.forEach(group => {
+        const lods = group.children.filter(child =>
+            child.typeName && child.typeName.toLowerCase().includes('lod')
+        ).sort((a, b) => a.id - b.id);
+
+        if (lods.length === 4) {
+            // Trova i Geode corrispondenti a questo Group
+            // ASSUNZIONE: I Geode hanno ID consecutivi come i LOD
+            const firstLODId = lods[0].id;
+            const potentialGeodeIds = [
+                firstLODId + 7,  // Es: LOD 6 → Geode 13
+                firstLODId + 8,  // Es: LOD 7 → Geode 14
+                firstLODId + 9,  // Es: LOD 8 → Geode 15
+                firstLODId + 10  // Es: LOD 9 → Geode 16
+            ];
+
+            let selectedGeodeIndex;
+            switch(detailLevel) {
+                case "lowest": selectedGeodeIndex = 0; break;
+                case "low": selectedGeodeIndex = 1; break;
+                case "medium": selectedGeodeIndex = 2; break;
+                case "high": selectedGeodeIndex = 3; break;
+                default: selectedGeodeIndex = 2;
+            }
+
+            const selectedGeodeId = potentialGeodeIds[selectedGeodeIndex];
+            const selectedGeode = allGeodesWithGeoSets.find(g => g.id === selectedGeodeId);
+
+            if (selectedGeode) {
+                const geosets = selectedGeode.children.filter(child =>
+                    child.typeName && child.typeName.toLowerCase().includes('geoset')
+                );
+
+                geosets.forEach(geoset => {
+                    selectedGeoSets.add(geoset);
+                    console.log(`✅ Group ${group.id} → LOD ${lods[selectedGeodeIndex].id} → Geode ${selectedGeodeId} → GeoSet ${geoset.id}`);
+                });
+            } else {
+                console.log(`⚠️  Group ${group.id}: Geode ${selectedGeodeId} non trovato`);
+            }
+        }
+    });
+
+    console.log(`\n🎯 GeoSet selezionati: ${selectedGeoSets.size}`);
+    return Array.from(selectedGeoSets);
+}
+
+function groupLODsByRangeValue(LODSlist, targetValue) {
+    const groups = {
+        withTarget: [],
+        withoutTarget: []
+    };
+
+    LODSlist.forEach(lod => {
+        if (lod.ranges.includes(targetValue)) {
+            groups.withTarget.push(lod);
+        } else {
+            groups.withoutTarget.push(lod);
+        }
+    });
+
+    return groups;
+}
+
+
+function collectAllUniqueRangeValues(LODSlist) {
+    console.log("=== RACCOLTA TUTTI I VALORI UNICI DEI RANGES ===");
+    
+    const uniqueValues = new Set();
+    
+    LODSlist.forEach(lod => {
+        lod.ranges.forEach(range => {
+            // Arrotondiamo per evitare duplicati dovuti a precisione float
+            const roundedValue = Math.round(range * 1000000) / 1000000;
+            uniqueValues.add(roundedValue);
+        });
+    });
+    
+    // Converti in array e ordina
+    const sortedValues = Array.from(uniqueValues).sort((a, b) => a - b);
+    
+    console.log(`Trovati ${sortedValues.length} valori unici nei ranges:`);
+    sortedValues.forEach((value, index) => {
+        console.log(`  [${index}] ${value}`);
+    });
+
+    return sortedValues;
+}
+
+// Versione avanzata che mostra anche statistiche
+function collectRangeValuesWithStats(LODSlist) {
+    console.log("=== VALORI RANGES CON STATISTICHE ===");
+    
+    const valueStats = {};
+    
+    // Conta occorrenze di ogni valore
+    LODSlist.forEach(lod => {
+        lod.ranges.forEach(range => {
+            const roundedValue = Math.round(range * 1000000) / 1000000;
+            if (!valueStats[roundedValue]) {
+                valueStats[roundedValue] = {
+                    value: roundedValue,
+                    count: 0,
+                    lods: []
+                };
+            }
+            valueStats[roundedValue].count++;
+            valueStats[roundedValue].lods.push(lod);
+        });
+    });
+    
+    // Converti in array e ordina per valore
+    const statsArray = Object.values(valueStats).sort((a, b) => a.value - b.value);
+    
+    console.log("Statistiche valori ranges:");
+    statsArray.forEach(stat => {
+        console.log(`  ${stat.value}: ${stat.count} occorrenze`);
+    });
+    
+    return statsArray;
+}
+
+// Funzione per trovare pattern comuni
+function findCommonRangePatterns(LODSlist) {
+    console.log("=== PATTERN COMUNI DI RANGES ===");
+    
+    const patternMap = new Map();
+    
+    LODSlist.forEach(lod => {
+        // Crea una firma per il pattern di ranges
+        const signature = lod.ranges.map(r => Math.round(r * 1000000) / 1000000).join('|');
+        
+        if (!patternMap.has(signature)) {
+            patternMap.set(signature, {
+                pattern: lod.ranges,
+                count: 0,
+                lods: []
+            });
+        }
+        
+        patternMap.get(signature).count++;
+        patternMap.get(signature).lods.push(lod);
+    });
+    
+    // Converti in array e ordina per frequenza (dal più comune)
+    const patterns = Array.from(patternMap.values()).sort((a, b) => b.count - a.count);
+    
+    console.log("Pattern più comuni:");
+    patterns.forEach((pattern, index) => {
+        console.log(`  ${index + 1}. [${pattern.pattern}]: ${pattern.count} LOD`);
+    });
+    
+    return patterns;
+}
+
+
+// 4. Per esplorare valori specifici
+function analyzeSpecificValues(LODSlist, valuesOfInterest) {
+    console.log("=== ANALISI VALORI SPECIFICI ===");
+    
+    valuesOfInterest.forEach(value => {
+        const matchingLODs = LODSlist.filter(lod => 
+            lod.ranges.some(range => Math.abs(range - value) < 0.000001)
+        );
+        
+        console.log(`Valore ${value}:`);
+        console.log(`  - Trovato in ${matchingLODs.length} LOD`);
+        console.log(`  - Pattern unici: ${new Set(matchingLODs.map(lod => lod.ranges.join('|'))).size}`);
+    });
+}
+
+
+// 
+// // 1. Raccolta semplice di tutti i valori unici
+// const allUniqueValues = collectAllUniqueRangeValues(LODSlist);
+// 
+// // 2. Versione con statistiche
+// const valuesWithStats = collectRangeValuesWithStats(LODSlist);
+// 
+// // 3. Pattern comuni
+// const commonPatterns = findCommonRangePatterns(LODSlist);
+// Esempio: analizza i valori che sospetti essere livelli LOD
+//analyzeSpecificValues(LODSlist, [1.5625, 3.125, 6.25, 12.5, 25, 50]);
+
+
+function correlateLODsWithGeoSetsByBoundingBox(LODSlist, GEOSETS_LIST) {
+    console.log("=== CORRELAZIONE LOD-GEOSET VIA BOUNDING BOX ===");
+    
+    // Crea una copia dei LOD per non modificare l'originale
+    const updatedLODS = JSON.parse(JSON.stringify(LODSlist));
+    
+    updatedLODS.forEach(lod => {
+        // Inizializza l'array geosets per questo LOD
+        lod.geosets = [];
+        
+        // Converti le coordinate del LOD da stringhe a numeri
+        const lodCenter = [
+            parseFloat(lod.coords[0]),
+            parseFloat(lod.coords[1]),
+            parseFloat(lod.coords[2])
+        ];
+        
+        // Controlla ogni GeoSet
+        GEOSETS_LIST.forEach(geoset => {
+            if (geoset.struct && geoset.struct.bbox) {
+                const bbox = geoset.struct.bbox;
+                
+                // Verifica se il centro del LOD è dentro il bounding box
+                if (isPointInBoundingBox(lodCenter, bbox.min, bbox.max)) {
+                    lod.geosets.push(geoset);
+                }
+            }
+        });
+        
+        console.log(`LOD con centro [${lodCenter}]: ${lod.geosets.length} GeoSet associati`);
+    });
+    
+    // Statistiche finali
+    const totalAssociations = updatedLODS.reduce((sum, lod) => sum + lod.geosets.length, 0);
+    const lodsWithGeosets = updatedLODS.filter(lod => lod.geosets.length > 0).length;
+    
+    console.log(`\n🎯 RIEPILOGO CORRELAZIONI:`);
+    console.log(`   - LOD con almeno 1 GeoSet: ${lodsWithGeosets}/${updatedLODS.length}`);
+    console.log(`   - Associazioni totali: ${totalAssociations}`);
+    console.log(`   - GeoSet totali: ${GEOSETS_LIST.length}`);
+    
+    return updatedLODS;
+}
+
+// Funzione helper per verificare se un punto è dentro un bounding box
+function isPointInBoundingBox(point, bboxMin, bboxMax) {
+    return point[0] >= bboxMin[0] && point[0] <= bboxMax[0] &&
+           point[1] >= bboxMin[1] && point[1] <= bboxMax[1] /*&&
+           point[2] >= bboxMin[2] && point[2] <= bboxMax[2]*/;
+}
+
+// Versione con tolleranza (se i punti sono leggermente fuori dal bbox)
+function isPointInBoundingBoxWithTolerance(point, bboxMin, bboxMax, tolerance = 0.1) {
+    return point[0] >= bboxMin[0] - tolerance && point[0] <= bboxMax[0] + tolerance &&
+           point[1] >= bboxMin[1] - tolerance && point[1] <= bboxMax[1] + tolerance &&
+           point[2] >= bboxMin[2] - tolerance && point[2] <= bboxMax[2] + tolerance;
+}
+
+function associateLODS_GSETS(){
+    LC = 0;
+    GC = 0;
+    LODSlist.forEach(L => {
+        LODcenter = L.coords;
+        GSETSlist.forEach( G => {
+            bboxMin = G.bbox.min;
+            bboxMax = G.bbox.max;
+            if (isPointInBoundingBox(LODcenter, bboxMin, bboxMax)) {
+                console.log("GSET n." , GC , " contains LOD n." , LC);
+                if (L.GSETS !== undefined) {
+                    L.GSETS.push(G);
+                } else {
+                    L.GSETS = [G];  // Correzione: metti L nell'array
+                }
+            }
+            GC++;
+        });
+        console.log("== LOD ==");
+        LC++;
+        GC = 0;
+    });
+    console.log(LODSlist);
+}
+
+
+
+// Utilizzo:
+// const LODSlistWithGeoSets = correlateLODsWithGeoSetsByBoundingBox(LODSlist, GEOSETS_LIST);
+// 
+// // Per debug
+// debugLODGeosetCorrelations(LODSlistWithGeoSets);
+// 
+// // Se vuoi salvare il risultato in una variabile globale
+// window.LODSlistWithGeoSets = LODSlistWithGeoSets;
+
+
+function debugBBoxAndLODCenters() {
+    console.log("\n🔍 VERIFICA ASSOCIAZIONI MANCANTI:");
+
+    // Verifica i LOD 28-31 che dovrebbero avere più associazioni
+    const importantLODs = [28, 29, 30, 31];
+
+lodIndex = 0;
+    LODSlist.forEach(lod => {
+            const lodCenter = [
+                parseFloat(lod.coords[0]),
+                parseFloat(lod.coords[1])/*,
+                parseFloat(lod.coords[2])*/
+            ];
+
+// console.log(`\nLOD ${lodIndex} - Centro: [${lodCenter.map(n => n.toFixed(2))}] - Ranges: ${lod.ranges.length}`);
+
+            // Cerca in quali GSET dovrebbe essere contenuto
+            let foundIn = [];
+            xin = false;
+            yin = false;
+            GSETSlist.forEach((gset, gsetIndex) => {
+              inXstr = gset.bbox.min[0] + "," +  lodCenter[0] + "," + gset.bbox.max[0];
+              inYstr = gset.bbox.min[1] + "," +  lodCenter[1] + "," + gset.bbox.max[1];
+              if ((gset.bbox.min[0] <= lodCenter[0]) && ( lodCenter[0] <=gset.bbox.max[0])) {
+                  xin=true;
+                  inXstr += "   OK"
+              }
+              if ((gset.bbox.min[1] <= lodCenter[1]) && ( lodCenter[1] <=gset.bbox.max[1])) {
+                  yin=true;
+                  inYstr += "   OK"
+               }
+//  console.log(">>>>>>",inXstr);
+//  console.log(">>>>>>",inYstr);
+              if ((xin) && (yin)) {
+                foundIn.push(gsetIndex);
+                if(LODSlist[lodIndex].gsets !== undefined) {
+                    LODSlist[lodIndex].gsets.push(gset)
+                } else {
+                    LODSlist[lodIndex].gsets = [gset]
+                }
+
+              }
+              xin = false;
+              yin = false;
+            });
+
+            if (foundIn.length > 0) {
+                console.log(`Lod n. ${lodIndex}  ✅ Contenuto in GSET: [${foundIn.join(', ')}]`);
+            } else {
+             //   console.log(`Lod n. ${lodIndex}   ❌ NON contenuto in nessun GSET!`);
+
+            }
+lodIndex++;
+    });
+}
+
+// Funzione di verifica con tolleranza
+function isPointInBoundingBox(point, bboxMin, bboxMax, tolerance = 0.01) {
+    return point[0] >= bboxMin[0] - tolerance && point[0] <= bboxMax[0] + tolerance &&
+           point[1] >= bboxMin[1] - tolerance && point[1] <= bboxMax[1] + tolerance &&
+           point[2] >= bboxMin[2] - tolerance && point[2] <= bboxMax[2] + tolerance;
+}
+
+// Esegui il debug
+//debugBBoxAndLODCenters();
+
+
+function associateLODS_GSETS_3D() {
+tolerance = 1
+    console.log("=== ASSOCIAZIONE 3D COMPLETA ===");
+
+    let totalAssociations = 0;
+    let lodIndex = 0;
+
+    LODSlist.forEach(lod => {
+        // CONVERSIONE CORRETTA: LOD (X,Z,Y) -> GSET (X,Y,Z)
+        const lodCenterCorrected = [
+            parseFloat(lod.coords[0]),
+            parseFloat(lod.coords[1]),
+            parseFloat(lod.coords[2])
+        ];
+
+        lod.gsets = [];
+
+//console.log("LOD n.", lodIndex, " - x,y=" ,lod.coords[0], lod.coords[1]);
+        GSETSlist.forEach((gset, gsetIndex) => {
+            if (gset.bbox) {
+//console.log(gsetIndex, ",   X=",parseInt(gset.bbox.min[0]), parseInt(gset.bbox.max[0]), ", Y=",parseInt(gset.bbox.min[1]), parseInt(gset.bbox.max[1]));
+                // Verifica TUTTE E 3 le dimensioni
+                const inX = lodCenterCorrected[0] >= gset.bbox.min[0] - tolerance &&
+                           lodCenterCorrected[0] <= gset.bbox.max[0]  + tolerance;
+                const inY = lodCenterCorrected[1] >= gset.bbox.min[1] - tolerance &&
+                           lodCenterCorrected[1] <= gset.bbox.max[1] + tolerance;
+               /* const inZ = lodCenterCorrected[2] >= gset.bbox.min[2] - tolerance &&
+                           lodCenterCorrected[2] <= gset.bbox.max[2] + tolerance;*/
+
+                if (inX && inY /*&& inZ*/) {
+                    lod.gsets.push(gsetIndex);
+                    totalAssociations++;
+                }
+            }
+        });
+
+        if (lod.gsets.length > 0) {
+            console.log(`LOD ${lodIndex} ✅ in ${lod.gsets.length} GSET: [${lod.gsets.join(', ')}]`);
+        } else {
+           // console.log(`LOD ${lodIndex} ❌ in nessun GSET! Centro: [${lodCenterCorrected}]`);
+        }
+
+        lodIndex++;
+    });
+
+    console.log(`\n📊 RIEPILOGO: ${totalAssociations} associazioni totali`);
+}
+
+console.log(LODSlist)
+
+
+
+</script>
+</body>
+</html>
