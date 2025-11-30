@@ -1,0 +1,75 @@
+<!--
+add raw32 to json output
+015: nodes list extraction successful
+016: LOD extraction successful
+017: no way to understand LOD structure, passing to AI...
+019: algorithm reviewed;  now function meshParserByLODGroup(detailLevel) returns an array of geosets associated to that detail level, which can be
+     imported in qwen-json-loader.html to select geosets to be shown.
+020: Improved hierarchy display
+        attempt to create LODdata for every files (works only for some ones)
+        added DIV with fiename
+        changed JSON exported filename to match PFB filename
+        added managment of geoset not trianglestrips (geoset.llist = -1, primType <> 8)
+        added metadata to exported meshes
+        refactored parseBtn listener to separate file parsing from meshes creation and tables creation
+        created buildHierarchyLevels() which builds the LODdata array starting from nodes list of PFB file
+021:    added LODdata creation directly during export.
+022:    Fixed reference system differences between NASA and babylon
+        Simple export to obj works; no normals, no colors, but NOT on PFB files with INDEX list and grouped geosets in geodes
+023:    Optmized tree structure
+024:    Improved graphical tree
+025:    Added elements statistics; restored lost LODdata in json output
+026: finire statistiche HTML
+030:    Split into multiple js files
+-->
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PFB Parser</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>PFB parser</h1>
+    <div>Select PFB file (version 26)</div>
+  </header>
+
+  <input id="file" type="file" accept=".pfb,.PFB" />
+  <button id="parseBtn" disabled>Parse</button>
+  <button id="downloadJson" disabled>Export meshes to JSON</button><br>
+
+<br>
+<label for="lodLevel">LOD Level:</label>
+<input type="number" id="lodLevel" min="0" max="10" value="0" style="width: 60px;" />
+<button id="exportSingleLOD" disabled>Export single LOD</button>
+
+  <div id="divFileName"></div>
+
+  <button id="showTreeBtn" disabled>Show nodes tree</button><br>
+  <button id="pointCloudBtn" disabled>Show Pointcloud</button><br>
+  <button id="showLODSbtn" disabled>Show LODS centers</button>
+  <button id="clearLODSbtn" disabled>Clear LODS</button><br>
+  <button id="showBBOXbtn" disabled> Show bounding boxes of geosets</button>
+  <button id="clearBBOXbtn" disabled>Clear bounding boxes</button>
+
+  <div id="status"></div>
+
+  <h3>PointCloud Viewer</h3>
+  <canvas id="babylonCanvas" style="width:100%; height:600px; border:1px solid #888;"></canvas>
+
+  <script src="babylon/babylon.js"></script>
+  <script src="babylon/babylon.gui.js"></script>
+  <script src="babylon/babylonjs.loaders.js"></script>
+  <script src="babylon/earcut.min.js"></script>
+  
+  <script src="js/utils.js"></script>
+  <script src="js/pfb-parser.js"></script>
+  <script src="js/scene-manager.js"></script>
+  <script src="js/ui-manager.js"></script>
+  <script src="js/hierarchy-manager.js"></script>
+  <script src="js/export-manager.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

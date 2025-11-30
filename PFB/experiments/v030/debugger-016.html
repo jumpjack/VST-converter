@@ -1,0 +1,822 @@
+<!--
+    011 added pre-management of illegal meshes/geosets (todo)
+    012 Fixed reference system differences between NASA and babylon
+    013 Fixed shadow system - now shadows work correctly
+    014 Use provided normals instead of computed ones
+    015 Implemented GLB export; but drawing big PFB files is very slow
+    016 Added movable lights, experiments with texture colors
+-->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFB JSON debugger</title>
+    <script src="babylon/earcut.min.js"></script>
+    <script src="babylon/babylon.js"></script>
+    <script src="babylon/babylonjs.serializers.min.js"></script>
+    <link rel="stylesheet" href="qwen-json-loader.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; display: flex; }
+#controls {
+    width: 480px; /* Aumentata da 360px a 480px (puoi regolare ulteriormente) */
+    padding: 12px;
+    box-sizing: border-box;
+    border-right: 1px solid #ddd;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: auto;
+}
+#renderCanvas {
+    flex: 1;
+    display: block;
+}
+        .progress-container { display:none; margin-top:8px; }
+        .progress-bar { background:#eee; height:12px; border-radius:6px; overflow:hidden; }
+        .progress-fill { height:100%; width:0%; transition: width 0.2s; background:#6f42c1; }
+        .mesh-row { display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap; }
+        .mesh-row input[type="number"]{ width:60px; }
+        #logPanel { white-space:pre-wrap; background:#fff; border:1px solid #eee; padding:8px; margin-top:12px; height:140px; overflow:auto; font-size:12px; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3 style="margin-top: 0;">PFB JSON debugger</h3>
+        <input type="file" id="fileInput" accept=".json">
+        <div style="solid #eee;">
+            <div >
+                <label style="margin-right: 12px;">
+                    <input type="checkbox" id="chkGlobalWireframe" checked>
+                    wireframe
+                </label>
+
+                <label>
+                    <input type="checkbox" id="chkGlobalMesh">
+                    mesh
+                </label>
+            </div>
+
+            <label>
+                Filtra per LOD:
+                <input type="number" id="globalLODFilter" min="0" max="7" value="0" style="width: 60px;">
+            </label>
+            <button id="applyLODFilterBtn" style="background:#6f42c1; color:white; border:none; padding:6px 8px; margin-left:8px;">Show selected LOD</button>
+<!--        <button id="exportBtn" style="background:#6f42c1; color:white; border:none; padding:6px 8px; margin-left:8px;">Esporta con LOD</button>-->
+        </div>
+        <div id="info"></div>
+        <div id="metadata"></div>
+
+        <!-- Barre di progresso -->
+        <div id="fileProgress" class="progress-container">
+            <div class="progress-label">Caricamento file...</div>
+            <div class="progress-bar"><div class="progress-fill" id="fileProgressFill"></div></div>
+        </div>
+
+        <div id="applyProgress" class="progress-container">
+            <div class="progress-label" id="applyProgressLabel">Visualizzazione mesh...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="applyProgressFill"></div>
+            </div>
+        </div>
+
+        <div id="createProgress" class="progress-container">
+            <div class="progress-label" id="createProgressLabel">Creazione mesh...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="createProgressFill"></div>
+            </div>
+        </div>
+
+
+        <div id="meshControls"></div>
+
+        <div id="logPanel"></div>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+
+    <script>
+        const XOFFSET = 40;
+        const ZOFFSET = 40;
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        let scene, camera;
+        let meshGroups = [];
+        let globalMetadata = {};
+        let globalLODValues = [];
+        let drawnMeshes = [];
+        let shadowGenerator;
+        let globalObjData = {vertices : [], normals: [], faces: []}
+
+        // Funzione per aggiungere log
+        function log(msg) {
+            const logDiv = document.getElementById('logPanel');
+            const now = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${now}] ${msg}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(1, 1, 1);
+
+            camera = new BABYLON.ArcRotateCamera(
+                "camera",
+                Math.PI / 4,
+                Math.PI / 3,
+                100,
+                new BABYLON.Vector3(0, 0, 0),
+                scene
+            );
+            camera.attachControl(canvas, true);
+            camera.wheelPrecision = 50;
+            camera.minZ = 0.1;
+            camera.wheelPrecision = 1;
+            camera.wheelDeltaPercentage = 0.01;
+
+            // Creazione del terreno di riferimento
+//             const ground = BABYLON.MeshBuilder.CreateGround(
+//                 "ground",
+//                 { width: 500, height: 500 },
+//                 scene
+//             );
+//             ground.position.y = 0;
+// 
+//             const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+//             groundMat.diffuseColor = new BABYLON.Color3(0.85, 0.85, 0.85);
+//             groundMat.specularColor = new BABYLON.Color3(0, 0, 0);
+//             ground.material = groundMat;
+
+            // Luce direzionale per ombre migliori
+            const light = new BABYLON.DirectionalLight(
+                "dirLight",
+                new BABYLON.Vector3(-1, -1, -1),
+                scene
+            );
+            light.position = new BABYLON.Vector3(20, 20, 0);
+            light.intensity = 0.8;
+
+            // Shadow generator migliorato
+            shadowGenerator = new BABYLON.ShadowGenerator(2048, light);
+            shadowGenerator.useBlurExponentialShadowMap = true;
+            shadowGenerator.blurKernel = 32;
+            shadowGenerator.depthScale = 50;
+            shadowGenerator.bias = 0.01;
+
+            // Il terreno riceve ombre
+            //ground.receiveShadows = true;
+
+            // Gizmo visivo della luce
+            const lightSphere = BABYLON.MeshBuilder.CreateSphere(
+                "lightSphere",
+                { diameter: 2 },
+                scene
+            );
+
+            const lightMat = new BABYLON.StandardMaterial("lightMat", scene);
+            lightMat.emissiveColor = new BABYLON.Color3(1, 1, 0); // Giallo per visibilità
+            lightSphere.material = lightMat;
+
+            lightSphere.position.copyFrom(light.position);
+
+            // Collega luce ↔ sfera
+            const dragBehavior = new BABYLON.PointerDragBehavior({
+                dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) // piano XZ
+            });
+            dragBehavior.useObjectOrientationForDragging = false;
+            lightSphere.addBehavior(dragBehavior);
+
+            // Aggiorna posizione luce quando la sfera viene mossa
+            dragBehavior.onDragObservable.add(() => {
+                light.position.copyFrom(lightSphere.position);
+                // Mantieni la direzione della luce coerente
+                light.direction = new BABYLON.Vector3(0, -1, 0).normalize();
+            });
+
+            // Doppio click per centrare la camera
+            scene.onPointerObservable.add(pointerInfo => {
+                if (pointerInfo.type !== BABYLON.PointerEventTypes.POINTERDOUBLETAP) return;
+
+                const pick = scene.pick(
+                    scene.pointerX,
+                    scene.pointerY,
+                    mesh => mesh.isPickable !== false
+                );
+
+                if (pick && pick.hit && pick.pickedPoint) {
+                    camera.setTarget(pick.pickedPoint.clone());
+                }
+            });
+
+            createAxes(scene);
+            return scene;
+        }
+
+        function createAxes(scene) {
+            const axisSize = 10;
+            const colors = [new BABYLON.Color3(1,0,0), new BABYLON.Color3(0,1,0), new BABYLON.Color3(0,0,1)];
+            const axes = ['X', 'Y', 'Z'];
+            axes.forEach((axis, i) => {
+                const end = new BABYLON.Vector3(0,0,0);
+                end[axis.toLowerCase()] = axisSize;
+                const line = new BABYLON.MeshBuilder.CreateLines(`axis${axis}`, {
+                    points: [BABYLON.Vector3.Zero(), end]
+                }, scene);
+                line.color = colors[i];
+            });
+        }
+
+        function addPolygons(obj, lengths, normals) {
+            const polygons = [];
+            let currentIndex = 0;
+            for (const length of lengths) {
+                const polygon = {
+                    vertices: [],
+                    normals: []
+                };
+                for (let i = 0; i < length; i++) {
+                    polygon.vertices.push(obj.vertices[currentIndex]);
+                    if (normals && normals[currentIndex]) {
+                        polygon.normals.push(normals[currentIndex]);
+                    }
+                    currentIndex++;
+                }
+                polygons.push(polygon);
+            }
+            obj.Polygons = polygons;
+            return obj;
+        }
+
+        function createWireframe(groupIndex, polyIndex, polygon) {
+            const points3D = polygon.vertices.map(v =>
+                new BABYLON.Vector3(v.x + XOFFSET, v.y, v.z + ZOFFSET)
+            );
+            const wire = BABYLON.MeshBuilder.CreateLines(
+                `g${groupIndex}_p${polyIndex}_wire`,
+                { points: points3D },
+                scene
+            );
+            // Le linee non possono ricevere ombre, solo le mesh solide
+            wire.color = new BABYLON.Color3(0, 0, 0);
+            drawnMeshes.push(wire);
+            return wire;
+        }
+
+ function createSolidMeshFromStrip(groupIndex, polyIndex, polygon) {
+    if (polygon.vertices.length < 3) return null;
+
+    const positions = [];
+    const indices = [];
+    const normals = [];
+
+    // OBJ output accumulators
+    const objVertices = [];
+    const objNormals = [];
+    const objFaces = [];
+
+    // Converti i vertici in coordinate Babylon e accumula per OBJ
+    for (let i = 0; i < polygon.vertices.length; i++) {
+        const v = polygon.vertices[i];
+        const x = v.x + XOFFSET;
+        const y = v.y;
+        const z = v.z + ZOFFSET;
+        positions.push(x, y, z);
+        objVertices.push(`v ${x} ${y} ${z}`);
+
+        let nx, ny, nz;
+        if (polygon.normals && polygon.normals[i]) {
+            const n = polygon.normals[i];
+            nx = n.nx;
+            ny = n.ny;
+            nz = n.nz;
+            normals.push(nx, ny, nz);
+        } else {
+            nx = 0;
+            ny = 1;
+            nz = 0;
+            normals.push(nx, ny, nz);
+        }
+        objNormals.push(`vn ${nx} ${ny} ${nz}`);
+    }
+
+    // Triangolazione semplice per strip e accumulo facce (1-based index per OBJ)
+    for (let i = 0; i < polygon.vertices.length - 2; i++) {
+        let a, b, c;
+        if (i % 2 === 0) {
+            a = i; b = i + 1; c = i + 2;
+        } else {
+            a = i; b = i + 2; c = i + 1;
+        }
+        indices.push(a, b, c);
+
+        // OBJ uses 1-based indexing, and format is: f v1//vn1 v2//vn2 v3//vn3
+        // Qui assumiamo che ogni vertice abbia una normale corrispondente nello stesso indice
+        objFaces.push(`f ${a + 1}//${a + 1} ${b + 1}//${b + 1} ${c + 1}//${c + 1}`);
+    }
+
+    const mesh = new BABYLON.Mesh(`g${groupIndex}_p${polyIndex}_solid`, scene);
+    const vertexData = new BABYLON.VertexData();
+
+    vertexData.positions = positions;
+    vertexData.indices = indices;
+    vertexData.normals = normals;
+
+    vertexData.applyToMesh(mesh, true);
+
+    const mat = new BABYLON.StandardMaterial(`mat_${groupIndex}_${polyIndex}`, scene);
+    mat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    mat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+    mat.backFaceCulling = false;
+    mesh.material = mat;
+
+    mesh.receiveShadows = true;
+    shadowGenerator.addShadowCaster(mesh);
+
+    mesh.computeWorldMatrix(true);
+    mesh.refreshBoundingInfo();
+
+    drawnMeshes.push(mesh);
+
+    // Restituisci anche i dati OBJ per questa mesh
+    return {
+        mesh,
+        objLines: {
+            vertices: objVertices,
+            normals: objNormals,
+            faces: objFaces
+        }
+    };
+}
+
+
+
+        function updatePieceVisibility(groupIndex, polyIndex, polygon, wireEnabled, solidEnabled) {
+            const group = meshGroups[groupIndex];
+            let piece = group.pieces[polyIndex];
+            if (!piece) {
+                piece = { wireMesh: null, solidMesh: null };
+                group.pieces[polyIndex] = piece;
+            }
+            if (wireEnabled && !piece.wireMesh) {
+                //piece.wireMesh = createWireframe(groupIndex, polyIndex, polygon);
+                result = createWireframe(groupIndex, polyIndex, polygon);
+            }
+            if (solidEnabled && !piece.solidMesh) {
+                //piece.solidMesh = createSolidMeshFromStrip(groupIndex, polyIndex, polygon).mesh;
+                result = createSolidMeshFromStrip(groupIndex, polyIndex, polygon);
+//console.log(result)                
+                if (result) {
+                    piece.solidMesh = result.mesh;
+//console.log(globalObjData);                    
+                    globalObjData.vertices.push(...result.objLines.vertices);
+                    globalObjData.normals.push(...result.objLines.normals);
+                    globalObjData.faces.push(...result.objLines.faces);
+                }
+            }
+            if (piece.wireMesh) piece.wireMesh.setEnabled(wireEnabled);
+            if (piece.solidMesh) piece.solidMesh.setEnabled(solidEnabled);
+        }
+
+ 
+ async function updateGroupVisibilityProgressive(groupIndex, onPolygonProgress) {
+    const group = meshGroups[groupIndex];
+    if (!group) return;
+
+    const data = group.originalData;
+    if (!data || !Array.isArray(data.Polygons)) return;
+
+    const total = data.Polygons.length;
+    if (!Array.isArray(group.pieces)) {
+        group.pieces = new Array(total);
+    }
+
+    // Reset dello stato della mesh unica (non la usiamo)
+    if (group.solidMesh) {
+        try { group.solidMesh.dispose(); } catch (e) {}
+        group.solidMesh = null;
+    }
+
+    for (let polyIndex = 0; polyIndex < total; polyIndex++) {
+        const polygon = data.Polygons[polyIndex];
+        if (!polygon || !polygon.vertices || polygon.vertices.length < 3) {
+            onPolygonProgress?.(polyIndex + 1, total);
+            continue;
+        }
+
+        group.pieces[polyIndex] = group.pieces[polyIndex] || {};
+
+        // Wireframe
+        if (group.wireCheckbox.checked && !group.pieces[polyIndex].wireMesh) {
+            group.pieces[polyIndex].wireMesh = createWireframe(groupIndex, polyIndex, polygon);
+        }
+
+        // Mesh solida
+        if (group.solidCheckbox.checked && !group.pieces[polyIndex].solidMesh) {
+            const result = createSolidMeshFromStrip(groupIndex, polyIndex, polygon);
+            if (result) {
+                group.pieces[polyIndex].solidMesh = result.mesh;
+                globalObjData.vertices.push(...result.objLines.vertices);
+                globalObjData.normals.push(...result.objLines.normals);
+                globalObjData.faces.push(...result.objLines.faces);
+            }
+        }
+
+        // Aggiorna visibilità
+        const piece = group.pieces[polyIndex];
+        if (piece.wireMesh) piece.wireMesh.setEnabled(group.wireCheckbox.checked);
+        if (piece.solidMesh) piece.solidMesh.setEnabled(group.solidCheckbox.checked);
+
+        onPolygonProgress?.(polyIndex + 1, total);
+
+        if (polyIndex % 20 === 0) {
+            await new Promise(r => requestAnimationFrame(r));
+        }
+    }
+}
+
+
+   async function updateGroupVisibility(groupIndex) {
+    const group = meshGroups[groupIndex];
+    if (!group) return;
+
+    const wantsWire = !!group.wireCheckbox.checked;
+    const wantsSolid = !!group.solidCheckbox.checked;
+
+    // Se la mesh solida non è ancora stata creata e vogliamo solid, la creiamo
+    if (wantsSolid && !group.solidMesh) {
+        await updateGroupVisibilityProgressive(groupIndex, (done, total) => {});
+        return;
+    }
+
+    // Altrimenti, impostiamo la visibilità
+    if (group.solidMesh) {
+        group.solidMesh.setEnabled(wantsSolid);
+    }
+
+    // Per la wireframe, usiamo i pezzi esistenti
+    if (Array.isArray(group.pieces)) {
+        group.pieces.forEach(piece => {
+            if (!piece) return;
+            if (piece.wireMesh) piece.wireMesh.setEnabled(wantsWire);
+        });
+    }
+}
+
+        function setGlobalView(mode) {
+            const minElements = parseInt(document.getElementById('minElements')?.value) || 0;
+            const applyProgress = document.getElementById('applyProgress');
+            const applyFill = document.getElementById('applyProgressFill');
+            applyProgress.style.display = 'block';
+            applyFill.style.width = '0%';
+
+            log(`Inizio applicazione globale: ${mode} (soglia: ${minElements})`);
+
+            const total = meshGroups.length;
+            let completed = 0;
+
+            meshGroups.forEach((group, idx) => {
+                if (!group) {
+                    completed++;
+                    return;
+                }
+                const data = group.originalData;
+                const numPieces = data.Polygons ? data.Polygons.length : 0;
+                const shouldShow = (numPieces >= minElements);
+
+                if (mode === 'wireframe') {
+                    group.wireCheckbox.checked = shouldShow;
+                    group.solidCheckbox.checked = false;
+                } else if (mode === 'faces') {
+                    group.wireCheckbox.checked = false;
+                    group.solidCheckbox.checked = shouldShow;
+                }
+
+                updateGroupVisibility(idx);
+
+                completed++;
+                const percent = Math.round((completed / total) * 100);
+                applyFill.style.width = percent + '%';
+
+                if (idx % 10 === 0 || completed === total) {
+                    log(`Applicato a ${idx + 1}/${total} mesh...`);
+                }
+            });
+
+            setTimeout(() => {
+                applyProgress.style.display = 'none';
+                document.getElementById('info').textContent = `Modalit\u00E0 "${mode}" applicata (soglia: ${minElements})`;
+                log(`Applicazione globale completata.`);
+            }, 500);
+        }
+
+        function loadJSON(file) {
+            const reader = new FileReader();
+            const fileProgress = document.getElementById('fileProgress');
+            const fileFill = document.getElementById('fileProgressFill');
+
+            fileProgress.style.display = 'block';
+            fileFill.style.width = '0%';
+
+            reader.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    fileFill.style.width = percent + '%';
+                }
+            };
+
+            reader.onload = function(e) {
+                fileFill.style.width = '100%';
+                setTimeout(() => {
+                    fileProgress.style.display = 'none';
+                    try {
+                        const root = JSON.parse(e.target.result);
+                        if (!root || typeof root !== 'object' || !Array.isArray(root.meshes)) {
+                            alert('Formato errato: deve essere { "data":{...}, "LODdata":[...], "meshes":[...] }');
+                            return;
+                        }
+
+                        const dataList = root.meshes;
+                        console.log("DATI GREZZI", dataList);
+                        globalMetadata = root.data || {};
+                        globalLODValues = Array.isArray(root.LODdata)
+                            ? root.LODdata.map(v => Math.max(0, Math.min(7, parseInt(v) || 0)))
+                            : [];
+
+                        const globalLODInput = document.getElementById("globalLODFilter");
+                        if (globalLODInput && globalLODValues.length) {
+                            globalLODInput.value = Math.max(...globalLODValues);
+                        }
+
+                        const limit = dataList.length;
+
+                        meshGroups = [];
+                        const meshControlsDiv = document.getElementById('meshControls');
+                        meshControlsDiv.innerHTML = '';
+
+                        const metadataDiv = document.getElementById('metadata');
+                        metadataDiv.innerHTML = '<h4 style="margin:12px 0 6px 0;">Metadati:</h4>';
+                        if (Object.keys(globalMetadata).length === 0) {
+                            metadataDiv.innerHTML += '<p>Nessun metadato.</p>';
+                        } else {
+                            const ul = document.createElement('ul');
+                            ul.style.fontSize = '13px';
+                            ul.style.margin = '6px 0';
+                            ul.style.paddingLeft = '20px';
+                            for (const [k, v] of Object.entries(globalMetadata)) {
+                                const li = document.createElement('li');
+                                li.innerHTML = `<strong>${k}:</strong> ${typeof v === 'object' ? JSON.stringify(v) : v}`;
+                                ul.appendChild(li);
+                            }
+                            metadataDiv.appendChild(ul);
+                        }
+
+                        log(`Caricati ${limit} gruppi. Inizio creazione UI...`);
+
+                        for (let i = 0; i < limit; i++) {
+                            const data = dataList[i];
+                            console.log("Dati mesh", i, data.metadata.primitivePointer,data.metadata.geosetNum);
+
+                            if (!data.vertices || !data.lengths) continue;
+                            addPolygons(data, data.lengths, data.normals);
+
+                            if (globalLODValues[i] === undefined) globalLODValues[i] = 0;
+
+                            const row = document.createElement('div');
+                            row.className = 'mesh-row';
+
+                            const label = document.createElement('span');
+                            if (data.metadata?.primitivePointer === -1) {
+                                label.textContent = `* Geoset ${i} (${data.Polygons.length} primitives)`;
+                            } else {
+                                label.textContent = `Geoset ${i} (${data.Polygons.length} primitives)`;
+                            }
+
+                            const wireCheckbox = document.createElement('input');
+                            wireCheckbox.type = 'checkbox';
+                            wireCheckbox.onchange = () => updateGroupVisibility(i);
+
+                            const solidCheckbox = document.createElement('input');
+                            solidCheckbox.type = 'checkbox';
+                            solidCheckbox.onchange = () => updateGroupVisibility(i);
+
+                            const lodSpan = document.createElement('span');
+                            lodSpan.textContent = 'LOD:';
+
+                            const lodInput = document.createElement('input');
+                            lodInput.type = 'number';
+                            lodInput.min = 0;
+                            lodInput.max = 7;
+                            lodInput.value = globalLODValues[i];
+                            lodInput.style.width = '50px';
+                            lodInput.onchange = function () {
+                                let val = parseInt(this.value);
+                                if (isNaN(val)) val = 0;
+                                val = Math.max(0, Math.min(7, val));
+                                this.value = val;
+                                globalLODValues[i] = val;
+                            };
+
+                            row.appendChild(label);
+                            row.appendChild(wireCheckbox);
+                            row.appendChild(solidCheckbox);
+                            row.appendChild(lodSpan);
+                            row.appendChild(lodInput);
+
+                            meshControlsDiv.appendChild(row);
+
+                            meshGroups[i] = {
+                                originalData: data,
+                                wireCheckbox: wireCheckbox,
+                                solidCheckbox: solidCheckbox,
+                                lodInput: lodInput,
+                                pieces: null
+                            };
+                        }
+
+                        log(`UI creata. Pronto per l'elaborazione.`);
+                        document.getElementById('info').textContent = `${limit} gruppi caricati`;
+
+                    } catch (error) {
+                        console.error(error);
+                        alert('Errore JSON: ' + error.message);
+                        log(`ERRORE: ${error.message}`);
+                    }
+                }, 50);
+            };
+
+            reader.onerror = () => {
+                fileProgress.style.display = 'none';
+                alert('Errore lettura file');
+                log(`ERRORE: Lettura file fallita.`);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function loadLODFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const obj = JSON.parse(e.target.result);
+                    if (!obj.LODdata || !Array.isArray(obj.LODdata)) {
+                        alert('File LOD deve contenere: { "LODdata": [...] }');
+                        return;
+                    }
+                    globalLODValues = obj.LODdata.map(v => Math.max(0, Math.min(7, parseInt(v) || 0)));
+                    applyLODValuesToUI();
+                    document.getElementById('info').textContent = `LOD caricati (${globalLODValues.length} valori)`;
+                    log(`LOD caricati da file: ${globalLODValues.length} valori.`);
+                } catch (err) {
+                    alert('Errore file LOD: ' + err.message);
+                    log(`ERRORE: ${err.message}`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function applyLODValuesToUI() {
+            meshGroups.forEach((group, idx) => {
+                if (group?.lodInput) {
+                    group.lodInput.value = Math.max(0, Math.min(7, globalLODValues[idx] ?? 0));
+                }
+            });
+        }
+
+
+        async function applyLODFilter() {
+            const filterValue = parseInt(document.getElementById('globalLODFilter').value);
+            if (isNaN(filterValue) || filterValue < 0 || filterValue > 7) {
+                alert("LOD deve essere tra 0 e 7");
+                return;
+            }
+
+            clearMeshes();
+            meshGroups.forEach(g => { if (g) g.pieces = null; });
+
+            log("Pulizia completa delle mesh esistenti");
+
+            const totalGroups = meshGroups.length;
+            let processedGroups = 0;
+
+            const applyLabel = document.getElementById("applyProgressLabel");
+            const createLabel = document.getElementById("createProgressLabel");
+
+            log(`Avvio filtro LOD ${filterValue}`);
+
+            setProgress("applyProgress", "applyProgressFill", 0, true);
+            setProgress("createProgress", "createProgressFill", 0, true);
+
+            for (let i = 0; i < totalGroups; i++) {
+                const group = meshGroups[i];
+                if (!group) continue;
+
+                const globalWireframeCheckbox = document.getElementById('chkGlobalWireframe');
+                const globalMeshCheckbox = document.getElementById('chkGlobalMesh');
+
+                const show = (globalLODValues[i] ?? 0) === filterValue;
+
+                if (globalWireframeCheckbox && globalWireframeCheckbox.checked) {
+                    group.wireCheckbox.checked = show;
+                } else {
+                    group.wireCheckbox.checked = false;
+                }
+
+                if (globalMeshCheckbox && globalMeshCheckbox.checked) {
+                    group.solidCheckbox.checked = show;
+                } else {
+                    group.solidCheckbox.checked = false;
+                }
+
+                processedGroups++;
+                applyLabel.textContent = `Visualizzazione mesh ${processedGroups} di ${totalGroups}`;
+                log(`➡️ ${applyLabel.textContent}`);
+
+                if (group.wireCheckbox.checked || group.solidCheckbox.checked) {
+                    await updateGroupVisibilityProgressive(i, (done, total) => {
+                        createLabel.textContent = `Creazione mesh: primitiva ${done} di ${total}`;
+                        const polyPercent = (done / total) * 100;
+                        setProgress("createProgress", "createProgressFill", polyPercent, true);
+                    });
+
+                    const groupPercent = (processedGroups / totalGroups) * 100;
+                    setProgress("applyProgress", "applyProgressFill", groupPercent, true);
+
+                    await new Promise(r => requestAnimationFrame(r));
+                } else {
+                    if (Array.isArray(group.pieces)) {
+                        group.pieces.forEach(piece => {
+                            if (!piece) return;
+                            if (piece.wireMesh) piece.wireMesh.setEnabled(false);
+                            if (piece.solidMesh) piece.solidMesh.setEnabled(false);
+                        });
+                    }
+                }
+            }
+
+            setProgress("createProgress", "createProgressFill", 100, false);
+            setProgress("applyProgress", "applyProgressFill", 100, false);
+
+            document.getElementById('info').textContent = `Filtro LOD ${filterValue} applicato (${processedGroups} mesh)`;
+            log(`Filtro LOD ${filterValue} applicato a tutte le mesh.`);
+            log(`✅ Filtro LOD ${filterValue} completato`);
+        }
+
+        // Event listeners
+        document.getElementById('fileInput').addEventListener('change', e => e.target.files[0] && loadJSON(e.target.files[0]));
+        document.getElementById('applyLODFilterBtn').addEventListener('click', applyLODFilter);
+//        document.getElementById('exportBtn').addEventListener('click', exportJSONWithLOD);
+
+        createScene();
+        engine.runRenderLoop(() => scene.render());
+        window.addEventListener('resize', () => engine.resize());
+
+        function setProgress(containerId, fillId, percent, visible = true) {
+            const container = document.getElementById(containerId);
+            const fill = document.getElementById(fillId);
+
+            container.style.display = visible ? "block" : "none";
+            fill.style.width = Math.max(0, Math.min(100, percent)).toFixed(1) + "%";
+        }
+
+function clearMeshes() {
+    if (drawnMeshes) {
+        drawnMeshes.forEach(mesh => {
+            try { mesh.dispose(); } catch (e) { console.warn("dispose failed", e); }
+        });
+        drawnMeshes = [];
+    }
+
+    // Inoltre, puliamo le mesh solide e wireframe dai gruppi
+    meshGroups.forEach(group => {
+        if (group) {
+            if (group.solidMesh) {
+                try { group.solidMesh.dispose(); } catch (e) { console.warn("dispose solidMesh failed", e); }
+                group.solidMesh = null;
+            }
+            if (Array.isArray(group.pieces)) {
+                group.pieces.forEach(piece => {
+                    if (piece && piece.wireMesh) {
+                        try { piece.wireMesh.dispose(); } catch (e) { console.warn("dispose wireMesh failed", e); }
+                        piece.wireMesh = null;
+                    }
+                });
+            }
+            group.pieces = null;
+        }
+    });
+}
+        
+function myGLB() {
+// Assicurati di aver importato le dipendenze necessarie (se usi versione modulare)
+// In CDN o script globale, è già disponibile
+
+BABYLON.GLTF2Export.GLTFAsync(scene, "scene")
+  .then((glTFData) => {
+    // Questo scarica automaticamente il file .glb
+    glTFData.downloadFiles();
+  });
+}        
+    </script>
+</body>
+</html>

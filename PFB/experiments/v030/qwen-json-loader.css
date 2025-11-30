@@ -1,0 +1,130 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#renderCanvas {
+    width: 100%;
+    height: 100vh;
+    display: block;
+}
+
+#controls {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    z-index: 100;
+    max-height: 80vh;
+    overflow-y: auto;
+    max-width: 360px;
+}
+
+.progress-container {
+    margin: 10px 0;
+    display: none;
+}
+
+.progress-label {
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #007bff;
+    width: 0%;
+    transition: width 0.1s;
+}
+
+#fileInput,
+#lodFileInput {
+    margin: 10px 0;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+#wireframeBtn,
+#facesBtn {
+    background: #6c757d;
+    font-size: 13px;
+    padding: 8px;
+}
+
+#wireframeBtn {
+    background: #17a2b8;
+}
+
+#facesBtn {
+    background: #28a745;
+}
+
+#info {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #555;
+    min-height: 18px;
+}
+
+.mesh-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    flex-wrap: wrap;
+}
+
+.mesh-row input[type="checkbox"] {
+    margin: 0;
+}
+
+.mesh-row input[type="number"] {
+    width: 50px;
+}
+
+label {
+    display: block;
+    margin: 6px 0;
+}
+
+#logPanel {
+    margin-top: 12px;
+    padding: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
