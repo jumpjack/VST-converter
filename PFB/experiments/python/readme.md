@@ -1,6 +1,6 @@
 Experiments with python.
 
-Starting from   I was able to obtain a code which properly reads and converts to .obj the ancient NASA files from MER missions:
+Starting from https://github.com/davepape/pfb_converter  I was able to obtain a code which properly reads and converts to .obj the ancient NASA files from MER missions:
 
 ## Minimal batch script -  conv.bat (Windows):
 
