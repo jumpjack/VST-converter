@@ -23,6 +23,7 @@ pfb2obj.py [-h] [-t {NASA,other}] [-i INPUT] [-o OUTPUT] [-of OUTPUT_FOLDER] [-t
 
 PFB 3d converter
 
+```
 options:
   -h, --help            show this help message and exit
   -t, --texture {NASA,other}
@@ -46,3 +47,5 @@ options:
                         Reference system: x_zy, xzy, xyz Default: "x_zy"
   -v, --verbose VERBOSE
                         Amount of debug messages shown
+
+```
