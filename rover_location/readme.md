@@ -24,6 +24,15 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%2
  - Latitude: -14.60036585863168 N
  - Longitude: 175.52537659512154 E
 
+## Lander reference system
+
+<img width="371" height="316" alt="image" src="https://github.com/user-attachments/assets/f0170947-0d1c-42f3-8f57-09251813eaf3" />
+
+- X: right
+- Y: up
+- Z: out
+
+From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordinate_systems.pdf
      
 ## Timetables for Spirit and opportunity
 
