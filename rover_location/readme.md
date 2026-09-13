@@ -7,7 +7,7 @@
 
 There are various valuse for latitude and longitude of landing site, depending on source.
 
-From [MER Analyst Notebook:](https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm) 
+From [MER Analyst Notebook:](https://an.rsl.wustl.edu/mer) 
 
 - In MOLA IAU 2000 frame (1): 
      - Latitude:  -14.571892 N  
