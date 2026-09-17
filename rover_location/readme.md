@@ -28,12 +28,36 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/mer)
 
 <img width="371" height="316" alt="image" src="https://github.com/user-attachments/assets/f0170947-0d1c-42f3-8f57-09251813eaf3" />
 
+- right-handed
 - X: right
-- Y: up
-- Z: out
+- Y: up/north
+- Z: out from screen - WARNING: lander seen from below! Seen from above, Z+ is entering the screen!
 
 From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordinate_systems.pdf
-     
+
+## Rover reference systems
+
+<img width="735" height="292" alt="image" src="https://github.com/user-attachments/assets/27733e38-6b4f-4c45-b5d6-ba213b7359fb" />
+
+- right-handed
+- X: forward
+- Y: right
+- Z: down
+
+## Reference systems comparison
+
+<img width="793" height="633" alt="image" src="https://github.com/user-attachments/assets/4b9f0280-ade9-413c-b312-997806570e3d" />
+
+**Note: Rover has same reference system BUT rotated 90° clockwise looking from above**
+
+| Lander | Rover |
+|--------|-------|
+|   X+   |   Y+  |
+|   Y+   |   X-  |
+|   Z+   |   Z+  |
+
+
+	 
 ## Timetables for Spirit and opportunity
 
 ![image](https://user-images.githubusercontent.com/1620953/187862679-4f751de7-93c9-4b04-b7c8-bd19a3b34870.png)
