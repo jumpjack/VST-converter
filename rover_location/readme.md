@@ -31,11 +31,13 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/mer)
 - right-handed
 - X: right
 - Y: up/north
-- Z: out from screen - WARNING: lander seen from below! Seen from above, Z+ is entering the screen!
+- Z: out from screen
+
+**Note: lander is seen from below! Seen from above, Z+ is entering the screen!**
 
 From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordinate_systems.pdf
 
-## Rover reference systems
+## Rover reference system
 
 <img width="735" height="292" alt="image" src="https://github.com/user-attachments/assets/27733e38-6b4f-4c45-b5d6-ba213b7359fb" />
 
@@ -48,13 +50,18 @@ From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordin
 
 <img width="793" height="633" alt="image" src="https://github.com/user-attachments/assets/4b9f0280-ade9-413c-b312-997806570e3d" />
 
-**Note: Rover has same reference system BUT rotated 90° clockwise looking from above**
+**Note: Rover has same direction of Z+ w.r.t. lander, but of course it can rotate in any direction; in picture above the rover reference system appears rotated 90° clockwise watching from above terrain**:
 
 | Lander | Rover |
 |--------|-------|
 |   X+   |   Y+  |
 |   Y+   |   X-  |
 |   Z+   |   Z+  |
+
+Generic:
+
+<img width="736" height="341" alt="image" src="https://github.com/user-attachments/assets/30499424-4631-4c87-92a1-b7741e8be34e" />
+
 
 
 	 
