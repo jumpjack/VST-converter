@@ -24,7 +24,11 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/mer)
  - Latitude: -14.60036585863168 N
  - Longitude: 175.52537659512154 E
 
-## Lander reference system
+## Reference systems
+
+From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordinate_systems.pdf
+
+### Lander reference system
 
 <img width="371" height="316" alt="image" src="https://github.com/user-attachments/assets/f0170947-0d1c-42f3-8f57-09251813eaf3" />
 
@@ -35,9 +39,9 @@ From [MER Analyst Notebook:](https://an.rsl.wustl.edu/mer)
 
 **Note: lander is seen from below! Seen from above, Z+ is entering the screen!**
 
-From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordinate_systems.pdf
 
-## Rover reference system
+
+### Rover reference system
 
 <img width="735" height="292" alt="image" src="https://github.com/user-attachments/assets/27733e38-6b4f-4c45-b5d6-ba213b7359fb" />
 
@@ -46,7 +50,7 @@ From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordin
 - Y: right
 - Z: down
 
-## Reference systems comparison
+### Reference systems comparison
 
 <img width="793" height="633" alt="image" src="https://github.com/user-attachments/assets/4b9f0280-ade9-413c-b312-997806570e3d" />
 
@@ -63,8 +67,19 @@ Generic:
 <img width="765" height="431" alt="image" src="https://github.com/user-attachments/assets/6dbd276d-4465-4bab-8bf8-b6c490a4f7ad" />
 
 
+### Site reference system
 
+Site 0 (landing site) (page 10 of [this document](https://github.com/jumpjack/VST-converter/blob/main/mer-coordinate_systems.pdf):)
 
+Has same origin of lander reference system (reference "L"), but it is oriented to match with Mars Local Level frame (reference "M"): X+ points to North, Y+ points to East, Z+ point to planet center (Nadir). Initially coincident with rover frame (frame "R").
+
+<img width="497" height="347" alt="image" src="https://github.com/user-attachments/assets/d79ae17b-a6e3-41e2-bc8b-8084fd8e58d9" />
+
+Other sites:
+
+Always aligned to Site 0, hence to Mars Local Level frame, with X+ to north, Y+ to east and Z+ downwards.
+
+**All of the images and XYZ maps for that site will be in the (same) local site frame.** ([page 19](https://github.com/jumpjack/VST-converter/blob/main/mer-coordinate_systems.pdf))
 	 
 ## Timetables for Spirit and opportunity
 
