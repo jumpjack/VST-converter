@@ -60,7 +60,8 @@ From: https://github.com/jumpjack/VST-converter/blob/main/rover_location/coordin
 
 Generic:
 
-<img width="736" height="341" alt="image" src="https://github.com/user-attachments/assets/30499424-4631-4c87-92a1-b7741e8be34e" />
+<img width="765" height="431" alt="image" src="https://github.com/user-attachments/assets/6dbd276d-4465-4bab-8bf8-b6c490a4f7ad" />
+
 
 
 
