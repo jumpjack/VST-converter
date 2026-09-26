@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PFB Parser</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; padding:18px; color:#111; }
+  header { margin-bottom:12px; }
+  input[type=file] { margin-bottom:12px; }
+  pre { background:#f4f4f4; padding:10px; border-radius:6px; max-height:44vh; overflow:auto; white-space:pre-wrap; }
+  button { margin-right:8px; }
+  .ok { color: #0a0; }
+  .warn { color: #a60; }
+  .controls { position: absolute; left: 12px; top: 80px; z-index: 1000; background: rgba(255,255,255,0.95); padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);}
+  .controls label { display:block; font-size:0.9rem; margin-bottom:6px;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>PFB parser</h1>
+    <div>Select PFB file (version 26)</div>
+  </header>
+
+  <input id="file" type="file" accept=".pfb,.PFB" />
+  <button id="parseBtn" disabled>Parse</button>
+  <button id="pointCloudBtn" disabled>Show Pointcloud</button>
+  <button id="downloadJson" disabled>Export meshes to JSON</button>
+  <div id="status"></div>
+
+  <h3>PointCloud Viewer</h3>
+  <canvas id="babylonCanvas" style="width:100%; height:600px; border:1px solid #888;"></canvas>
+
+  <script src="babylon.js"></script>
+  <script src="babylon.gui.js"></script>
+  <script src="babylonjs.loaders.js"></script>
+  <script src="earcut.min.js"></script>
+
+<script>
+// Geoset Binding:
+const BindNames = {
+    0 : "undefined",
+    1: "PFGS_OFF",
+    2: "PFGS_PER_VERTEX",
+    3: "PFGS_PER_PRIM",
+    4: "PFGS_OVERALL"
+};
+
+// --- Primitive types ---
+const PrimTypeNames = {
+    0:  "undefined",
+    1: "PFGS_TRISTRIPS",
+    2: "PFGS_TRIS",
+    3: "PFGS_POINTS",
+    4: "PFGS_LINES",
+    5: "PFGS_LINESTRIPS",
+    6: "PFGS_FLAT_LINESTRIPS",
+    7: "PFGS_QUADS",
+    8: "PFGS_FLAT_TRISTRIPS",
+    9: "PFGS_POLYS",
+   10: "PFGS_TRIFANS",
+   11: "PFGS_FLAT_TRIFANS"
+};
+
+// --- On/Off ---
+const OO = {
+    0: "PF_OFF",
+    1: "PF_ON"
+};
+
+const DrawModeNames = {
+    2: "PFGS_FLATSHADE",
+    3: "PFGS_WIREFRAME",
+    4: "PFGS_COMPILE_GL",
+    6: "PFGS_DRAW_GLOBJ"
+};
+
+const BBoxModeNames = {
+    1: "PFBOUND_STATIC",
+    2: "PFBOUND_DYNAMIC"
+};
+
+const L_NAMES = {
+  0: "Material",1:"Texture",2:"TexEnv",3:"GeoState",4:"Length List",5:"Vertex List",
+  6:"Color List",7:"Normal List",8:"TexCoord List",9:"Index List",10:"GeoSet",11:"User Data",12:"Node"
+};
+
+const SLIST_IDS = new Set([4,5,6,7,8,9]);
+
+/* --- helpers --- */
+function readInt32(view, offset, little) { return view.getInt32(offset, little); }
+function readUint32(view, offset, little) { return view.getUint32(offset, little); }
+function readFloat32(view, offset, little) { return view.getFloat32(offset, little); }
+function toHex32(n) { return '0x' + (n >>> 0).toString(16).padStart(8,'0'); }
+function bytesToHex(bytes, maxChars) {
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+  if (maxChars && hex.length > maxChars) return hex.slice(0,maxChars) + '...';
+  return hex;
+}
+function bytesToTextString(bytes) {
+  let out = "";
+  for (let i=0;i<bytes.length;i++){
+    const b = bytes[i];
+    if (b >= 32 && b <= 126) out += String.fromCharCode(b); else out += ".";
+  }
+  return out;
+}
+const UNIT_SIZES = { L_LLIST:4, L_VLIST:12, L_CLIST:16, L_NLIST:12, L_TLIST:8, L_ILIST:2 };
+
+let currentJSON = null;
+let storedVertices = [];
+let llist = [], vlist = [];
+let meshData = [];
+let meshes = [];
+let nodesTable = null;
+
+const fileInput = document.getElementById('file');
+const parseBtn = document.getElementById('parseBtn');
+const pointCloudBtn = document.getElementById('pointCloudBtn');
+const downloadJson = document.getElementById('downloadJson');
+const status = document.getElementById('status');
+
+fileInput.addEventListener('change', () => {
+  parseBtn.disabled = !fileInput.files.length;
+  downloadJson.disabled = true;
+  pointCloudBtn.disabled = true;
+  //document.getElementById('meshControls').style.display = 'none';
+});
+
+parseBtn.addEventListener('click', async () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  fileData = f;
+console.log("FILE:", fileData);
+  status.textContent = 'Reading file...';
+  const ab = await f.arrayBuffer();
+  try {
+    const res = parsePFB(ab);
+    currentJSON = res.json;
+    nodesTable = res.nodesTable;
+    console.log("PARSER RESULT currentJSON (console only):", currentJSON);
+    const getListById = id => currentJSON.lists.find(l => l.list_id === id);
+    const llist = getListById(4); // Length List
+    const vlist = getListById(5); // Vertex List
+    const clist = getListById(6); // Color List
+    const nlist = getListById(7); // Normal List
+    const tlist = getListById(8); // TexCoord List
+    const gsets = getListById(10); // GeoSet
+
+    for (elemIndex = 0; elemIndex < gsets.count; elemIndex++) {
+      try {
+        const GMAIN = gsets.elements[elemIndex].struct;
+        const myMesh = {};
+        if (llist.elements[GMAIN.llist]) {
+          myMesh.lengths = llist.elements[GMAIN.llist].struct.ints;
+          myMesh.vertices = vlist.elements[GMAIN.vlist[1]].struct.vertices;
+          meshes.push(myMesh);
+        }
+      } catch (e) {
+          console.log("Errore ",e, "llist=", llist.elements[gsets.elements[elemIndex].struct.llist], ", vlist = ", vlist.elements[gsets.elements[elemIndex].struct.vlist] );
+      }
+    }
+
+    extractVerticesFromParsedJSON(currentJSON);
+    status.innerHTML = `<div class="ok">Parsing completed.</div>`;
+
+    (function makeGsetTable(){
+        const gsetsList = currentJSON.lists.find(l => l.list_id === 10);
+        if (!gsetsList) return;
+
+        const container = document.createElement("div");
+        container.style.marginTop = "20px";
+        const title = document.createElement("h2");
+        title.textContent = "GSETS in file";
+        container.appendChild(title);
+        const table = document.createElement("table");
+        table.style.borderCollapse = "collapse";
+        table.style.width = "100%";
+        table.style.fontSize = "13px";
+        function th(txt){
+            const e = document.createElement("th");
+            e.textContent = txt;
+            e.style.border = "1px solid #777";
+            e.style.padding = "4px 6px";
+            e.style.background = "#eee";
+            return e;
+        }
+        function td(txt){
+            const e = document.createElement("td");
+            e.textContent = txt;
+            e.style.border = "1px solid #ccc";
+            e.style.padding = "4px 6px";
+            return e;
+        }
+
+        const headerGroup = document.createElement("tr");
+        headerGroup.appendChild(th(" "));
+
+        const primGroup = th("Primitives");
+        primGroup.colSpan = 3;
+        primGroup.style.textAlign = "center";
+        headerGroup.appendChild(primGroup);
+
+        const groups = ["Coordinates", "Colors", "Normals", "Textures"];
+        for (const g of groups){
+            const thGroup = th(g);
+            thGroup.colSpan = 3;
+            thGroup.style.textAlign = "center";
+            headerGroup.appendChild(thGroup);
+        }
+
+        const drawGroup = th("Drawing modes");
+        drawGroup.colSpan = 3;
+        drawGroup.style.textAlign = "center";
+        headerGroup.appendChild(drawGroup);
+
+        const gstateGroup = th("gstate");
+        gstateGroup.colSpan = 2;
+        gstateGroup.style.textAlign = "center";
+        headerGroup.appendChild(gstateGroup);
+
+        const simpleGroup = th("Drawing");
+        simpleGroup.colSpan = 5;
+        simpleGroup.style.textAlign = "center";
+        headerGroup.appendChild(simpleGroup);
+
+        const bboxGroup = th("Bounding box");
+        bboxGroup.colSpan = 2;
+        bboxGroup.style.textAlign = "center";
+        headerGroup.appendChild(bboxGroup);
+
+        const userGroup = th("userData");
+        userGroup.colSpan = 1;
+        userGroup.style.textAlign = "center";
+        headerGroup.appendChild(userGroup);
+
+        const drawGroup2 = th("Decaling");
+        drawGroup2.colSpan = 6;
+        drawGroup2.style.textAlign = "center";
+        headerGroup.appendChild(drawGroup2);
+
+        headerGroup.appendChild(th("bbox_flux"));
+
+        table.appendChild(headerGroup);
+
+        const header = document.createElement("tr");
+        header.appendChild(th("N."));
+        header.appendChild(th("Type"));
+        header.appendChild(th("Count"));
+        header.appendChild(th("Pointer to list of primitve lengths"));
+
+        const A = [
+            ["Binding","Pointer to list of coordinates","Pointer to list of indexes"],
+            ["Binding","Pointer to list of colors","Pointer to list of indexes"],
+            ["Binding","Pointer to list of normals","Pointer to list of indexes"],
+            ["Binding","Pointer to list of textures","Pointer to list of indexes"]
+        ];
+        for (const triple of A){
+            header.appendChild(th(triple[0]));
+            header.appendChild(th(triple[1]));
+            header.appendChild(th(triple[2]));
+        }
+
+        header.appendChild(th("Flatshade"));
+        header.appendChild(th("Wireframe"));
+        header.appendChild(th("Compile GL"));
+
+        header.appendChild(th("Reference"));
+        header.appendChild(th("Index"));
+
+        header.appendChild(th("Line Wdith"));
+        header.appendChild(th("Point Size"));
+        header.appendChild(th("Drawing bin"));
+        /*  bin identifies a drawing bin to which the pfGeoSet belongs and is used for
+           controlling the rendering order of a database.  The pfGeoSet draw bin is
+           currently used only by libpf applications (see pfChannel::setBinOrder)
+           and is ignored by libpr-only applications. The default pfGeoSet draw bin
+           identifier is -1. ::getDrawBin returns the draw bin identifier of gset.
+           https://help.graphica.com.au/irix-6.5.30/man/3pf/pfGSetDrawBin
+        */
+
+        header.appendChild(th("Intersection Mask"));
+        /*
+             Intersection Mask
+             setIsectMask enables intersections and sets the intersection
+             mask for the pfGeoSet.  mask is a 32-bit mask used to determine whether a
+             particular pfGeoSet should be examined during a particular intersection
+             request.  A non-zero bit-wise AND of the pfGeoSet's mask with the mask of
+             the intersection request (pfGeoSet::isect) indicates that the pfGeoSet
+             should be tested.  The default mask is all 1's, i.e.  0xffffffff.
+        */
+        header.appendChild(th("Gset highlighting"));
+        /*
+            Gset highlighting
+           setHlight sets hlight to be the highlighting structure used for
+           the pfGeoSet.  When this flag is not PFHL_OFF, this gset will be drawn as
+           highlighted unless highlighting has been overridden as off with
+           pfOverride.  See the pfHighlight manual page for information of creating
+           and configuring a highlighting state structure.  pfGeoSet::getHlight
+           returns the current GeoSet highlight definition.
+        */
+        header.appendChild(th("Mode"));
+        header.appendChild(th("____Values____"));
+        header.appendChild(th("User data"));
+        header.appendChild(th("Draw order"));
+        header.appendChild(th("Plane"));
+
+        header.appendChild(th("Plane nx"));
+        header.appendChild(th("Plane ny"));
+        header.appendChild(th("Plane nz"));
+        header.appendChild(th("Plane offset"));
+
+        header.appendChild(th("bbox_flux"));
+
+/*        for (let unit = 1; unit <= 6; unit++){
+            header.appendChild(th(`tex${unit}_bind`));
+            header.appendChild(th(`tex${unit}_list`));
+            header.appendChild(th(`tex${unit}_ilist`));
+        }
+
+        header.appendChild(th("appearance"));*/
+
+
+        table.appendChild(header);
+
+        gsetcounter = 0;
+for (const elem of gsetsList.elements){
+    const g = elem.struct;
+    const row = document.createElement("tr");
+    row.appendChild(td(`${gsetcounter})`));
+
+    const primName = PrimTypeNames[g.ptype] || "?";
+    row.appendChild(td(`${g.ptype} (${primName})`));
+    row.appendChild(td(g.pcount));
+    row.appendChild(td(g.llist));
+
+    function emitTriple(arr){
+        const bind = arr[0];
+        const list = arr[1];
+        const ilist = arr[2];
+        const bname = BindNames[bind] || "?";
+
+        // Controllo per -1 nei valori della tripletta
+        const displayList = list === -1 ? "[unused]" : list;
+        const displayIlist = ilist === -1 ? "[unused]" : ilist;
+
+        row.appendChild(td(`${bind} (${bname})`));
+        row.appendChild(td(displayList));
+        row.appendChild(td(displayIlist));
+    }
+
+    emitTriple(g.vlist);
+    emitTriple(g.clist);
+    emitTriple(g.nlist);
+    emitTriple(g.tlist);
+
+    function drawMode(val, index, compileGLSetting = 2) {
+        const oo_table = [2, 0, 1];
+        if (val < 0 || val > 2) return "UNKNOWN";
+        const converted = oo_table[val];
+        if (index === 2) {
+            if (compileGLSetting === 1 || (compileGLSetting === 2 && converted === 1)) {
+                return "ON";
+            } else {
+                return "OFF";
+            }
+        } else {
+            return converted === 1 ? "ON" : "OFF";
+        }
+    }
+
+    const compileGLSetting = 2;
+    row.appendChild(td(drawMode(g.draw_mode[0], 0, compileGLSetting)));
+    row.appendChild(td(drawMode(g.draw_mode[1], 1, compileGLSetting)));
+    row.appendChild(td(drawMode(g.draw_mode[2], 2, compileGLSetting)));
+
+    // Funzione helper per controllare e sostituire -1
+    function checkValue(val) {
+        return val === -1 ? "[unused]" : val;
+    }
+
+    row.appendChild(td(checkValue(g.gstate[0])));
+    row.appendChild(td(checkValue(g.gstate[1])));
+    row.appendChild(td(checkValue(g.line_width)));
+    row.appendChild(td(checkValue(g.point_size)));
+    row.appendChild(td(checkValue(g.draw_bin)));
+
+    const mask = g.isect_mask >>> 0;
+    const bmask = "0b" + mask.toString(2).padStart(32, "0");
+    row.appendChild(td(bmask));
+    row.appendChild(td(checkValue(g.hlight)));
+
+    const bboxModeName = BBoxModeNames[g.bbox_mode] || "?";
+    row.appendChild(td(`${g.bbox_mode} (${bboxModeName})`));
+
+    let bboxTxt = "[not used]";
+    if (g.bbox && typeof g.bbox === 'object') {
+        const { min, max } = g.bbox;
+        if (Array.isArray(min) && Array.isArray(max) && min.length === 3 && max.length === 3) {
+            const allValues = [...min, ...max];
+            if (allValues.some(v => v === -1)) {
+                bboxTxt = "[not used]";
+            } else if (allValues.every(v => Number.isFinite(v))) {
+                bboxTxt = `x: ${g.bbox.min[0].toFixed(1)}, ${g.bbox.max[0].toFixed(1)}\n
+                           y: ${g.bbox.min[1].toFixed(1)}, ${g.bbox.max[1].toFixed(1)}\n
+                           z: ${g.bbox.min[2].toFixed(1)}, ${g.bbox.max[2].toFixed(1)}\n `
+            } else {
+                bboxTxt = JSON.stringify(g.bbox);
+            }
+        }
+    }
+    row.appendChild(td(bboxTxt));
+
+    row.appendChild(td(checkValue(g.udata)));
+    row.appendChild(td(checkValue(g.draw_order)));
+    row.appendChild(td(checkValue(g.decal_plane)));
+
+    if (Array.isArray(g.decal_plane_normal)){
+        row.appendChild(td(checkValue(g.decal_plane_normal[0])));
+        row.appendChild(td(checkValue(g.decal_plane_normal[1])));
+        row.appendChild(td(checkValue(g.decal_plane_normal[2])));
+    } else {
+        row.appendChild(td(""));
+        row.appendChild(td(""));
+        row.appendChild(td(""));
+    }
+    row.appendChild(td(checkValue(g.decal_plane_offset)));
+    row.appendChild(td(checkValue(g.bbox_flux)));
+
+    table.appendChild(row);
+    gsetcounter++;
+}
+        container.appendChild(table);
+
+    const title2 = document.createElement("h2");
+    title2.textContent = "Nodes in PFB file (ERROR)";
+    container.appendChild(title2);
+
+        container.appendChild(nodesTable);
+        document.body.appendChild(container);
+    })();
+
+    downloadJson.disabled = false;
+    pointCloudBtn.disabled = storedVertices.length > 0 ? false : true;
+
+  } catch(e) {
+    status.innerHTML = `<div class="warn">Parsing fallito: ${e}</div>`;
+    console.error(e);
+  }
+});
+
+function addPolygons(obj) {
+  const polygons = [];
+  let currentIndex = 0;
+  for (const length of obj.lengths) {
+    const polygon = [];
+    for (let i = 0; i < length; i++) {
+      polygon.push(obj.vertices[currentIndex]);
+      currentIndex++;
+    }
+    polygons.push(polygon);
+  }
+  obj.Polygons = polygons;
+  return obj;
+}
+
+downloadJson.addEventListener('click', () => {
+  if (!meshes) return;
+console.log(meshes,fileData)  
+  annotatedMeshes = {
+    data : {
+        filename: fileData.name,
+        fileDate: fileData.lastModifiedDate,
+        fileSize: fileData.size
+    },
+    meshes:  meshes,
+    LODdata : []
+  };
+console.log(meshes,fileData)  
+  const blob = new Blob([JSON.stringify(annotatedMeshes, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'annotatedMeshes.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* --- parsePFB --- */
+function parsePFB(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  const len = arrayBuffer.byteLength;
+  let parsePFBnodesTable = null;
+  if (len < 16) throw new Error('File troppo piccolo.');
+
+  const hLE = [readInt32(view,0,true), readInt32(view,4,true), readInt32(view,8,true), readInt32(view,12,true)];
+  const hBE = [readInt32(view,0,false), readInt32(view,4,false), readInt32(view,8,false), readInt32(view,12,false)];
+  let little;
+  if (hLE[1] === 26 && hLE[3] >= 0 && hLE[3] < len) little = true;
+  else if (hBE[1] === 26 && hBE[3] >= 0 && hBE[3] < len) little = false;
+  else { little = true; console.warn("Non trovato header versione 26; assumo little-endian"); }
+
+  const version = (little? hLE[1] : hBE[1]);
+  const listsStart = (little? hLE[3] : hBE[3]);
+  if (listsStart < 0 || listsStart >= len) throw new Error('Offset liste invalido: ' + listsStart);
+
+  let pos = listsStart;
+  const lists = [];
+  let parsed = 0;
+
+  while (pos + 12 <= len) {
+    const list_id = readInt32(view, pos, little);
+    const list_count = readInt32(view, pos+4, little);
+    const data_byte_size = readInt32(view, pos+8, little);
+    if (list_id === 0 && list_count ===0 && data_byte_size===0) break;
+
+    const headerStart = pos;
+    const dataStart = pos + 12;
+    const dataEnd = dataStart + data_byte_size;
+    if (dataEnd > len) break;
+
+    const listObj = {
+      list_id,
+      list_name: L_NAMES[list_id] || ('Unknown('+list_id+')'),
+      count: list_count,
+      offset_header: toHex32(headerStart),
+      offset_data_start: toHex32(dataStart),
+      offset_end: toHex32(dataEnd-1),
+      length_bytes: 12 + data_byte_size,
+      raw_data_length: data_byte_size,
+      struct: null,
+      elements: []
+    };
+
+    if (list_id === 10 && list_count > 0) {
+      const raw = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+      const elemByteSize = Math.floor(raw.length / list_count);
+      for (let i=0;i<list_count;i++) {
+        const off = i * elemByteSize;
+        const chunk = raw.subarray(off, off + elemByteSize);
+        const parsedG = parseGSetElement(chunk, little);
+        listObj.elements.push({
+          index: i,
+          offset: toHex32(dataStart + off),
+          offset_dec: dataStart + off,
+          length: chunk.length,
+          dataHex_preview: bytesToHex(chunk.subarray(0, Math.min(256,chunk.length))),
+          struct: parsedG.elements,
+          debug8: parsedG.debug8,
+          debug32: parsedG.debug32,
+          raw: chunk
+        });
+      }
+      listObj.struct = { note: `GSET parsed into ${list_count} elements, each ${elemByteSize} bytes` };
+    }
+    else if (list_id === 12 && list_count > 0) {
+      const raw = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+      const parseResults = parseNodesInList(raw);
+      const nodes = parseResults.elements;
+      parsePFBnodesTable = parseResults.table
+
+
+      for (let i = 0; i < nodes.length; i++) {
+          listObj.elements.push({
+              index: i,
+              offset: toHex32(dataStart + nodes[i].offset_dec),
+              offset_dec: nodes[i].offset_dec,
+              length: nodes[i].length,
+              struct: nodes[i].struct,
+              dataHex_preview: bytesToHex(nodes[i].raw.subarray(0, Math.min(nodes[i].raw.length, 256))),
+              raw: nodes[i].raw
+          });
+      }
+      listObj.struct = { note: `Node list parsed into ${nodes.length} elements` };
+    }
+    else if (SLIST_IDS.has(list_id)) {
+      parseSListElements(arrayBuffer, view, dataStart, dataEnd, list_id, little, listObj);
+    } else if (list_id === 0 || list_id === 1 || list_id === 2) {
+      parseListFixedElements(arrayBuffer, view, dataStart, dataEnd, list_id, list_count, little, listObj);
+    } else {
+      const rawBytes = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+      listObj.elements.push({
+        index: 0,
+        offset: toHex32(dataStart),
+        offset_dec: dataStart,
+        length: rawBytes.length,
+        dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length,256)), 1024),
+        textString: bytesToTextString(rawBytes),
+        struct: { note: "Lista non decodificata (raw preserved)." },
+        raw: rawBytes
+      });
+    }
+
+    lists.push(listObj);
+    parsed++;
+    pos = dataEnd;
+  }
+
+  const json = {
+    parsed_at: (new Date()).toISOString(),
+    file_size: len,
+    detected_version: version,
+    little_endian_assumed: little,
+    lists: lists
+  };
+
+  const allGsets = lists.filter(l=>l.list_id===10).flatMap(l=>l.elements.map(e=>e.struct));
+  if (allGsets.length) console.log("Gsets found in file:", allGsets);
+
+  return { json,  nodesTable: parsePFBnodesTable };
+}
+
+function parseSListElements(arrayBuffer, view, start, end, list_id, little, listObj) {
+  let p = start;
+  const total = end;
+  const unitSize = (() => {
+    switch(list_id) {
+      case 4: return UNIT_SIZES.L_LLIST;
+      case 5: return UNIT_SIZES.L_VLIST;
+      case 6: return UNIT_SIZES.L_CLIST;
+      case 7: return UNIT_SIZES.L_NLIST;
+      case 8: return UNIT_SIZES.L_TLIST;
+      case 9: return UNIT_SIZES.L_ILIST;
+      default: return 1;
+    }
+  })();
+
+  let index = 0;
+  while (p + 12 <= total) {
+    const elem_count = readInt32(view, p, little);
+    const memtype = readInt32(view, p+4, little);
+    const udata   = readInt32(view, p+8, little);
+    const headerPos = p;
+    p += 12;
+    let bytesLen = elem_count * unitSize;
+    if (bytesLen < 0) bytesLen = 0;
+    if (p + bytesLen > total) {
+      const raw = new Uint8Array(arrayBuffer.slice(headerPos, total));
+      listObj.elements.push({
+        index, offset: toHex32(headerPos), offset_dec: headerPos, length: raw.length,
+        dataHex_preview: bytesToHex(raw.subarray(0,256)),
+        textString: bytesToTextString(raw), struct: { error: "Troncamento S-LIST" }, raw
+      });
+      break;
+    }
+
+    const rawBytes = new Uint8Array(arrayBuffer.slice(p, p+bytesLen));
+    let elemStruct = null;
+
+    if (list_id === 4) {
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      const ints = [];
+      for (let i=0;i<elem_count;i++) ints.push(readInt32(dv, i*4, little));
+      elemStruct = { ints };
+    } else if (list_id === 5) {
+      const verts = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        verts.push({ x: readFloat32(dv, base, little), y: readFloat32(dv, base+8, little), z: readFloat32(dv, base+4, little)});
+      }
+      elemStruct = { vertices: verts };
+    } else if (list_id === 6) {
+      const cols = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*16;
+        cols.push({ r: readFloat32(dv, base, little), g: readFloat32(dv, base+4, little), b: readFloat32(dv, base+8, little), a: readFloat32(dv, base+12, little) });
+      }
+      elemStruct = { colors: cols };
+    } else if (list_id === 7) {
+      const normals = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){ const base=i*12; normals.push({ nx: readFloat32(dv, base, little), ny: readFloat32(dv, base+4, little), nz: readFloat32(dv, base+8, little)}); }
+      elemStruct = { normals };
+    } else if (list_id === 8) {
+      const tcs = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){ const base=i*8; tcs.push({ u: readFloat32(dv, base, little), v: readFloat32(dv, base+4, little)}); }
+      elemStruct = { texcoords: tcs };
+    } else if (list_id === 9) {
+      const idx = []; const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++) idx.push(dv.getUint16(i*2, little));
+      elemStruct = { indices: idx };
+    }
+
+    listObj.elements.push({
+      index, offset: toHex32(headerPos), offset_dec: headerPos, header: { elem_count, memtype, udata },
+      length: 12 + bytesLen,
+      dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length,256))), textString: bytesToTextString(rawBytes),
+      struct: elemStruct, raw: rawBytes
+    });
+    p += bytesLen;
+    index++;
+  }
+  listObj.struct = { note: "SList decoded into per-element structs (unit-based) if applicable." };
+}
+
+function parseListFixedElements(arrayBuffer, view, start, end, list_id, count, little, listObj) {
+  let p = start; let idx = 0;
+  while (p < end && idx < Math.max(1,count)) {
+    if (list_id === 0) {
+      const needed = 72;
+      if (p + needed > end) { const raw = new Uint8Array(arrayBuffer.slice(p, end)); listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { error: "MTL truncated" } }); break; }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const side = readInt32(dv,0,true);
+      const alpha = readFloat32(dv,4,true);
+      const shininess = readFloat32(dv,8,true);
+      const ambient = { x: readFloat32(dv,12,true), y: readFloat32(dv,16,true), z: readFloat32(dv,20,true) };
+      const diffuse = { x: readFloat32(dv,24,true), y: readFloat32(dv,28,true), z: readFloat32(dv,32,true) };
+      const specular = { x: readFloat32(dv,36,true), y: readFloat32(dv,40,true), z: readFloat32(dv,44,true) };
+      const emission = { x: readFloat32(dv,48,true), y: readFloat32(dv,52,true), z: readFloat32(dv,56,true) };
+      const cmode0 = readInt32(dv,60,true), cmode1 = readInt32(dv,64,true), udata = readInt32(dv,68,true);
+      const s = { side, alpha, shininess, ambient, diffuse, specular, emission, cmode:[cmode0,cmode1], udata };
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: needed, dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), struct: s });
+      p += needed; idx++;
+    } else if (list_id === 2) {
+      const needed = 28;
+      if (p + needed > end) { const raw = new Uint8Array(arrayBuffer.slice(p, end)); listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { error: "TENV truncated" } }); break; }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const mode = readInt32(dv,0,true), component = readInt32(dv,4,true);
+      const color = [readFloat32(dv,8,true), readFloat32(dv,12,true), readFloat32(dv,16,true), readFloat32(dv,20,true)];
+      const udata = readInt32(dv,24,true);
+      const s = { mode, component, color, udata };
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: needed, dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p,p+Math.min(needed,256)))), struct: s });
+      p+=needed; idx++;
+    } else {
+      const raw = new Uint8Array(arrayBuffer.slice(p, end));
+      listObj.elements.push({ index: idx, offset: toHex32(p), offset_dec: p, length: raw.length, dataHex_preview: bytesToHex(raw.subarray(0,256)), textString: bytesToTextString(raw), struct: { note: "Lista fissa non decodificata (opzione B)." } });
+      break;
+    }
+  }
+  listObj.struct = { note: "LIST strutturata (parsing applicato per MTL/TEX/TENV)" };
+}
+
+function parseGSetElement(chunkBytes, little) {
+  const view = new DataView(chunkBytes.buffer, chunkBytes.byteOffset, chunkBytes.byteLength);
+  let offset = 0;
+  const version = 26;
+  const result = {};
+
+ // --- Debug arrays ---
+  // debug8: tutti i byte come interi 0-255
+  const debug8 = Array.from(chunkBytes);
+
+  // debug32: interi a 32 bit (little-endian), quanti ne entrano nel buffer
+  const debug32 = [];
+  for (let i = 0; i + 3 < chunkBytes.length; i += 4) {
+    debug32.push(view.getInt32(i, true)); // true = little-endian
+  }
+
+
+  function readInt32() {
+      const value = view.getInt32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readUint32() {
+      const value = view.getUint32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readFloat32() {
+      const value = view.getFloat32(offset, true);
+      offset += 4;
+      return value;
+  }
+  function readFloat64() {
+      const value = view.getFloat64(offset, true);
+      offset += 8;
+      return value;
+  }
+  function readInt32Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readInt32());
+      }
+      return arr;
+  }
+  function readFloat32Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readFloat32());
+      }
+      return arr;
+  }
+  function readFloat64Array(count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+          arr.push(readFloat64());
+      }
+      return arr;
+  }
+
+  if (version >= 26) {
+      result.ptype = readInt32();
+      result.pcount = readInt32();
+      result.llist = readInt32();
+      result.vlist = readInt32Array(3);
+      result.clist = readInt32Array(3);
+      result.nlist = readInt32Array(3);
+      result.tlist = readInt32Array(3);
+      result.draw_mode = readInt32Array(3);
+      result.gstate = readInt32Array(2);
+      result.line_width = readFloat32();
+      result.point_size = readFloat32();
+      result.draw_bin = readInt32();
+      result.isect_mask = readUint32();
+      result.hlight = readInt32();
+      result.bbox_mode = readInt32();
+      result.bbox = {
+          min: readFloat32Array(3),
+          max: readFloat32Array(3)
+      };
+      result.udata = readInt32();
+      result.draw_order = readInt32();
+      result.decal_plane = readInt32();
+      result.decal_plane_normal = readFloat32Array(3);
+      result.decal_plane_offset = readFloat32();
+      result.bbox_flux = readInt32();
+  }
+
+  return {
+    elements: result,
+    debug8: debug8,
+    debug32: debug32};
+}
+
+function parseNodesInList(raw) {
+    const dvAll = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+    const elements = [];
+    let pos = 0;
+    let idx = 0;
+    let nodeCount = 0;
+    let LODcount = 0;
+
+    const NodeNames = {
+        0:"N_LIGHTPOINT", 1:"N_TEXT", 2:"N_GEODE", 3:"N_BILLBOARD", 4:"N_LIGHTSOURCE",
+        5:"N_GROUP", 6:"N_SCS", 7:"N_DCS", 8:"N_PARTITION", 9:"N_SCENE",
+        10:"N_SWITCH", 11:"N_LOD", 12:"N_SEQUENCE", 13:"N_LAYER", 14:"N_MORPH",
+        15:"N_ASD", 16:"N_FCS", 17:"N_DOUBLE_DCS", 18:"N_DOUBLE_FCS", 19:"N_DOUBLE_SCS",
+        20:"N_IBR_NODE", 21:"N_SUBDIV_SURFACE", 22:"N_TORUS", 23:"N_NURB_SURFACE",
+        24:"N_NURB_CURVE2D", 25:"N_LINE2D", 26:"N_PIECEWISEPOLYCURVE2D", 27:"N_PIECEWISEPOLYSURFACE",
+        28:"N_PLANE_SURF", 29:"N_SPHERE_SURF", 30:"N_CONE", 31:"N_CYLINDER",
+        32:"N_LINE3D", 33:"N_NURB_CURVE3D", 34:"N_PIECEWISEPOLYCURVE3D", 35:"N_HSPLINE_SURFACE",
+        36:"N_SWEPT_SURFACE", 37:"N_FRENET_SWEPT_SURFACE", 38:"N_COONS", 39:"N_COMPOSITE_CURVE3D",
+        40:"N_CIRCLE2D", 41:"N_SUPERQUADCURVE2D", 42:"N_RULED", 43:"N_CIRCLE3D",
+        44:"N_SUPERQUADCURVE3D", 45:"N_ORIENTEDLINE3D"
+    };
+
+    function parseLODPayload(payload) {
+        const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+        const tlods = [];
+        let pos = 0;
+        while (pos + 4*6 <= payload.length) {
+            const r0 = dv.getFloat32(pos, true); pos += 4;
+            const r1 = dv.getFloat32(pos, true); pos += 4;
+            const b0 = dv.getFloat32(pos, true); pos += 4;
+            const b1 = dv.getFloat32(pos, true); pos += 4;
+            const b2 = dv.getFloat32(pos, true); pos += 4;
+            const udata = dv.getInt32(pos, true); pos += 4;
+            tlods.push({ range: [r0.toFixed(0),r1.toFixed(0)], bias: [b0.toFixed(0),b1.toFixed(0),b2.toFixed(0)], udata });
+        }
+        return tlods;
+    }
+
+    const container = document.createElement("div");
+    container.style.marginTop = "20px";
+    const table = document.createElement("table");
+    table.style.borderCollapse = "collapse";
+    table.style.width = "100%";
+    table.style.fontSize = "13px";
+
+    function th(txt){
+        const e = document.createElement("th");
+        e.textContent = txt;
+        e.style.border = "1px solid #777";
+        e.style.padding = "4px 6px";
+        e.style.background = "#eee";
+        return e;
+    }
+    function td(txt){
+        const e = document.createElement("td");
+        e.textContent = txt;
+        e.style.border = "1px solid #ccc";
+        e.style.padding = "4px 6px";
+        return e;
+    }
+
+    const header = document.createElement("tr");
+    header.appendChild(th("Index"));
+    header.appendChild(th("Offset"));
+    header.appendChild(th("Length"));
+    header.appendChild(th("NodeType"));
+    header.appendChild(th("NodeTypeName"));
+    header.appendChild(th("Name"));
+    header.appendChild(th("LOD Info"));
+    table.appendChild(header);
+
+    while (pos + 4 <= raw.length) {
+        const bufSize = dvAll.getUint32(pos, true); pos += 4;
+        if (bufSize === 0 || bufSize > 100000) { console.warn("bufSize sospetto, stop"); break; }
+        const payloadBytesLen = bufSize * 4;
+        if (pos + payloadBytesLen > raw.length) break;
+        const payload = new Uint8Array(raw.buffer, raw.byteOffset + pos, payloadBytesLen);
+        const elementStart = pos - 4;
+        const dvPayload = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+        const firstInt = dvPayload.getInt32(0, true);
+        const nodeType = firstInt & 0x0fffffff;
+        const nodeTypeName = NodeNames[nodeType] || "?";
+        const raw_int32 = [];
+        for (let i=0;i*4 < payload.length;i++) raw_int32.push(dvPayload.getInt32(i*4,true));
+        const struct = { nodeType, raw_int32 };
+
+        let lodInfo = "";
+        if (nodeType === 11) {
+            LODcount++;
+            try {
+                struct.tlods = parseLODPayload(payload);
+                lodInfo = struct.tlods.map(tlod =>
+                    `range:[${tlod.range.join(",")}], bias:[${tlod.bias.join(",")}], udata:${tlod.udata}`
+                ).join("\n");
+            } catch(e) { struct.lod_parse_error = String(e); lodInfo = "LOD parse error"; }
+        }
+
+        elements.push({
+            index: idx,
+            offset_dec: elementStart,
+            length: 4 + payloadBytesLen,
+            raw: new Uint8Array(raw.buffer, raw.byteOffset + elementStart, 4 + payloadBytesLen),
+            struct
+        });
+
+        pos += payloadBytesLen;
+
+        let nodeName = "";
+        if (pos + 4 <= raw.length) {
+            const nameSize = dvAll.getUint32(pos, true); pos += 4;
+            if (nameSize !== 0xFFFFFFFF && pos + nameSize <= raw.length) {
+                const nmBytes = new Uint8Array(raw.buffer, raw.byteOffset + pos, nameSize);
+                nodeName = bytesToTextString(nmBytes);
+                struct.name = nodeName;
+                pos += nameSize;
+            }
+        }
+
+        const row = document.createElement("tr");
+        row.appendChild(td(idx));
+        row.appendChild(td(elementStart));
+        row.appendChild(td(4 + payloadBytesLen));
+        row.appendChild(td(nodeType));
+        row.appendChild(td(`${nodeTypeName} (${nodeType})`));
+        row.appendChild(td(nodeName));
+        const lodCell = td(lodInfo);
+        lodCell.style.whiteSpace = "pre-wrap";
+        row.appendChild(lodCell);
+        table.appendChild(row);
+        idx++;
+        nodeCount++;
+    }
+
+    console.log("Parsed nodes count:", elements.length);
+    console.log("LODS count:", LODcount);
+
+    document.body.appendChild(container);
+
+
+    return {
+        elements : elements,
+        table: table
+        };
+}
+
+function parseLODPayload(payload) {
+    const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+    const tlods = [];
+    let pos = 0;
+    while (pos + 4*5 <= payload.length) {
+        const r0 = dv.getFloat32(pos, true); pos += 4;
+        const r1 = dv.getFloat32(pos, true); pos += 4;
+        const b0 = dv.getFloat32(pos, true); pos += 4;
+        const b1 = dv.getFloat32(pos, true); pos += 4;
+        const b2 = dv.getFloat32(pos, true); pos += 4;
+        const udata = dv.getInt32(pos, true); pos += 4;
+        tlods.push({
+            range: [r0.toFixed(4), r1.toFixed(4)],
+            bias: [b0.toFixed(4), b1.toFixed(4), b2.toFixed(4)],
+            udata: udata
+        });
+    }
+    return tlods;
+}
+
+function extractVerticesFromParsedJSON(parsed) {
+  storedVertices = [];
+  llist = []; vlist = [];
+  meshData = [];
+
+  for (const lst of parsed.lists) {
+    if (lst.list_id === 5) {
+      vlist = lst.elements;
+      for (const elem of lst.elements) {
+        if (elem.struct && elem.struct.vertices) {
+          for (const v of elem.struct.vertices) {
+            storedVertices.push([v.x || 0, v.y || 0, v.z || 0]);
+          }
+        }
+      }
+    }
+    if (lst.list_id === 4) {
+      llist = lst.elements;
+    }
+  }
+
+  const gsetLists = parsed.lists.filter(l=>l.list_id===10);
+  for (const gList of gsetLists) {
+    for (let gi = 0; gi < gList.elements.length; gi++) {
+      const el = gList.elements[gi];
+      const g = el.struct;
+      if (!g) continue;
+
+      const lidx = (typeof g.llistIndex === 'number' && g.llistIndex >=0) ? g.llistIndex : null;
+      const vidx = (typeof g.vlistIndex === 'number' && g.vlistIndex >=0) ? g.vlistIndex : null;
+      let lengths = [];
+      if (lidx !== null && parsed.lists.some(l=>l.list_id===4 && l.elements[lidx])) {
+        const ll = parsed.lists.find(l=>l.list_id===4);
+        if (ll && ll.elements[lidx] && ll.elements[lidx].struct && ll.elements[lidx].struct.ints) lengths = ll.elements[lidx].struct.ints.slice();
+      }
+      let verts = [];
+      if (vidx !== null && parsed.lists.some(l=>l.list_id===5 && l.elements[vidx])) {
+        const vl = parsed.lists.find(l=>l.list_id===5);
+        if (vl && vl.elements[vidx] && vl.elements[vidx].struct && vl.elements[vidx].struct.vertices) verts = vl.elements[vidx].struct.vertices.slice();
+      }
+      meshData.push({ gset: g, lengths, vertices: verts, gsetListIndex: gi });
+    }
+  }
+
+
+}
+
+const canvas = document.getElementById('babylonCanvas');
+let engineRef = null, sceneRef = null, createdMeshes = [];
+
+pointCloudBtn.addEventListener('click', () => {
+  if (!currentJSON) return;
+  if (engineRef) { try { engineRef.dispose(); } catch(e){} }
+  engineRef = new BABYLON.Engine(canvas, true);
+  const scene = new BABYLON.Scene(engineRef);
+  sceneRef = scene;
+  scene.clearColor = new BABYLON.Color4(0.98,0.98,0.98,1);
+  const camera = new BABYLON.ArcRotateCamera("cam", -Math.PI/2, Math.PI/2.5, 50, BABYLON.Vector3.Zero(), scene);
+  camera.attachControl(canvas, true);
+  new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0,1,0), scene);
+
+  if (storedVertices.length > 0) {
+    const pcs = new BABYLON.PointsCloudSystem("pcs", { capacity: storedVertices.length, scene });
+    pcs.addPoints(storedVertices.length, (p,i) => { const v = storedVertices[i]; p.position.set(v[0], v[1], v[2]); p.color = new BABYLON.Color4(0.1,0.1,0.1,0.6); });
+    pcs.buildMeshAsync().then(()=>{ pcs.mesh.material.pointSize = 1; });
+  }
+
+  createdMeshes.forEach(m=>m.dispose && m.dispose());
+  createdMeshes = buildMeshesFromGSet(scene);
+
+
+  engineRef.runRenderLoop(()=>scene.render());
+  window.addEventListener('resize', ()=>engineRef.resize());
+});
+
+function buildMeshesFromGSet(scene) {
+return
+console.log("[buildMeshesFromGSet]", meshData);
+  const outMeshes = [];
+  for (let i=0; i < meshData.length; i++){
+    const entry = meshData[i];
+    const g = entry.gset;
+
+const getListById = id => currentJSON.lists.find(l => l.list_id === id);
+const llist = getListById(4); // Length List
+const vlist = getListById(5); // Vertex List
+const clist = getListById(6); // Color List
+const nlist = getListById(7); // Normal List
+const tlist = getListById(8); // TexCoord List
+const gsets = getListById(10); // GeoSet
+
+    const lengths = llist
+    const verts = vlist
+    //const lengths = entry.lengths || [];
+    //const verts = entry.vertices || [];
+    let positions = [], indices = [];
+    let cursor = 0;
+    const ptype = g.primType;
+    const prim = ptype;
+
+console.log("[buildMeshesFromGSet] currentJSON", currentJSON);
+console.log("[buildMeshesFromGSet] lengths", lengths);
+console.log("[buildMeshesFromGSet] verts", verts);
+    for (let j=0; j < lengths.length; j++){
+      const polyLen = lengths[j];
+      if (cursor + polyLen > verts.length) { console.warn(`mesh ${i} face ${j} exceeds verts`); break; }
+      const base = positions.length/3;
+      for (let k=0;k<polyLen;k++){
+        const v = verts[cursor + k];
+        positions.push((v.x||0), (v.y||0), (v.z||0));
+      }
+      if (prim === 3 && polyLen === 3) { indices.push(base, base+1, base+2); }
+      else if (prim === 4 && polyLen === 4) { indices.push(base, base+1, base+2); indices.push(base, base+2, base+3); }
+      else if ((prim === 5 || prim === 7) && polyLen >= 3) {
+        for (let k=2;k<polyLen;k++){
+          if ((k%2)===0) indices.push(base+k-2, base+k-1, base+k); else indices.push(base+k-2, base+k, base+k-1);
+        }
+      }
+      else if ((prim === 9 || prim === 10) && polyLen >=3) {
+        for (let k=2;k<polyLen;k++) indices.push(base, base+k-1, base+k);
+      }
+      else if (prim === 8 && polyLen >= 3) {
+        const flat2 = []; for (let k=0;k<polyLen;k++){ const v=verts[cursor+k]; flat2.push(v.x||0, v.y||0); }
+        const tris = earcut(flat2, [], 2);
+        for (const t of tris) indices.push(base + t);
+      } else {
+        if (polyLen === 3) indices.push(base, base+1, base+2);
+      }
+      cursor += polyLen;
+    }
+
+    if (positions.length > 0 && indices.length > 0) {
+      const mesh = new BABYLON.Mesh(`mesh_${i}`, scene);
+      const vd = new BABYLON.VertexData();
+      vd.positions = positions; vd.indices = indices;
+      vd.normals = []; BABYLON.VertexData.ComputeNormals(positions, indices, vd.normals);
+      vd.applyToMesh(mesh);
+      const mat = new BABYLON.StandardMaterial(`mat_${i}`, scene);
+      mat.diffuseColor = new BABYLON.Color3(0.85,0.85,0.85);
+      mat.backFaceCulling = false;
+      mesh.material = mat;
+
+      const lines = BABYLON.MeshBuilder.CreateLineSystem(`lines_${i}`, { lines: buildEdgesFromIndices(positions, indices) }, scene);
+      lines.color = new BABYLON.Color3(0.1,0.1,0.1);
+
+      const pivot = new BABYLON.TransformNode(`group_${i}`, scene);
+      mesh.parent = pivot; lines.parent = pivot;
+      outMeshes.push(pivot);
+    } else {
+      console.warn(`mesh ${i} invalid (no positions/indices)`);
+    }
+  }
+
+  console.log(`Built ${outMeshes.length} meshes from GSETs`);
+  return outMeshes;
+}
+
+function buildEdgesFromIndices(positions, indices) {
+  const lines = []; const edges = new Set();
+  for (let t=0;t<indices.length;t+=3){
+    const a = indices[t], b = indices[t+1], c = indices[t+2];
+    [[a,b],[b,c],[c,a]].forEach(pair=>{
+      const key = pair[0]<pair[1] ? `${pair[0]}_${pair[1]}` : `${pair[1]}_${pair[0]}`;
+      if (!edges.has(key)){ edges.add(key); const p0 = [positions[pair[0]*3], positions[pair[0]*3+1], positions[pair[0]*3+2]]; const p1 = [positions[pair[1]*3], positions[pair[1]*3+1], positions[pair[1]*3+2]]; lines.push([ new BABYLON.Vector3(...p0), new BABYLON.Vector3(...p1) ]); }
+    });
+  }
+  return lines;
+}
+
+function exportMeshToOBJ(transformNode) {
+  const meshes = [];
+  transformNode.getChildMeshes && transformNode.getChildMeshes().forEach(m=>meshes.push(m));
+  if (transformNode.getVerticesData) meshes.push(transformNode);
+
+  let out = "";
+  let vcount = 1;
+  for (const m of meshes) {
+    const pos = m.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    const idx = m.getIndices();
+    if (!pos || !idx) continue;
+    out += `o ${m.name}\n`;
+    for (let i=0;i<pos.length;i+=3) out += `v ${pos[i]} ${pos[i+1]} ${pos[i+2]}\n`;
+    const nrm = m.getVerticesData(BABYLON.VertexBuffer.NormalKind);
+    if (nrm) for (let i=0;i<nrm.length;i+=3) out += `vn ${nrm[i]} ${nrm[i+1]} ${nrm[i+2]}\n`;
+    for (let f=0; f<idx.length; f+=3) {
+      const a = idx[f] + vcount, b = idx[f+1] + vcount, c = idx[f+2] + vcount;
+      out += `f ${a}//${a} ${b}//${b} ${c}//${c}\n`;
+    }
+    vcount += pos.length/3;
+  }
+  return out;
+}
+
+function extractGeoSetsFromSCS(scsNode, allNodes) {
+    function getChildNodes(parentNode, allNodes) {
+        const children = [];
+        const parentOffset = parentNode.offset_dec;
+        const parentEnd = parentOffset + parentNode.length;
+        for (const n of allNodes) {
+            if (n.offset_dec > parentOffset && n.offset_dec < parentEnd) {
+                children.push(n);
+            }
+        }
+        return children;
+    }
+
+    const children = getChildNodes(scsNode, allNodes);
+    const geodes = children.filter(n => n.struct.nodeType === 2);
+    const gsetsCollected = [];
+    for (const geode of geodes) {
+        console.log("Skipping GeoSet extraction from GEODE: no parser implemented.");
+    }
+    console.log(`Nodo SCS '${scsNode.struct.name}' contiene ${geodes.length} GEODE e ${gsetsCollected.length} GeoSet`);
+    return gsetsCollected;
+}
+</script>
+</body>
+</html>

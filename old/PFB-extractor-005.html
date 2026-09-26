@@ -1,0 +1,1228 @@
+<!--
+005 - Point cloud ok
+
+-->
+
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PF B Parser — strutture (Opzione B)</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; padding:18px; color:#111; }
+  header { margin-bottom:12px; }
+  input[type=file] { margin-bottom:12px; }
+  pre { background:#f4f4f4; padding:10px; border-radius:6px; max-height:44vh; overflow:auto; white-space:pre-wrap; }
+  button { margin-right:8px; }
+  .ok { color: #0a0; }
+  .warn { color: #a60; }
+  table { border-collapse: collapse; width:100%; margin-top:8px; }
+  th, td { border:1px solid #ddd; padding:6px; font-size:0.9rem; }
+  th { background:#eee; text-align:left; }
+  code { background:#eef; padding:2px 4px; border-radius:3px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>PF B parser — struttura (Opzione B)</h1>
+    <div>Carica un file <code>.pfb</code> (assunto versione 26). Parsera SLIST e alcune LIST in JSON strutturato.</div>
+    <div style="margin-top:6px; font-size:0.9rem; color:#444;">
+      Nota: parsing strutturale basato su <code>minimal-pfpfb.c</code> (estrazione campi di <code>mtl_t</code>, <code>tenv_t</code>, <code>TEX_*</code>, e tipi vettoriali).
+    </div>
+  </header>
+
+  <input id="file" type="file" accept=".pfb,.PFB" />
+  <button id="parseBtn" disabled>Analizza</button>
+  <button id="pointCloudBtn" disabled>PointCloud</button>
+
+  <button id="downloadJson" disabled>Scarica JSON</button>
+  <div id="status"></div>
+
+  <h3>Anteprima JSON</h3>
+  <pre id="out">Nessun file caricato.</pre>
+<h3>PointCloud Viewer</h3>
+<canvas id="babylonCanvas" style="width:100%; height:500px; border:1px solid #888;"></canvas>
+<script src="babylon.js"></script>
+<script src="babylon.gui.js"></script>
+<script src="babylonjs.loaders.js"></script>
+<script src="earcut.min.js"></script>
+
+
+<script>
+
+const N_CUSTOM             = 0x10000000;
+const N_CUSTOM_MASK        = 0x0fff0000;
+const N_NOT_CUSTOM_MASK    = 0x0000ffff;
+const N_CUSTOM_SHIFT       = 16;
+
+const node_names = [
+  "LightPoint", "Text", "Geode", "Billboard", "LightSource", "Group",
+  "SCS", "DCS", "Partition", "Scene", "Switch", "LOD", "Sequence", "Layer",
+  "Morph", "ASD", "FCS", "DoubleDCS", "DoubleFCS", "DoubleSCS", "IBRnode",
+  "SubdivSurface", "TorusSurface", "NurbsSurface", "NurbCurve2d", "Line2d",
+  "PieceWisePolyCurve2d", "PieceWisePolySurface", "PlaneSurface", "SphereSurface",
+  "ConeSurface", "CylinderSurface", "Line3d", "NurbCurve3d", "PieceWisePolyCurve3d",
+  "HsplineSurface", "SweptSurface", "FrenetSweptSurface", "CoonsSurface",
+  "CompositeCurve3d", "Circle2d", "SuperQuadCurve2d", "RuledSurface", "Circle3d",
+  "SuperQuadCurve3d", "OrientedLine3d"
+];
+
+
+
+/* PF B parser — Opzione B (JS puro)
+   - produce .json con metadati e campo "struct" contenente la rappresentazione
+     dei campi per le liste: L_LLIST, L_VLIST, L_CLIST, L_NLIST, L_TLIST, L_MTL, L_TEX, L_TENV.
+   - usa endianness rilevato dall'header (preferisce dove header[1] == 26).
+   - basato su minimal-pfpfb.c (macros PFB_WRITE_LIST / PFB_WRITE_SLIST e typedefs).
+*/
+
+llist = [];
+vlist = [];
+lodsCount = 0;
+nodesTypesCounts = [];
+
+const L_NAMES = {
+  0: "Material",
+  1: "Texture",
+  2: "TexEnv",
+  3: "GeoState",
+  4: "Length List",
+  5: "Vertex List",
+  6: "Color List",
+  7: "Normal List",
+  8: "TexCoord List",
+  9: "Index List",
+  10: "GeoSet",
+  11: "User Data",
+  12: "Node",
+};
+
+
+
+const SLIST_IDS = new Set([4,5,6,7,8,9]); // llist, vlist, clist, nlist, tlist, ilist
+const LIST_IDS  = new Set([0,1,2,3,10]);  // mtl, tex, tenv, gstate, gset (we parse only some)
+
+// helper DOM
+const fileInput = document.getElementById('file');
+const parseBtn = document.getElementById('parseBtn');
+const out = document.getElementById('out');
+const status = document.getElementById('status');
+const downloadJson = document.getElementById('downloadJson');
+
+let currentJSON = null;
+
+let meshData = [];
+
+
+fileInput.addEventListener('change', () => {
+  parseBtn.disabled = !fileInput.files.length;
+  downloadJson.disabled = true;
+  out.textContent = 'Pronto per analizzare il file...';
+});
+
+parseBtn.addEventListener('click', async () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  out.textContent = 'Leggo file...';
+  status.textContent = '';
+  const ab = await f.arrayBuffer();
+  try {
+    const result = parsePFB(ab);
+    currentJSON = result.json;
+
+console.log("*********************", currentJSON)
+extractVerticesFromParsedJSON(result.json);
+//    out.textContent = JSON.stringify(currentJSON, null, 2);
+    downloadJson.disabled = false;
+    status.innerHTML = `<div class="ok">Parsing completato — ${result.listsParsed} liste analizzate.</div>`;
+  } catch (e) {
+    out.textContent = 'Errore: ' + (e && e.message ? e.message : String(e));
+    status.innerHTML = `<div class="warn">Parsing fallito: ${e}</div>`;
+  }
+});
+
+downloadJson.addEventListener('click', () => {
+  if (!currentJSON) return;
+  const blob = new Blob([JSON.stringify(currentJSON, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pfb-parsed-struct.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* --- helpers --- */
+function readInt32(view, offset, little) { return view.getInt32(offset, little); }
+function readUint32(view, offset, little) { return view.getUint32(offset, little); }
+function readFloat32(view, offset, little) { return view.getFloat32(offset, little); }
+function toHex32(n) { return '0x' + (n >>> 0).toString(16).padStart(8,'0'); }
+function bytesToTextString(bytes) {
+  let out = "";
+  for (let i=0;i<bytes.length;i++){
+    const b = bytes[i];
+    if (b >= 32 && b <= 126) out += String.fromCharCode(b);
+    else out += ".";
+  }
+  return out;
+}
+function bytesToHex(bytes, maxChars) {
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+  if (maxChars && hex.length > maxChars) return hex.slice(0,maxChars) + '...';
+  return hex;
+}
+
+/* sizes (bytes) for unit types */
+const UNIT_SIZES = {
+  L_LLIST: 4,
+  L_VLIST: 12, // pfVec3 = 3 floats
+  L_CLIST: 16, // pfVec4 = 4 floats
+  L_NLIST: 12,
+  L_TLIST: 8,  // pfVec2 = 2 floats
+  L_ILIST: 2,  // ushort
+};
+
+/* parse high-level file and lists */
+function parsePFB(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  const len = arrayBuffer.byteLength;
+  if (len < 16) throw new Error('File troppo piccolo.');
+
+  // detect endianness using header[1] == 26 heuristic
+  const hLE = [readInt32(view,0,true), readInt32(view,4,true), readInt32(view,8,true), readInt32(view,12,true)];
+  const hBE = [readInt32(view,0,false), readInt32(view,4,false), readInt32(view,8,false), readInt32(view,12,false)];
+  let little;
+  if (hLE[1] === 26 && hLE[3] >= 0 && hLE[3] < len) little = true;
+  else if (hBE[1] === 26 && hBE[3] >= 0 && hBE[3] < len) little = false;
+  else {
+    little = true;
+    status.innerHTML = `<div class="warn">Impossibile trovare chiaramente versione 26 in header: assumo little-endian.</div>`;
+  }
+  const header = little ? hLE : hBE;
+  const version = header[1];
+  const listsStart = header[3];
+  if (listsStart < 0 || listsStart >= len) throw new Error('Offset liste invalido: ' + listsStart);
+
+  let pos = listsStart;
+  const lists = [];
+  let parsed = 0;
+
+  while (pos + 12 <= len) {
+    // list header: 3 ints (we wrote earlier expecting this for LIST; careful S-LIST vs LIST)
+    const list_id = readInt32(view, pos, little);
+    const list_count = readInt32(view, pos+4, little);
+    const data_byte_size = readInt32(view, pos+8, little);
+    if (list_id === 0 && list_count === 0 && data_byte_size === 0) break; // unlikely, safety
+
+    const headerStart = pos;
+    const dataStart = pos + 12;
+    const dataEnd = dataStart + data_byte_size;
+    if (dataEnd > len) break;
+
+    const listObj = {
+      list_id,
+      list_name: L_NAMES[list_id] || ('Unknown('+list_id+')'),
+      count: list_count,
+      offset_header: toHex32(headerStart),
+      offset_data_start: toHex32(dataStart),
+      offset_end: toHex32(dataEnd - 1),
+      length_bytes: 12 + data_byte_size,
+      raw_data_length: data_byte_size,
+      struct: null,
+      elements: []
+    };
+
+    // parse content depending on type
+    if (SLIST_IDS.has(list_id)) {
+      // SLIST: sequence of per-element headers (3 ints) + optional data
+      parseSListElements(arrayBuffer, view, dataStart, dataEnd, list_id, little, listObj);
+    } else if (list_id === 0 || list_id === 1 || list_id === 2) {
+      // L_MTL, L_TEX, L_TENV -> LIST of fixed-size structs. We iterate sequentially.
+      parseListFixedElements(arrayBuffer, view, dataStart, dataEnd, list_id, list_count, little, listObj);
+    } else {
+      // others: keep raw preview
+      const rawBytes = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+
+      listObj.elements.push({
+        index: 0,
+        offset: toHex32(dataStart),
+        offset_dec: dataStart,
+        length: rawBytes.length,
+        dataHex_preview: bytesToHex(rawBytes.subarray(0, Math.min(rawBytes.length,256)), 1024),
+        textString: bytesToTextString(rawBytes),
+        struct: { note: "Lista non decodificata (opzione B). Raw preserved." },
+        raw : rawBytes
+      });
+
+
+      if (list_id === 10){
+        console.log(rawBytes);
+        console.log("===== GSET:", parseGSet(rawBytes));
+      }
+
+
+      if (list_id === 12) {
+        const rawBytes = new Uint8Array(arrayBuffer.slice(dataStart, dataEnd));
+        const allNodes = parseAllNodes(rawBytes);
+        console.log("rawBytes=", rawBytes); // array di oggetti con node_type, node_name, position, ...
+        console.log(allNodes); // array di oggetti con node_type, node_name, position, ...
+      }
+
+    }
+
+    lists.push(listObj);
+    parsed++;
+    pos = dataEnd;
+  }
+
+  const json = {
+    parsed_at: (new Date()).toISOString(),
+    file_size: len,
+    detected_version: version,
+    little_endian_assumed: little,
+    lists: lists
+  };
+  return { json, listsParsed: parsed };
+}
+
+/* --- parse S-LIST: multiple elements each starting with 3 ints --- */
+function parseSListElements(arrayBuffer, view, start, end, list_id, little, listObj) {
+  let p = start;
+  const total = end;
+  const unitSize = (() => {
+    switch(list_id) {
+      case 4: return UNIT_SIZES.L_LLIST;
+      case 5: return UNIT_SIZES.L_VLIST;
+      case 6: return UNIT_SIZES.L_CLIST;
+      case 7: return UNIT_SIZES.L_NLIST;
+      case 8: return UNIT_SIZES.L_TLIST;
+      case 9: return UNIT_SIZES.L_ILIST;
+      default: return 1;
+    }
+  })();
+
+  let index = 0;
+  while (p + 12 <= total) {
+    const elem_count = readInt32(view, p, little);        // number of units (e.g., number of pfVec3 elements)
+    const memtype = readInt32(view, p+4, little);         // MEM_*
+    const udata   = readInt32(view, p+8, little);         // udata/index
+    const headerPos = p;
+    p += 12;
+
+    // if elem_count > 0: there are elem_count * unitSize bytes following
+    let bytesLen = elem_count * unitSize;
+    // defensive: if bytesLen would overflow remaining bytes, clamp
+    if (bytesLen < 0) bytesLen = 0;
+    if (p + bytesLen > total) {
+      // corrupted/truncated: stop parsing elements
+      listObj.elements.push({
+        index,
+        offset: toHex32(headerPos),
+        offset_dec: headerPos,
+        length: (total - p) + 12,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(headerPos, total)), 512),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(headerPos, total))),
+        struct: { error: "Troncamento dati nell'elemento S-LIST" }
+      });
+      break;
+    }
+
+    let elemStruct = null;
+    let rawBytes = new Uint8Array(arrayBuffer.slice(p, p + bytesLen));
+    // decode according to list type
+    if (list_id === 4) { // L_LLIST: sequence of ints
+      const ints = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        ints.push(readInt32(dv, i*4, little));
+      }
+      elemStruct = { ints };
+    } else if (list_id === 5) { // L_VLIST: pfVec3
+      const verts = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        verts.push({ x: readFloat32(dv, base, little), z: readFloat32(dv, base+4, little), y: -readFloat32(dv, base+8, little) });
+      }
+      elemStruct = { vertices: verts };
+    } else if (list_id === 6) { // L_CLIST: pfVec4
+      const cols = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*16;
+        cols.push({ r: readFloat32(dv, base, little), g: readFloat32(dv, base+4, little), b: readFloat32(dv, base+8, little), a: readFloat32(dv, base+12, little) });
+      }
+      elemStruct = { colors: cols };
+    } else if (list_id === 7) { // L_NLIST: pfVec3 normals
+      const normals = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*12;
+        normals.push({ nx: readFloat32(dv, base, little), ny: readFloat32(dv, base+4, little), nz: readFloat32(dv, base+8, little) });
+      }
+      elemStruct = { normals };
+    } else if (list_id === 8) { // L_TLIST: pfVec2 texcoords
+      const tcs = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        const base = i*8;
+        tcs.push({ u: readFloat32(dv, base, little), v: readFloat32(dv, base+4, little) });
+      }
+      elemStruct = { texcoords: tcs };
+    } else if (list_id === 9) { // ilist: ushort
+      const idx = [];
+      const dv = new DataView(arrayBuffer, p, bytesLen);
+      for (let i=0;i<elem_count;i++){
+        // read as uint16
+        idx.push(dv.getUint16(i*2, little));
+      }
+      elemStruct = { indices: idx };
+    }
+
+    // push element description
+    listObj.elements.push({
+      index,
+      offset: toHex32(headerPos),
+      offset_dec: headerPos,
+      header: { elem_count, memtype, udata },
+      length: 12 + bytesLen,
+      dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p + Math.min(bytesLen,256))), 1024),
+      textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p + Math.min(bytesLen,256)))),
+      struct: elemStruct
+    });
+
+    // advance
+    p += bytesLen;
+    index++;
+  }
+  listObj.struct = { note: "SList decoded into per-element structs (unit-based) if applicable." };
+}
+
+/* --- parse LIST (fixed-size structs): L_MTL, L_TEX, L_TENV) --- */
+function parseListFixedElements(arrayBuffer, view, start, end, list_id, count, little, listObj) {
+  let p = start;
+  let idx = 0;
+  while (p < end && idx < Math.max(1,count)) {
+    // attempt to parse one struct depending on list_id
+    if (list_id === 0) { // MTL -> mtl_t
+      // mtl_t layout (from minimal-pfpfb.c):
+      // int side;
+      // float alpha;
+      // float shininess;
+      // pfVec3 ambient;
+      // pfVec3 diffuse;
+      // pfVec3 specular;
+      // pfVec3 emission;
+      // int cmode[2];
+      // int udata;
+      // total size = 72 bytes
+      const needed = 72;
+      if (p + needed > end) {
+        // truncated: store raw
+        const raw = new Uint8Array(arrayBuffer.slice(p, end));
+        listObj.elements.push({
+          index: idx,
+          offset: toHex32(p),
+          offset_dec: p,
+          length: raw.length,
+          dataHex_preview: bytesToHex(raw.subarray(0,256)),
+          textString: bytesToTextString(raw),
+          struct: { error: "MTL truncated" }
+        });
+        break;
+      }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const side = readInt32(dv, 0, little);
+      const alpha = readFloat32(dv, 4, little);
+      const shininess = readFloat32(dv, 8, little);
+      const ambient = { x: readFloat32(dv, 12, little), y: readFloat32(dv, 16, little), z: readFloat32(dv, 20, little) };
+      const diffuse = { x: readFloat32(dv, 24, little), y: readFloat32(dv, 28, little), z: readFloat32(dv, 32, little) };
+      const specular = { x: readFloat32(dv, 36, little), y: readFloat32(dv, 40, little), z: readFloat32(dv, 44, little) };
+      const emission = { x: readFloat32(dv, 48, little), y: readFloat32(dv, 52, little), z: readFloat32(dv, 56, little) };
+      const cmode0 = readInt32(dv, 60, little);
+      const cmode1 = readInt32(dv, 64, little);
+      const udata = readInt32(dv, 68, little);
+      const s = {
+        side, alpha, shininess,
+        ambient, diffuse, specular, emission,
+        cmode: [cmode0, cmode1],
+        udata
+      };
+      listObj.elements.push({
+        index: idx,
+        offset: toHex32(p),
+        offset_dec: p,
+        length: needed,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256))), 1024),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256)))),
+        struct: s
+      });
+      p += needed;
+      idx++;
+    } else if (list_id === 2) { // TENV -> tenv_t
+      // tenv_t:
+      // int mode;
+      // int component;
+      // float color[4];
+      // int udata;
+      // total size = 2*4 + 4*4 + 4 = 28 bytes
+      const needed = 28;
+      if (p + needed > end) {
+        const raw = new Uint8Array(arrayBuffer.slice(p, end));
+        listObj.elements.push({
+          index: idx, offset: toHex32(p), offset_dec: p, length: raw.length,
+          dataHex_preview: bytesToHex(raw.subarray(0,256)),
+          textString: bytesToTextString(raw),
+          struct: { error: "TENV truncated" }
+        });
+        break;
+      }
+      const dv = new DataView(arrayBuffer, p, needed);
+      const mode = readInt32(dv, 0, little);
+      const component = readInt32(dv, 4, little);
+      const color = [readFloat32(dv, 8, little), readFloat32(dv, 12, little), readFloat32(dv, 16, little), readFloat32(dv, 20, little)];
+      const udata = readInt32(dv, 24, little);
+      const s = { mode, component, color, udata };
+      listObj.elements.push({
+        index: idx, offset: toHex32(p), offset_dec: p, length: needed,
+        dataHex_preview: bytesToHex(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256))), 1024),
+        textString: bytesToTextString(new Uint8Array(arrayBuffer.slice(p, p+Math.min(needed,256)))),
+        struct: s
+      });
+      p += needed;
+      idx++;
+    } else if (list_id === 1) { // TEX -> tex_t (parse TEX_0_DATA, TEX_1_DATA, TEX_DATA fields sequentially)
+      // We'll parse fields in order: format[5], filter[4] (uint), wrap[3], bcolor (4 floats),
+      // btype, ssp[4]*pfVec2, ssc (float), dsp[4]*pfVec2, dsc (float),
+      // tdetail[2], lmode[3], losource[2], lodest[2], lsize[2],
+      // image, comp, xsize, ysize, zsize, load_image, list_size, frame (float), num_levels, udata
+      // Then TEX_1_DATA: type (int) ; TEX_DATA: aniso_degree (int)
+      // We'll stop when we run out of bytes for this element.
+      const startPos = p;
+      const remaining = end - p;
+      const dvAll = new DataView(arrayBuffer, p, remaining);
+      let offset = 0;
+      function safeReadInt() { if (offset + 4 > remaining) throw 'trunc'; const v = readInt32(dvAll, offset, little); offset += 4; return v; }
+      function safeReadUint() { if (offset + 4 > remaining) throw 'trunc'; const v = readUint32(dvAll, offset, little); offset += 4; return v; }
+      function safeReadFloat() { if (offset + 4 > remaining) throw 'trunc'; const v = readFloat32(dvAll, offset, little); offset += 4; return v; }
+      try {
+        const format = [safeReadInt(), safeReadInt(), safeReadInt(), safeReadInt(), safeReadInt()];
+        const filter = [safeReadUint(), safeReadUint(), safeReadUint(), safeReadUint()];
+        const wrap = [safeReadInt(), safeReadInt(), safeReadInt()];
+        const bcolor = [safeReadFloat(), safeReadFloat(), safeReadFloat(), safeReadFloat()];
+        const btype = safeReadInt();
+        const ssp = [];
+        for (let i=0;i<4;i++) ssp.push([safeReadFloat(), safeReadFloat()]);
+        const ssc = safeReadFloat();
+        const dsp = [];
+        for (let i=0;i<4;i++) dsp.push([safeReadFloat(), safeReadFloat()]);
+        const dsc = safeReadFloat();
+        const tdetail = [safeReadInt(), safeReadInt()];
+        const lmode = [safeReadInt(), safeReadInt(), safeReadInt()];
+        const losource = [safeReadInt(), safeReadInt()];
+        const lodest = [safeReadInt(), safeReadInt()];
+        const lsize = [safeReadInt(), safeReadInt()];
+        const image = safeReadInt();
+        const comp = safeReadInt();
+        const xsize = safeReadInt();
+        const ysize = safeReadInt();
+        const zsize = safeReadInt();
+        const load_image = safeReadInt();
+        const list_size = safeReadInt();
+        const frame = safeReadFloat();
+        const num_levels = safeReadInt();
+        const udata = safeReadInt();
+        // TEX_1_DATA
+        let type = null;
+        let aniso_degree = null;
+        if (offset + 4 <= remaining) {
+          // read type
+          type = safeReadInt();
+        }
+        if (offset + 4 <= remaining) {
+          aniso_degree = safeReadInt();
+        }
+        const consumed = offset;
+        const elementBytes = new Uint8Array(arrayBuffer.slice(p, p + consumed));
+        const s = {
+          format, filter, wrap, bcolor, btype,
+          ssp, ssc, dsp, dsc,
+          tdetail, lmode, losource, lodest, lsize,
+          image, comp, xsize, ysize, zsize, load_image,
+          list_size, frame, num_levels, udata,
+          type, aniso_degree
+        };
+        listObj.elements.push({
+          index: idx, offset: toHex32(p), offset_dec: p, length: consumed,
+          dataHex_preview: bytesToHex(elementBytes.subarray(0,256)),
+          textString: bytesToTextString(elementBytes.subarray(0,256)),
+          struct: s
+        });
+        p += consumed;
+        idx++;
+      } catch (err) {
+        // truncated or parse error: push remainder as raw
+        const raw = new Uint8Array(arrayBuffer.slice(p, end));
+        listObj.elements.push({
+          index: idx, offset: toHex32(p), offset_dec: p, length: raw.length,
+          dataHex_preview: bytesToHex(raw.subarray(0,256)),
+          textString: bytesToTextString(raw.subarray(0,256)),
+          struct: { warning: "TEX parsing troncata o incompleta", error: String(err) }
+        });
+        break;
+      }
+    } else {
+      // unknown fixed list: push remaining as raw
+      const raw = new Uint8Array(arrayBuffer.slice(p, end));
+      listObj.elements.push({
+        index: idx, offset: toHex32(p), offset_dec: p, length: raw.length,
+        dataHex_preview: bytesToHex(raw.subarray(0,256)),
+        textString: bytesToTextString(raw.subarray(0,256)),
+        struct: { note: "Lista fissa non decodificata (opzione B)." }
+      });
+      break;
+    }
+  }
+
+  listObj.struct = { note: "LIST strutturata (parsing applicato per MTL/TEX/TENV)" };
+}
+
+// --- POINT CLOUD VIEWER ---
+
+const pointCloudBtn = document.getElementById("pointCloudBtn");
+const babylonCanvas = document.getElementById("babylonCanvas");
+
+let storedVertices = []; // riempito dopo il parsing
+
+// Abilita il bottone dopo il parsing se abbiamo vertici
+function updatePointCloudButton() {
+    if (storedVertices.length > 0) {
+        pointCloudBtn.disabled = false;
+    } else {
+        pointCloudBtn.disabled = true;
+    }
+}
+
+
+function extractVerticesFromParsedJSON(parsed) {
+    storedVertices = [];
+    for (const lst of parsed.lists) {
+        if (lst.list_id === 5) { // L_VLIST
+            vlist = lst.elements;
+            for (const elem of lst.elements) {
+                if (elem.struct && elem.struct.vertices) {
+                    for (const v of elem.struct.vertices) {
+                        storedVertices.push([v.x, v.y, v.z]);
+                    }
+                }
+            }
+        }
+        if (lst.list_id === 4) { // L_LLIST
+            llist = lst.elements;
+        }
+
+    }
+    updatePointCloudButton();
+}
+
+
+
+// --- Babylon.js Scene ---
+pointCloudBtn.addEventListener("click", () => {
+    createPointCloud(storedVertices);
+});
+
+
+
+////////
+
+function createPointCloud(vertices) {
+    const engine = new BABYLON.Engine(babylonCanvas, true);
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.95, 0.95, 0.95, 1);
+
+    const camera = new BABYLON.ArcRotateCamera(
+        "cam", -Math.PI/2, Math.PI/2.5, 50,
+        BABYLON.Vector3.Zero(), scene
+    );
+    camera.attachControl(babylonCanvas, true);
+    camera.lowerRadiusLimit = 1;
+    camera.upperRadiusLimit = 1000;
+
+    new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+    new BABYLON.DirectionalLight("light2", new BABYLON.Vector3(-1, -1, -1), scene);
+
+    createAxes(scene);
+
+    // Crea sia point cloud che mesh
+    if (vertices.length > 0) {
+        const pcs = new BABYLON.PointsCloudSystem("pcs", {
+            capacity: vertices.length,
+            scene
+        });
+
+        pcs.addPoints(vertices.length, (particle, i) => {
+            const v = vertices[i];
+            particle.position.set(v[0], v[1], v[2]);
+            particle.color = new BABYLON.Color4(0.5, 0.5, 0.5, 0.3); // Blu trasparente
+        });
+
+        pcs.buildMeshAsync().then(() => {
+            pcs.mesh.material.pointSize = 1;
+        });
+    }
+
+    // Costruisci le mesh
+    const meshes = buildMeshesFromGSet(scene); //buildMeshesFromLListVList(scene);
+    console.log(`Costruite ${meshes.length} mesh`);
+
+    // GUI per controllare la visualizzazione
+    const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    const panel = new BABYLON.GUI.StackPanel();
+    panel.width = "200px";
+    panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+    panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    advancedTexture.addControl(panel);
+
+    // Toggle per point cloud
+    const pointCloudToggle = new BABYLON.GUI.Checkbox();
+    pointCloudToggle.width = "20px";
+    pointCloudToggle.height = "20px";
+    pointCloudToggle.isChecked = true;
+    pointCloudToggle.color = "green";
+    pointCloudToggle.onIsCheckedChangedObservable.add((value) => {
+        const pcsMesh = scene.getMeshByName("pcs");
+        if (pcsMesh) pcsMesh.setEnabled(value);
+    });
+
+    const pointCloudHeader = new BABYLON.GUI.TextBlock();
+    pointCloudHeader.text = "Point Cloud";
+    pointCloudHeader.color = "black";
+    pointCloudHeader.width = "120px";
+    pointCloudHeader.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+
+    const pointCloudPanel = new BABYLON.GUI.StackPanel("pointCloudPanel");
+    pointCloudPanel.isVertical = false;
+    pointCloudPanel.height = "25px";
+    pointCloudPanel.addControl(pointCloudToggle);
+    pointCloudPanel.addControl(pointCloudHeader);
+    panel.addControl(pointCloudPanel);
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+
+    return { engine, scene, meshes };
+}
+
+
+////////
+
+
+
+
+
+// Crea assi X,Y,Z
+function createAxes(scene) {
+    function makeAxis(start, end, color) {
+        const pts = [start, end];
+        const lines = BABYLON.MeshBuilder.CreateLines("axis", { points: pts }, scene);
+        lines.color = color;
+        return lines;
+    }
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(1, 0, 0),
+        new BABYLON.Color3(1, 0, 0)
+    ); // X
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(0, 1, 0),
+        new BABYLON.Color3(0, 1, 0)
+    ); // Y
+
+    makeAxis(
+        new BABYLON.Vector3(0, 0, 0),
+        new BABYLON.Vector3(0, 0, 1),
+        new BABYLON.Color3(0, 0, 1)
+    ); // Z
+}
+
+function buildMeshesFromLListVList(scene) {
+    const meshes = [];
+
+    // Cerca i GeoSet per capire come costruire le mesh
+    let gsets = [];
+    for (let lst of currentJSON.lists) {
+        if (lst.list_id === 10) { // L_GSET
+            for (let elem of lst.elements) {
+                if (elem.raw) {
+                    const gsetInfo = parseGSet(elem.raw);
+console.log("Info GSET:",gsetInfo);
+                    gsets.push(gsetInfo);
+                }
+            }
+        }
+    }
+
+    // Per ogni GeoSet, costruisci la mesh corrispondente
+    for (let i = 0; i < gsets.length; i++) {
+        const gset = gsets[i];
+
+        if (gset.llistIndex === null || gset.vlistIndex === null) {
+            console.warn(`GeoSet ${i} manca di llist o vlist`);
+            continue;
+        }
+
+        // Trova la llist e vlist corrispondenti
+        const llistData = currentJSON.lists.find(lst =>
+            lst.list_id === 4 && lst.elements[gset.llistIndex]
+        );
+        const vlistData = currentJSON.lists.find(lst =>
+            lst.list_id === 5 && lst.elements[gset.vlistIndex]
+        );
+
+        if (!llistData || !vlistData) {
+            console.warn(`Non trovate llist o vlist per GeoSet ${i}`);
+            continue;
+        }
+
+        const lengths = llistData.elements[gset.llistIndex].struct.ints;
+        const vertices = vlistData.elements[gset.vlistIndex].struct.vertices;
+
+        let positions = [];
+        let indices = [];
+        let vertexCursor = 0;
+
+        console.log(`Costruendo mesh ${i}: ${gset.primType} =  ${gset.primTypeName}, ${gset.primCount} primitive`);
+
+        // Costruisci le primitive in base al tipo
+        switch(gset.primType) {
+            case 4: // TRIS - triangoli
+console.log("Triangoli...");
+                for (let j = 0; j < lengths.length; j++) {
+                    const polyLen = lengths[j];
+                    if (polyLen === 3) {
+                        const base = positions.length / 3;
+                        for (let k = 0; k < 3; k++) {
+                            const v = vertices[vertexCursor + k];
+                            positions.push(v.x, v.y, v.z);
+                        }
+                        indices.push(base, base + 1, base + 2);
+                        vertexCursor += 3;
+                    }
+                }
+                break;
+
+            case 5: // QUADS - quadrilateri
+console.log("quadrilateri...");
+                for (let j = 0; j < lengths.length; j++) {
+                    const polyLen = lengths[j];
+                    if (polyLen === 4) {
+                        const base = positions.length / 3;
+                        for (let k = 0; k < 4; k++) {
+                            const v = vertices[vertexCursor + k];
+                            positions.push(v.x, v.y, v.z);
+                        }
+                        // Dividi il quadrilatero in 2 triangoli
+                        indices.push(base, base + 1, base + 2);
+                        indices.push(base, base + 2, base + 3);
+                        vertexCursor += 4;
+                    }
+                }
+                break;
+
+            case 7: // POLYGON - poligoni generici
+console.log("poligoni...");
+                for (let j = 0; j < lengths.length; j++) {
+                    const polyLen = lengths[j];
+                    if (polyLen >= 3) {
+                        const polyVerts = vertices.slice(vertexCursor, vertexCursor + polyLen);
+                        vertexCursor += polyLen;
+
+                        // Prepara i vertici per earcut
+                        const flat = [];
+                        for (let v of polyVerts) {
+                            flat.push(v.x, v.y, v.z);
+                        }
+
+                        // Triangola con earcut
+                        const triangles = earcut(flat, [], 3);
+
+                        const base = positions.length / 3;
+                        for (let v of polyVerts) {
+                            positions.push(v.x, v.y, v.z);
+                        }
+                        for (let t of triangles) {
+                            indices.push(base + t);
+                        }
+                    }
+                }
+                break;
+
+            default:
+console.log("non supportato...");
+                console.warn(`Tipo primitiva non supportato: ${gset.primTypeName}`);
+                continue;
+        }
+
+        // Crea la mesh solo se ha vertici
+        if (positions.length > 0 && indices.length > 0) {
+            const mesh = new BABYLON.Mesh(`mesh_${i}`, scene);
+            const vertexData = new BABYLON.VertexData();
+
+            vertexData.positions = positions;
+            vertexData.indices = indices;
+
+            // Calcola le normali automaticamente
+            vertexData.normals = [];
+            BABYLON.VertexData.ComputeNormals(positions, indices, vertexData.normals);
+
+            vertexData.applyToMesh(mesh);
+
+            // Materiale
+            const material = new BABYLON.StandardMaterial(`mat_${i}`, scene);
+            material.diffuseColor = new BABYLON.Color3(
+                Math.random() * 0.5 + 0.3,
+                Math.random() * 0.5 + 0.3,
+                Math.random() * 0.5 + 0.3
+            );
+            material.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            material.backFaceCulling = false;
+            mesh.material = material;
+
+            meshes.push(mesh);
+            console.log(`Mesh ${i} creata: ${positions.length/3} vertici, ${indices.length/3} triangoli`);
+        }
+    }
+
+    return meshes;
+}
+
+
+function parseGSet(rawBytes) {
+  function readInt32LE(offset) {
+    if (offset + 4 > rawBytes.length) return -1;
+    return rawBytes[offset] | (rawBytes[offset + 1] << 8) |
+           (rawBytes[offset + 2] << 16) | (rawBytes[offset + 3] << 24);
+  }
+
+  function readFloat32LE(offset) {
+    if (offset + 4 > rawBytes.length) return 0;
+    const view = new DataView(rawBytes.buffer, rawBytes.byteOffset + offset, 4);
+    return view.getFloat32(0, true);
+  }
+
+  const ptype = readInt32LE(0);
+  const pcount = readInt32LE(4);
+  const llist = readInt32LE(8);
+
+  const vlist = [
+    readInt32LE(12), // bind type per PFGS_COORD3
+    readInt32LE(16), // indice alla VLIST
+    readInt32LE(20)  // indice alla ILIST
+  ];
+
+  const primTypeNames = {
+    0: 'PFGS_POINTS',
+    1: 'PFGS_LINES',
+    2: 'PFGS_LINESTRIPS',
+    3: 'PFGS_TRIS',
+    4: 'PFGS_QUADS',
+    5: 'PFGS_TRISTRIPS',
+    6: 'PFGS_FLAT_LINESTRIPS',
+    7: 'PFGS_FLAT_TRISTRIPS',
+    8: 'PFGS_POLYS',
+    9: 'PFGS_TRIFANS',
+    10: 'PFGS_FLAT_TRIFANS',
+    11: 'PFGS_NUM_PRIMS'
+  };
+
+  // Calcola usesStrips basandosi sul codice C
+  const usesStrips = (ptype === 2 || ptype === 5 || ptype === 6 || ptype === 7 || ptype === 9 || ptype === 10);
+
+  // Calcola usesPolygons - poligoni che usano length lists
+  const usesPolygons = (ptype === 8); // PFGS_POLYS
+
+  return {
+    primType: ptype,
+    primTypeName: primTypeNames[ptype] || 'UNKNOWN',
+    primCount: pcount,
+    llistIndex: llist === -1 ? null : llist,
+    vlistIndex: vlist[1] === -1 ? null : vlist[1],
+    vlistBind: vlist[0],
+    vlistIList: vlist[2],
+    usesStrips: usesStrips,
+    usesPolygons: usesPolygons,
+    // Per debug
+    debug: {
+      clist: [readInt32LE(24), readInt32LE(28), readInt32LE(32)],
+      nlist: [readInt32LE(36), readInt32LE(40), readInt32LE(44)],
+      tlist: [readInt32LE(48), readInt32LE(52), readInt32LE(56)]
+    }
+  };
+}
+
+
+
+function parseAllNodes(rawBytes) {
+  const nodes = [];
+  let offset = 0;
+  const len = rawBytes.length;
+
+  while (offset < len) {
+    if (offset + 4 > len) break;
+    const bufSize = new DataView(rawBytes.buffer, rawBytes.byteOffset + offset, 4).getUint32(0, true);
+    offset += 4;
+
+    if (bufSize <= 0 || bufSize > 100000) break;
+
+    const payloadBytes = bufSize * 4;
+    if (offset + payloadBytes > len) break;
+
+    // Estrai il payload come Uint8Array
+    const payload = rawBytes.slice(offset, offset + payloadBytes);
+
+    // Leggi node_type
+    const firstInt = new DataView(payload.buffer, payload.byteOffset, 4).getUint32(0, true);
+    let nodeType = firstInt >= 0x80000000 ? firstInt - 0x100000000 : firstInt;
+    if (nodeType & N_CUSTOM) nodeType &= N_NOT_CUSTOM_MASK;
+
+    if (nodesTypesCounts[node_names[nodeType]])
+        nodesTypesCounts[node_names[nodeType]]++;
+    else nodesTypesCounts[node_names[nodeType]] = 1;
+
+    const name = node_names[nodeType] || `Unknown(${nodeType})`;
+    const node = {
+      position: nodes.length,
+      node_type: nodeType,
+      node_name: name
+    };
+
+    // 👇 ISPEZIONE SPECIFICA PER LOD 👇
+    if (nodeType === 11) { // N_LOD
+      try {
+        node.lod_data = parseLODPayload(payload);
+        lodsCount++;
+      } catch (e) {
+        console.warn("Failed to parse LOD at position", node.position, ":", e.message);
+        node.lod_data = null;
+      }
+    }
+
+    nodes.push(node);
+    offset += payloadBytes;
+
+    // Salta nome opzionale
+    if (offset + 4 > len) break;
+    const nameSize = new DataView(rawBytes.buffer, rawBytes.byteOffset + offset, 4).getUint32(0, true);
+    offset += 4;
+    if (nameSize !== 0xFFFFFFFF) {
+      if (offset + nameSize > len) break;
+      offset += nameSize;
+    }
+  }
+
+console.log("lodsCount=",lodsCount)
+  return nodes;
+}
+
+function parseLODPayload(payloadBytes) {
+  // payloadBytes è un Uint8Array di lunghezza buf_size * 4
+  const view = new DataView(payloadBytes.buffer, payloadBytes.byteOffset, payloadBytes.byteLength);
+  let pos = 4; // salta il primo int (node_type = 11)
+
+  const lod = {
+    type: "LOD",
+    ranges: [],
+    transitions: [],
+    center: [0, 0, 0],
+    lodStateRef: -1,
+    lodStateIndex: -1
+  };
+
+  // count = buf[buf_pos++]; → 1 int
+  if (pos + 4 > payloadBytes.length) throw new Error("Truncated LOD: missing count");
+  const count = view.getInt32(pos, true); // little-endian, signed
+  pos += 4;
+
+  // for (i = 0; i <= count; i++) → count+1 valori
+  for (let i = 0; i <= count; i++) {
+    if (pos + 4 > payloadBytes.length) throw new Error("Truncated LOD: missing range");
+    lod.ranges.push(view.getFloat32(pos, true));
+    pos += 4;
+  }
+
+  // for (i = 0; i <= count; i++) → count+1 valori
+  for (let i = 0; i <= count; i++) {
+    if (pos + 4 > payloadBytes.length) throw new Error("Truncated LOD: missing transition");
+    lod.transitions.push(view.getFloat32(pos, true));
+    pos += 4;
+  }
+
+  // v1[0], v1[1], v1[2] → 3 float
+  if (pos + 12 > payloadBytes.length) throw new Error("Truncated LOD: missing center");
+  lod.center[0] = view.getFloat32(pos, true); pos += 4;
+  lod.center[1] = view.getFloat32(pos, true); pos += 4;
+  lod.center[2] = view.getFloat32(pos, true); pos += 4;
+
+  // t1 = buf[buf_pos++]; → lodStateRef
+  if (pos + 4 > payloadBytes.length) throw new Error("Truncated LOD: missing lodStateRef");
+  lod.lodStateRef = view.getInt32(pos, true);
+  pos += 4;
+
+  // t2 = buf[buf_pos++]; → lodStateIndex
+  if (pos + 4 > payloadBytes.length) throw new Error("Truncated LOD: missing lodStateIndex");
+  lod.lodStateIndex = view.getInt32(pos, true);
+  pos += 4;
+
+  // Nota: il payload reale potrebbe avere altri campi dopo (trav mask, udata, ecc.)
+  // Ma per ora ci fermiamo qui — quelli li ignoreremo.
+
+  return lod;
+}
+
+function buildMeshesFromGSet(scene) {
+    const meshes = [];
+
+    for (let i = 0; i < meshData.length; i++) {
+        const { gset, vertices, lengths } = meshData[i];
+
+        let positions = [];
+        let indices = [];
+        let vertexCursor = 0;
+
+        console.log(`Costruendo mesh ${i}: ${gset.primTypeName}, ${lengths.length} primitive`);
+
+        // Costruisci SOLO le facce specificate dalle lengths
+        for (let j = 0; j < lengths.length; j++) {
+            const polyLen = lengths[j];
+
+            if (vertexCursor + polyLen > vertices.length) {
+                console.warn(`Mesh ${i}: polyLen ${polyLen} eccede vertici disponibili`);
+                break;
+            }
+
+            const base = positions.length / 3;
+
+            // Aggiungi i vertici di QUESTA faccia
+            for (let k = 0; k < polyLen; k++) {
+                const v = vertices[vertexCursor + k];
+                positions.push(v.x, v.y, v.z);
+            }
+
+            // Crea gli indici in base al tipo di primitiva
+            if (gset.primType === 3 && polyLen === 3) { // PFGS_TRIS
+                indices.push(base, base + 1, base + 2);
+            }
+            else if (gset.primType === 4 && polyLen === 4) { // PFGS_QUADS
+                indices.push(base, base + 1, base + 2);
+                indices.push(base, base + 2, base + 3);
+            }
+            else if (gset.primType === 8 && polyLen >= 3) { // PFGS_POLYS - poligoni generici
+                // Per PFGS_POLYS, ogni primitiva è un poligono con polyLen vertici
+                // Usa earcut per triangolare il poligono
+                const polyVerts = [];
+                for (let k = 0; k < polyLen; k++) {
+                    const v = vertices[vertexCursor + k];
+                    polyVerts.push(v.x, v.y); // earcut lavora in 2D
+                }
+
+                const triangles = earcut(polyVerts, [], 2);
+                for (const t of triangles) {
+                    indices.push(base + t);
+                }
+
+                console.log(`Poligono ${j}: ${polyLen} vertici -> ${triangles.length/3} triangoli`);
+            }
+            else if ((gset.primType === 5 || gset.primType === 7) && polyLen >= 3) { // PFGS_TRISTRIPS, PFGS_FLAT_TRISTRIPS
+                // Per triangle strips: ogni nuovo vertice forma un triangolo con i 2 precedenti
+                for (let k = 2; k < polyLen; k++) {
+                    if (k % 2 === 0) {
+                        // Ordine pari: ABC -> ABC
+                        indices.push(base + k - 2, base + k - 1, base + k);
+                    } else {
+                        // Ordine dispari: ABC -> ACB (per mantenere winding order)
+                        indices.push(base + k - 2, base + k, base + k - 1);
+                    }
+                }
+            }
+            else if ((gset.primType === 9 || gset.primType === 10) && polyLen >= 3) { // PFGS_TRIFANS, PFGS_FLAT_TRIFANS
+                // Per triangle fans: tutti i triangoli condividono il primo vertice
+                for (let k = 2; k < polyLen; k++) {
+                    indices.push(base, base + k - 1, base + k);
+                }
+            }
+            else {
+                console.warn(`Tipo primitiva non supportato: ${gset.primTypeName} con ${polyLen} vertici`);
+            }
+
+            vertexCursor += polyLen;
+        }
+
+        // Crea la mesh solo se ha dati validi
+        if (positions.length > 0 && indices.length > 0) {
+            const mesh = new BABYLON.Mesh(`mesh_${i}`, scene);
+            const vertexData = new BABYLON.VertexData();
+
+            vertexData.positions = positions;
+            vertexData.indices = indices;
+
+            // Calcola le normali
+            BABYLON.VertexData.ComputeNormals(positions, indices, vertexData.normals);
+            vertexData.applyToMesh(mesh);
+
+            const material = new BABYLON.StandardMaterial(`mat_${i}`, scene);
+            material.diffuseColor = new BABYLON.Color3(
+                Math.random() * 0.7 + 0.3,
+                Math.random() * 0.7 + 0.3,
+                Math.random() * 0.7 + 0.3
+            );
+            material.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            material.backFaceCulling = false;
+            mesh.material = material;
+
+            meshes.push(mesh);
+            console.log(`Mesh ${i} creata: ${positions.length/3} vertici, ${indices.length/3} triangoli, tipo: ${gset.primTypeName}`);
+        } else {
+            console.warn(`Mesh ${i}: nessun dato valido per ${gset.primTypeName}`);
+        }
+    }
+
+    return meshes;
+}
+
+
+
+function calculateTotalVertices(gset, lengths) {
+    switch(gset.primType) {
+        case 3: // PFGS_TRIS
+            return gset.primCount * 3;
+        case 4: // PFGS_QUADS
+            return gset.primCount * 4;
+        case 8: // PFGS_POLYS
+        case 2: // PFGS_LINESTRIPS
+        case 5: // PFGS_TRISTRIPS
+        case 6: // PFGS_FLAT_LINESTRIPS
+        case 7: // PFGS_FLAT_TRISTRIPS
+        case 9: // PFGS_TRIFANS
+        case 10: // PFGS_FLAT_TRIFANS
+            // Per questi tipi, somma tutte le lengths
+            return lengths.reduce((sum, len) => sum + len, 0);
+        case 0: // PFGS_POINTS
+            return gset.primCount;
+        case 1: // PFGS_LINES
+            return gset.primCount * 2;
+        default:
+            console.warn(`Tipo primitiva sconosciuto: ${gset.primType}`);
+            return 0;
+    }
+}
+
+</script>
+</body>
+</html>

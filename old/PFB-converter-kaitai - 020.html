@@ -1,0 +1,379 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <body>
+
+Get texture references from PFB file: <input type="file" id="inpHeaderFile" name = "inpHeaderFile" width="100" accept=".PFB" ><br>
+Texture references: <span id = "spnTextureRef" name = "spnTextureRef">-</span><br>
+Load PFB+texture : <input type="file" id="inpPFB_TXTfile" name = "inpPFB_TXTfile" width="100" accept= ".PFB,.img" multiple><br>
+Load PFB file only: <input type="file" id="inpPFBfile" name = "inpPFBfile" width="100" accept=".PFB"><br>
+<span id="file_status" name="file_status" >waiting</span><br>
+<span id="file_length" name="file_length" >-</span><br>
+<button id="PLY" name="PLY" onclick = "savePLY()">Save as .PLY</button><br>
+<br>
+<button id="XYZ" name="XYZ" onclick = "saveXYZ()">Save as .XYZ</button><br>
+<br>
+-----<br>
+<canvas id="texture" name="texture" width="1024" height="1024"></canvas><br>
+-----<br>
+
+<script src="KaitaiStream.js"></script>
+<script src="PFB.js"></script>
+<script src="img_gray16.js"></script>
+
+<script>
+
+// 0.2.0 - XYZ export working; experimenting with faces and PLY export (faces not working, format unknown)
+
+	canvas = document.getElementById('texture');
+	ctx = canvas.getContext('2d');
+	canvasWidth = 1024;
+	canvasHeight = 1024;
+	ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+
+	myPFB = null;
+	myImg = null;
+  TEXTURE_WIDTH = 1024; // to do: implement KSY reader for just PDS label, extract texture metadata and use  them to implement generic texture reader
+  TEXTURE_HEIGHT = 1024;
+
+	PLY_HEADER_BASE = "" +
+		"ply\n" +
+		"format ascii 1.0\n" +
+		"comment Created by PFB JS convereter\n" +
+		"element vertex VVVV\n" +
+		"property float x\n" +
+		"property float y\n" +
+		"property float z\n" +
+/*		"TTTT" +*/
+		"element face FFFF\n" +
+		"property list uchar int vertex_index\n" +
+		"end_header\n";
+
+	PLY_TEXTURE_HEADER = "" +
+		"property uchar red\n" +
+		"property uchar green\n" +
+		"property uchar blue\n";
+
+  PLYfiles = [];
+  XYZfiles = [];
+
+	PFB_HEADER_LENGTH =  1+1+1+1 + 1+1+1+1 + 4 + 4 + 1+1+1+1 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4; // 40
+	BOUNDING_BOX_LENGTH = 6*4; // 24
+	TEXTURE_REF_LENGTH = 2048;
+	COORDINATE_SYSTEM_LENGTH = 4096;
+	LOD_HEADER_LENGTH = 4 + 1+1+1+1+1+1+1+1 + 4 + 4 + 4 + 4; //28
+	PATCH_HEADER_LENGTH = 8 + 4 + 4 + 4 + 4; // 24
+
+	const headerSelector = document.getElementById('inpHeaderFile');
+	headerSelector.addEventListener('change', (event) => {
+		loadPFBheader(event.target.files[0])
+	});
+
+	const PFB_TXT_Selector = document.getElementById('inpPFB_TXTfile');
+	PFB_TXT_Selector.addEventListener('change', (event) => {
+	if (event.target.files.length !== 2) {
+		alert("You must select one .PFB file and one .img file");
+		return;
+	} else {
+		loadPFB_TXT(event.target.files[0], event.target.files[1])
+	}
+	});
+
+	const PFB_Selector = document.getElementById('inpPFBfile');
+	PFB_Selector.addEventListener('change', (event) => {
+		loadPFB(event.target.files[0])
+	});
+
+
+	function saveFile(fileContent, filename,status_id) {
+		myBlob = new Blob([fileContent], {type: "application/octet-stream"});
+		var url = window.URL.createObjectURL(myBlob);
+		var anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+//	a(anchor);
+        anchor.addEventListener('load', (event) => {
+			console.log("LOAD");
+		});
+
+        anchor.addEventListener('ended', (event) => {
+			console.log("ENDED");
+		});
+
+        anchor.addEventListener('loadeddata', (event) => {
+			console.log("loadeddata");
+		});
+
+        anchor.addEventListener('loadstart', (event) => {
+			console.log("loadstart");
+		});
+        anchor.addEventListener('mousedown', (event) => {
+			console.log("mousedown");
+		});
+
+
+		anchor.click();
+		window.URL.revokeObjectURL(url);
+        document.getElementById(status_id).innerHTML = "Saved to " + filename;
+	}
+
+function loadPFBheader(fileHandler) {
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents);
+		console.log("Loaded: ", event, rawFileContents.length);
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myPFBHeader = new PFBh(st);
+		console.log("This file contains:");
+		console.log(myPFBHeader.vistaHeader.lodsCount, " LODs");
+    sliceUInt8 = myPFBHeader.textureRef;
+		textureRefRaw = String.fromCharCode(...sliceUInt8)
+		textureRef = textureRefRaw.split("\x00");
+		textureName = textureRef[2];
+    spnTextureRef.innerHTML = textureName;
+//console.log(textureName);
+	});
+	reader.readAsArrayBuffer(fileHandler);
+	console.log("Header reading process initiated...");
+}
+
+
+
+function loadPFB_TXT(handler1, handler2) {
+//console.log(handler1, handler2)
+	if (handler1.name.toUpperCase().indexOf("IMG") >= 0) {
+		textureHandler = handler1;
+		PFBHandler = handler2;
+	} else {
+		textureHandler = handler2;
+		PFBHandler = handler1;
+	}
+//console.log("TEXTURE:", textureHandler)
+//console.log("PFB:", PFBHandler)
+
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents);
+		console.log("Loaded: ", event, rawFileContents.length);
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myImg = new ImgGray16(st);
+
+		console.log("myImg=",myImg);
+		for (x=0; x< 1023; x++) {
+			for(y=0; y<1023; y++) {
+        rgb = (myImg.lines[y].samples[x])/10;
+				r = rgb;
+				g = rgb;
+				b = rgb;
+				writeCanvas(x,y,r,g,b);
+			}
+		}
+
+    loadPFB(PFBHandler);
+
+	});
+	reader.readAsArrayBuffer(textureHandler);
+	console.log("Texture+PFB reading process initiated...");
+}
+
+nodeTypes = [
+	"Materials", 			//0
+	"Textures list", 	//1
+	"Texenv?",        //2
+	"GeoStates",      //3
+	"Lenghts lists",  //4
+	"Vertex lists",   //5
+	"Colors lists",   //6
+	"Normals lists",  //7
+	"Texcoords lists",//8
+	"UNKNOWN", 				//9
+	"GeoSets", 				//10
+	"UNKNOWN", 				//11
+	"Nodes",					//12
+	"UNKNOWN", 				//13
+	"UNKNOWN", 				//14
+	"UNKNOWN", 				//15
+	"UNKNOWN", 				//16
+	"TexGens", 				//17
+	"Light models", 	//18
+	"UNKNOWN", 				//19
+	"UNKNOWN", 				//20
+	"UNKNOWN", 				//21
+	"UNKNOWN", 				//22
+	"UNKNOWN", 				//23
+	"UNKNOWN", 				//24
+	"UNKNOWN", 				//25
+	"UNKNOWN", 				//26
+	"Images", 				//27
+]
+
+function loadPFB(fileHandler) {
+  totalListLenght = [];
+  totalLenght = 0;
+	myName = fileHandler.name;
+	const reader = new FileReader();
+	reader.addEventListener('load', (event) => {
+		rawFileContents = event.target.result;
+		fileContentsUInt8 = new Uint8Array(rawFileContents); // Extract from the generic ArrayBuffer an array of Unsigned Integers (0..255)
+		console.log("Loaded: ", event, rawFileContents.length);
+		document.getElementById("file_status").innerHTML = "Loaded";
+		document.getElementById("file_length").innerHTML = fileContentsUInt8.length + " bytes";
+
+		st = new KaitaiStream(fileContentsUInt8);
+		myPFB = new Pfb	(st);
+		console.log(myPFB);
+		console.log("Nodes num.:", myPFB.nodes.length);
+		vertexDB = [];
+		vertexDBstr = "";
+    facesDB = [];
+    facesDBstr = "";
+		for (var nodeIndex = 0; nodeIndex < myPFB.nodes.length; nodeIndex++) {
+			thisNode = myPFB.nodes[nodeIndex];
+			console.log(nodeIndex, " - type:",  thisNode.type, "=", nodeTypes[thisNode.type]);
+
+
+			// Put all vertices in a single sequence:
+		  totalListLenghtV = [];
+		  totalLenghtV = 0;
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("VERTEX") >= 0 ) {
+//console.log("Building vertex db...");
+					for (var listIndex=0 ; listIndex<thisNode.contents.lists.length; listIndex++) {
+						var thisListV = thisNode.contents.lists[listIndex];
+//console.log("Processing list " + listIndex  + ", containing " + thisListV.elements.length + " vertices...");
+            totalListLenghtV[listIndex] = 0;
+						for (var elemIndex = 0; elemIndex < thisListV.elements.length ;elemIndex++) {
+							totalListLenghtV[listIndex] += 1
+							vertexObj = thisListV.elements[elemIndex];
+              vertexDB.push(vertexObj);
+							vertexStr = "";
+              vertexStr += vertexObj.x + " " + vertexObj.y + " " + vertexObj.z;
+              vertexDBstr += vertexStr + "\n";
+						}
+						console.log("   ListV " , listIndex, ": ", thisListV.size , " vertices, ",  totalListLenght[listIndex]  );
+						totalLenghtV += totalListLenghtV[listIndex];
+					}
+					console.log("   Vertex in lists:", totalLenghtV );
+			}
+
+			// Create faces as groups of pointers to vertices
+			if (nodeTypes[thisNode.type].toUpperCase().indexOf("LENGHTS") >= 0 ) {
+					lenghts = [];
+					for (var i=0; i< thisNode.contents.lists.length; i++) {
+						lenghts.push(thisNode.contents.lists[i].size)
+						//console.log(thisNode.contents.lists);
+					}
+					vertexOffset = 0;
+					for (var listIndex=0 ; listIndex<thisNode.contents.lists.length; listIndex++) { // Each list is a strip of faces
+						var thisList = thisNode.contents.lists[listIndex];
+						var facesLengths = thisList.elements;
+            //totalListLenght[listIndex] = 0;
+            strip = [];
+						for (var lengthIndex = 0; lengthIndex < facesLengths.length ;lengthIndex++) {
+							face = [];
+              faceLength = facesLengths[lengthIndex];
+							faceStr = faceLength + " ";
+							for (var vertexIndex = 0; vertexIndex < faceLength; vertexIndex++) {
+								//totalListLenght[listIndex] += facesLengths[lengthIndex]
+	              face.push(vertexOffset + vertexIndex);
+                faceStr += (vertexOffset + vertexIndex) + " "
+	              vertexOffset++;
+							}
+              facesDBstr += faceStr + "\n";
+							facesDB.push(face);
+						}
+            //facesDB.push(strip);
+						//console.log("   List " , listIndex, ": ", thisList.size , " lenghts, tot length= " , totalListLenght[listIndex] );
+						totalLenght += totalListLenght[listIndex];
+					}
+					//console.log("   Vertex in lists:", totalLenght );
+			}
+
+
+		}
+
+	console.log("Vertici:", vertexDB);
+	console.log("Vertici:", vertexDBstr);
+	console.log("Facce:", facesDB);
+	console.log("Facce:", facesDBstr);
+	console.log("Lunghezze:",lenghts);
+
+		PLYheader = PLY_HEADER_BASE.replace("VVVV", vertexDB.length);
+		PLYheader = PLYheader.replace("FFFF", facesDB.length);
+		PLYfile = PLYheader + vertexDBstr + facesDBstr;
+    saveFile(PLYfile, "PFBtest.ply","file_status");
+
+    XYZfile = "";
+		var PFBvertexNode = myPFB.nodes[1]; // debug: non è detto che sia sempre in posizione 1
+		var PFBvertexLists = PFBvertexNode.contents.lists;
+		for (var vertListIndex = 0; vertListIndex < PFBvertexLists.length; vertListIndex++) {
+		  PFBvertList = PFBvertexLists[vertListIndex];
+			for (var vertIndex = 0; vertIndex < PFBvertList.elements.length; vertIndex++) {
+				XYZline = "" +
+				PFBvertList.elements[vertIndex].x + " " +
+				PFBvertList.elements[vertIndex].y + " " +
+				PFBvertList.elements[vertIndex].z;
+				XYZfile += XYZline + "\n";
+			}
+		}
+  saveFile(XYZfile, "PFBtest.txt","file_status");
+	alert("Done");
+
+	});
+	reader.readAsArrayBuffer(fileHandler);
+	//console.log("Reading process initiated...");
+
+}
+
+
+function savePLY() {
+	for (lodIndex=0; lodIndex < LODS_TO_PROCESS; lodIndex++) {
+		saveFile(PLYfiles[lodIndex], "LOD"+lodIndex + ".ply","file_status");
+	}
+}
+
+
+function saveXYZ() {
+	for (lodIndex=0; lodIndex < LODS_TO_PROCESS; lodIndex++) {
+		saveFile(XYZfiles[lodIndex], "LOD"+lodIndex + ".txt","file_status");
+	}
+}
+
+
+function loadTexture() {
+
+}
+
+  function writeCanvas(x,y,r,g,b) {
+		//var x = Math.floor(Math.random() * canvasWidth);
+		//var y = Math.floor(Math.random() * canvasHeight);
+		//var r = Math.floor(Math.random() * 256);
+		//var g = Math.floor(Math.random() * 256);
+		//var b = Math.floor(Math.random() * 256);
+
+  ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+  ctx.fillRect(x,y,x+1,y+1);
+  /*	  var off = (y * id.width + x) * 4;
+		pixels[off] = r;
+		pixels[off + 1] = g;
+		pixels[off + 2] = b;
+		pixels[off + 3] = 255;
+		ctx.putImageData(id, 0, 0);*/
+  }
+
+
+
+
+</script>
+
+  </body>
+</html>

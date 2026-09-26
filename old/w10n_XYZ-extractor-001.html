@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: monospace;
+    }
+
+    #btnGo {
+      margin-top: 20px;
+      line-height: 25px;
+    }
+  </style>
+<script type='text/javascript' src='https://code.jquery.com/jquery-3.5.1.min.js'></script>
+
+ </head>
+</head>
+  <body>
+
+<script>
+var PLY_HEADER = 'ply\n'+
+	'format ascii 1.0\n'+
+	'element vertex VVVVVV\n'+
+	'property float x\n'+
+	'property float y\n'+
+	'property float z\n'+
+	'element face 0\n'+
+	'property list uchar float vertex_indices\n'+
+	'end_header\n';
+
+
+	const FACTOR = 100;
+	const TOSKIP = 1;
+	const START_MARKER = '<A HREF="';
+	const END_MARKER = '">';
+	const PROXY = "http://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+	const SERVER_URL = "https://pds-imaging.jpl.nasa.gov";
+	var PAGE_URL = "/w10n/mer/spirit/mer2no_0xxx/data/sol1866/rdr/2n292022791xylb0ozf0006l0m1.img/0/raster/data[]?output=json"; // provare con THUMBNAIL  (DEBUG)
+	var toolsList = [];
+	var toolsListTable = [];
+
+
+
+
+function loadFile(file) {
+console.log(1);
+  const reader = new FileReader();
+  reader.addEventListener('load', (event) => {
+	stringContents = event.target.result;
+	console.log("Loaded: ", stringContents.length);
+	fileData = processFile(stringContents);
+//		jsonData = JSON.parse(fileData);
+    console.log("Processing ended.");
+  });
+    reader.readAsBinaryString(file);
+console.log(2);
+}
+
+
+function saveFile(fileContent) {
+	myBlob = new Blob([fileContent], {type: "text/plain"});
+
+	var url = window.URL.createObjectURL(myBlob);
+	var anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = "demo.txt";
+
+	anchor.click();
+	window.URL.revokeObjectURL(url);
+	document.removeChild(anchor);
+}
+
+
+function handleEvent(e) {
+    log.textContent = `${e.type}: ${e.loaded} bytes transferred\n` + log.textContent;
+}
+
+function addListeners(xhr) {
+    xhr.addEventListener('loadstart', handleEvent);
+    xhr.addEventListener('load', handleEvent);
+    xhr.addEventListener('loadend', handleEvent);
+    xhr.addEventListener('progress', handleEvent);
+    xhr.addEventListener('error', handleEvent);
+    xhr.addEventListener('abort', handleEvent);
+		console.log("Ok.");
+}
+
+
+
+
+function writeCanvas(x,y,r,g,b) {
+	//var x = Math.floor(Math.random() * canvasWidth);
+	//var y = Math.floor(Math.random() * canvasHeight);
+	//var r = Math.floor(Math.random() * 256);
+	//var g = Math.floor(Math.random() * 256);
+	//var b = Math.floor(Math.random() * 256);
+
+//  ctx.fillStyle = 'rgb(r,g,b)';
+//  ctx.fillRect(x,y,x+1,y+1);
+	var off = (y * id.width + x) * 4;
+	pixels[off] = r;
+	pixels[off + 1] = g;
+	pixels[off + 2] = b;
+	pixels[off + 3] = 255;
+	ctx.putImageData(id, 0, 0);
+}
+
+
+  httpRequest = (PROXY, rawurl, method = 'GET', type="XML") => {
+		url = PROXY + rawurl;
+console.log(">>>FILE:",url);
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      addListeners(xhr);
+      xhr.open(method, url);
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+			console.log("OK!");
+				rawResponse = xhr.responseText;
+				try {
+					jsonResponse = JSON.parse(rawResponse);
+				} catch (e) {
+					console.log("JSON error:" , e);
+					console.log(rawResponse);
+				}
+				console.log(jsonResponse);
+				processData(jsonResponse);
+		}  else {
+				console.log("ERROR!");
+
+				reject(new Error(xhr.responseText));
+		}
+      };
+			xhr.progress = (a) => {
+				console.log("PROG:",a);
+        document.getElementById("status").innerHTML = a;
+			};
+      xhr.send();
+    });
+  }
+
+
+function processFile(fileContents) {
+console.log("Start processing...", fileContents.length);
+testami = fileContents;
+
+
+	const IMAGE_MARKER = "/* IMAGE DATA ELEMENTS */";
+	const START_OBJECT_MARKER = "OBJECT";
+	const END_OBJECT_MARKER = "END_OBJECT";
+	const BYTE_LENGTH = 8;
+
+	/////// Read PDS label data:
+	recordBytesLineStartPos = fileContents.indexOf("RECORD_BYTES");
+	recordBytesLineEndPos = fileContents.indexOf("\n",recordBytesLineStartPos);
+    recordBytesLine = fileContents.substr(recordBytesLineStartPos, recordBytesLineEndPos - recordBytesLineStartPos + 1);
+	recordBytesArr = recordBytesLine.split("=");
+	recordBytes = parseInt(recordBytesArr[1]);
+	console.log("recordBytes=",recordBytes);
+
+	fileRecordsLineStartPos = fileContents.indexOf("FILE_RECORDS");
+	fileRecordsLineEndPos = fileContents.indexOf("\n",fileRecordsLineStartPos);
+    fileRecordsLine = fileContents.substr(fileRecordsLineStartPos, fileRecordsLineEndPos - fileRecordsLineStartPos + 1);
+	fileRecordsArr = fileRecordsLine.split("=");
+	fileRecords = parseInt(fileRecordsArr[1]);
+	console.log("fileRecords=",fileRecords);
+
+	labelRecordsLineStartPos = fileContents.indexOf("LABEL_RECORDS");
+	labelRecordsLineEndPos = fileContents.indexOf("\n",labelRecordsLineStartPos);
+    labelRecordsLine = fileContents.substr(labelRecordsLineStartPos, labelRecordsLineEndPos - labelRecordsLineStartPos + 1);
+	labelRecordsArr = labelRecordsLine.split("=");
+	labelRecords = parseInt(labelRecordsArr[1]);
+	console.log("labelRecords=",labelRecords);
+	PDSlabelLength = recordBytes * labelRecords;
+	PDSlabel = fileContents.substr(0,PDSlabelLength);
+	console.log("PDS label:", PDSlabelLength, PDSlabel);
+
+
+	////// Read VICAR label data:
+	vicarLabelLengthLineStartPos = fileContents.indexOf("LBLSIZE");
+	vicarLabelLengthLineEndPos = fileContents.indexOf("\n",vicarLabelLengthLineStartPos);
+    vicarLabelLengthLine = fileContents.substr(vicarLabelLengthLineStartPos, vicarLabelLengthLineEndPos - vicarLabelLengthLineStartPos + 1);
+	vicarLabelLengthArr = vicarLabelLengthLine.split("=");
+	vicarLabelLength = parseInt(vicarLabelLengthArr[1]);
+	vicarLabel = fileContents.substr(PDSlabelLength, vicarLabelLength).replace('\x00',"");
+    vicarLabel=vicarLabel.split("    ").join("=========");
+    vicarLabel=vicarLabel.split("   ").join("---");
+    vicarLabel=vicarLabel.split("  ").join("\r\n");
+	console.log("vicarLabel:", vicarLabelLength, vicarLabel);
+
+	totalLabelLength = PDSlabelLength + vicarLabelLength;
+	onlyData = fileContents.substr(totalLabelLength , fileContents.length -  totalLabelLength + 1);
+	console.log("onlyData length=", onlyData.length, onlyData.length/3);
+
+	///// Read image/band metadata:
+	imageDataStartPos = fileContents.indexOf(IMAGE_MARKER);
+	imageDataStartPos = fileContents.indexOf(START_OBJECT_MARKER,imageDataStartPos);
+	imageDataEndPos = fileContents.indexOf(END_OBJECT_MARKER,imageDataStartPos);
+    imageDataLabel = fileContents.substr(imageDataStartPos, imageDataEndPos - imageDataStartPos);
+    imageDataLabel = imageDataLabel.split(" ").join("");
+	imageDataLabelArr = imageDataLabel.split("\r\n");
+	imageDataLabelObj = {}
+    imageDataLabelArr.forEach((elem) => {
+		var pair = elem.split("=");
+        imageDataLabelObj[pair[0]] = pair[1];
+	});
+	imageLines = imageDataLabelObj["LINES"];
+	imageSamplesPerLine = imageDataLabelObj["LINE_SAMPLES"];
+	bytesPerSample = imageDataLabelObj["SAMPLE_BITS"]/BYTE_LENGTH;
+	lineLength = imageSamplesPerLine * bytesPerSample;
+	bandsNum = imageDataLabelObj["BANDS"]
+	bandLength = imageLines * lineLength;
+	imageLength = bandLength * bandsNum;
+
+
+	console.log("PDSlabelLength", "vicarLabelLength", "totalLabelLength");
+	console.log(PDSlabelLength, vicarLabelLength, totalLabelLength);
+	console.log(PDSlabelLength.toString(16), vicarLabelLength.toString(16), totalLabelLength.toString(16));
+	console.log("imageLength",imageLength, "0x"+ imageLength.toString(16));
+	console.log("bandLength",bandLength, "0x"+ bandLength.toString(16));
+	console.log("file length",fileContents.length, "0x"+ fileContents.length.toString(16));
+
+	console.log("imageLines",imageLines);
+	console.log("imageSamplesPerLine",imageSamplesPerLine);
+	console.log("bytesPerSample",bytesPerSample);
+	console.log("lineLength",lineLength);
+	console.log("bandsNum",bandsNum);
+
+
+/*	blob = new Blob([fileContents], {type: 'text/plain; charset=utf-8'});
+	blob.arrayBuffer()
+	.then(buffer => {
+globalBuffer = buffer; // debug
+//		blob = null;
+		fileTable = new Uint8Array(buffer)
+		imageTable = fileTable.slice(totalLabelLength, totalLabelLength + imageLength);
+//		fileTable = null;
+
+console.log("fileTable:", fileTable.length, "0x"+ fileTable.length.toString(16) , "imageTable:" , imageTable.length, "0x"+ imageTable.length.toString(16));
+
+		linesArray = [];
+		for (let i = 0; i < imageTable.length; i += lineLength) {
+		    const fileLine = Array.from(imageTable.slice(i, i + lineLength));
+            floatArray = [];
+			for (let i = 0; i < fileLine.length; i += bytesPerSample) {
+			    const floatGroup = fileLine.slice(i, i + bytesPerSample);
+			    floatArray.push(floatGroup);
+			}
+		    linesArray.push(floatArray);
+		}
+
+	/*	startFloat = 0; // debug
+		endFloat = startFloat + bytesPerSample;*/
+
+/*		floatHolder = bufferView.slice(startFloat, endFloat).buffer;
+        floatView =  new DataView(floatHolder);
+		floatNum = floatView.getFloat32();
+
+		console.log("floatNum=",floatNum);
+		})
+	.catch((e) => console.log("ERROR:",e));
+*/
+
+
+
+//////////
+
+
+		fileTable = fileContents;
+console.log("fileTable:", fileTable.length, "0x"+ fileTable.length.toString(16));
+		imageTable = [null, null, null];
+        bandArray = [null, null, null];
+		for (var band = 0; band < bandsNum*1; band++) {
+			imageTable[band] = fileTable.slice(totalLabelLength + band * bandLength, totalLabelLength + bandLength  + band * bandLength);
+
+console.log( "imageTable[" + band + "]:" , imageTable[band].length, "0x"+ imageTable[band].length.toString(16));
+
+			bandArray[band] = [];
+			for (let i = 0; i < imageTable[band].length; i += lineLength) {
+			    const fileLine = Array.from(imageTable[band].slice(i, i + lineLength));
+	            floatArray = [];
+				for (let i = 0; i < fileLine.length; i += bytesPerSample) {
+				    const floatGroup = fileLine.slice(i, i + bytesPerSample);
+				    floatArray.push(floatGroup);
+				}
+			    bandArray[band].push(floatArray);
+			}
+console.log(bandArray[band]);
+		}
+
+
+
+
+
+return; // debug
+
+/*
+	///// Extract bands:
+	bandSize = imageLines * imageSamplesPerLine * bytesPerSample;
+	band1  = onlyData.slice(0, bandSize);
+	band2  = onlyData.slice(bandSize+1, bandSize);
+	band3  = onlyData.slice(bandSize+1, bandSize);
+
+	bandLines = [];
+    let utf8Encode = new TextEncoder();
+	for (linesCount = 0; linesCount < imageLines; linesCount++) {
+		lineStart = linesCount * lineLength;
+		lineEnd = (linesCount+1) * lineLength
+		lineContents = band1.slice(lineStart, lineEnd);
+		bandLines.push(utf8Encode.encode(lineContents));
+	}
+	console.log(bandLines.length, bandLines);
+
+	console.log(band1.length, band2.length/4 , band3.length/(4*1024*1024));
+*/
+}
+
+function arrayToFloat(data) {
+	// Create a buffer
+	 buf = new ArrayBuffer(4);
+	// Create a data view of it
+	 view = new DataView(buf);
+
+	// set bytes
+	data.forEach(function (b, i) {
+	    view.setUint8(i, b.charCodeAt());
+	});
+
+	// Read the bits as a float; note that by doing this, we're implicitly
+	// converting it from a 32-bit float into JavaScript's native 64-bit double
+	 num = view.getFloat32(0);
+	// Done
+	console.log(num);
+	}
+
+
+function stringToArray(str) {
+	arr = [];
+	for (var i=0; i<str.length; i++) {
+		arr.push(str[i].charCodeAt())
+	}
+	console.log("STR ", str , "= ARR ", arr);
+}
+
+
+function testDebug() {
+	console.log(arrayToFloat(linesArray[15][32]));
+}
+
+function processData(obj) {
+	rows=obj.data;
+	rowsNum = rows.length;
+	cols = rows[0];
+	colsNum = cols.length;
+	bands = cols[0];
+	bandsNum = bands.length;
+console.log(rowsNum,colsNum,bandsNum);
+	if (bandsNum) {
+		console.log("Rows x Columns =",rowsNum + "x" + colsNum + ", Bands: ", bandsNum);
+		rowsCount = 0;
+		pixelsCount = 0;
+		finalText = "";
+		rows.forEach( (row) => {
+			console.log("RIGA ",rowsCount);
+			cols = row
+			cols.forEach( (col) => {
+				console.log("COLONNA ",pixelsCount);
+			if ( (col[0] != 0) || (col[1] != 0) || (col[2] != 0)) {
+				console.log("" + col[0] + "," + col[1] + "," + col[2]);
+				finalText += "" + col[0]*FACTOR + " " + col[1]*FACTOR + " " + col[2]*FACTOR + "\n";
+				pixelsCount++;
+				document.getElementById("status").innerHTML = (100*(rowsCount / rowsNum)).toString();
+				}
+			});
+		rowsCount++;
+		});
+		console.log("Pixels:",pixelsCount);
+		PLY_FINAL_HEADER = PLY_HEADER.replace("VVVVVV",pixelsCount)
+    output.textContent = "Ready for download...";
+    saveFile(PLY_FINAL_HEADER + finalText);
+	} else {
+		// Single band file, create depthmap image
+    rowsCount = 0;
+    skipper = 0;
+		rows.forEach( (row) => {
+      values = row
+      valCount = 0;
+			values.forEach( (value) => {
+				skipper++;
+				if (skipper === TOSKIP) {
+					x = valCount;
+					y = rowsCount;
+          writeCanvas(x,y,value,value,value);
+					valCount++;
+					skipper = 0;
+//	console.log("Skipped at ", valCount);
+				} else {
+					valCount++;
+				}
+			});
+      rowsCount++;
+		});
+	}
+}
+
+function resolve(a) {
+console.log("OK",a);
+}
+
+
+function reject(a) {
+console.log("ERROR",a);
+}
+
+
+
+  $(document).ready(function () {
+	  log = document.querySelector('.event-log');
+		canvas = document.getElementById('depthmap');
+		ctx = canvas.getContext('2d');
+		canvasWidth = canvas.width;
+		canvasHeight = canvas.height;
+		ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+		id = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+		pixels = id.data;
+
+	  const fileSelector = document.getElementById('file-selector');
+	  fileSelector.addEventListener('change', (event) => loadFile(event.target.files[0]));
+
+
+
+		console.log("Ready.");
+        document.getElementById("status").innerHTML = "READY.";
+    $("#btnGo").click(function () {
+			var MY_URL_1=SERVER_URL + PAGE_URL;
+			var url_1 = PROXY + encodeURIComponent(MY_URL_1);
+			console.log("1");
+			httpRequest(PROXY, MY_URL_1,"GET","list");
+			console.log("2");
+    });
+  });
+
+</script>
+
+
+  </body>
+</html>
+
+
+
+
+<body>
+  <div>
+    <textarea id="output" cols="55" rows="15"></textarea>
+  </div>
+  <button id="btnGo">Go</button><br>
+	Status: <span id="status" name="status">-</span><br>
+	<br>
+<input type="file" id="file-selector">
+<button id="btnLoad" name="btnLoad" onclick="loadFile()">Load</button>
+<br>
+	<textarea readonly class="event-log" cols=150 rows=3></textarea><br>
+	<canvas id="depthmap" name="depthmap" width = "1024" height="1024"></canvas><br>
+
+</body>
+
+</html>

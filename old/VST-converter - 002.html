@@ -1,0 +1,236 @@
+s<!DOCTYPE html>
+<html>
+<head>
+	<title>ViSTa .vst 3d mesh file converter</title>
+</head>
+<body>
+<script src="VST-utils.js"></script>
+	<script>
+	// 0.0.2 - Patch and triangle strip ok
+	// 0.0.1 - LODs ok
+
+	var rawFileContents;
+	var fileContentsUInt8;
+
+  fields = [];
+  fieldNames = [];
+  LODfaces = [];
+  LODvertex = [];
+  LODlenghts = [];
+	LOD_vertex_DB_start= [];
+	LOD_vertex_DB_End = [];
+
+	const VALUE_LEN = 4 // 32 bit integer
+	const VST_HEADER_LEN = 40
+	const LOD_HEADER_LEN = 28
+	const BOUNDING_BOX_LEN = 24
+	const TEXTURE_REF_LEN = 2048
+	const COORD_SYS_LEN = 4096
+	const PATCH_HEADER_LEN = 24
+
+	// For VST header:
+	const TEXTURES_COUNT_OFFSET = 28
+	const VERTEX_COUNT_OFFSET = 32
+	const LODS_COUNT_OFFSET = 36
+
+	// For LOD header:
+	const LOD_VERTEX_COUNT_OFFSET = 12
+	const LOD_PATCHES_COUNT_OFFSET = 20
+	const LOD_LAST_VERTEX_POINTER_OFFSET = 24
+
+	// For PATCH:
+	const PATCH_TYPE_OFFSET = 8
+	const PATCH_FACES_COUNT_OFFSET = 16 // Number of "arrays of vertex pointers" ("=index arrays")  in patch
+	const PATCH_VERTEX_COUNT_OFFSET = 20 // Number of "vertex pointers"  (="index") in patch
+
+	// for Vertex:
+	const VALUES_PER_VERTEX = 5 // 2 for texture coordinates + 3 for space coordinates
+	const SINGLE_VERTEX_LEN = VALUES_PER_VERTEX * VALUE_LEN
+
+
+
+function showHeader(uint8slice, fieldsCount, indent) {
+// Show hex values of header, grouped by field length (for debugging purposes)
+    prevOffset = 0
+    prevLength = 0
+//		s = sliceToString(uint8slice,0,uint8slice.length)
+//console.log(s);
+    for (fieldIndex = 0; fieldIndex < fieldsCount; fieldIndex++) {
+      fieldOffset = prevOffset + prevLength;
+      fieldLength = fields[fieldIndex];
+      fieldStr = uint8slice.slice(fieldOffset, fieldOffset + fieldLength);
+console.log( indent,"Field ",(fieldIndex) , " (" , fieldNames[fieldIndex] , "): " , stringToHex(fieldStr) , " ---> " , stringToHexInv(fieldStr) , " ---> " , stringToDecInv(fieldStr));
+      prevOffset = fieldOffset;
+      prevLength = fieldLength;
+    }
+}
+
+
+function processFile() {
+	console.log(fileContentsUInt8,length);
+
+    LODtoConvert = 0;
+
+    texturesCount = getValFromString(fileContentsUInt8, TEXTURES_COUNT_OFFSET, VALUE_LEN)
+    vertexCount = getValFromString(fileContentsUInt8, VERTEX_COUNT_OFFSET, VALUE_LEN)
+    LODcount = getValFromString(fileContentsUInt8, LODS_COUNT_OFFSET, VALUE_LEN)
+    vertexListOffset = VST_HEADER_LEN + BOUNDING_BOX_LEN + texturesCount * TEXTURE_REF_LEN + COORD_SYS_LEN
+    vertexListLen = vertexCount * VALUES_PER_VERTEX * VALUE_LEN
+    vertexListEnd = vertexListOffset + vertexListLen - 1
+    firstLODoffset = vertexListEnd + 1
+    firstLODlen = getValFromString(fileContentsUInt8, firstLODoffset, VALUE_LEN)
+
+
+    prevLODoffset = firstLODoffset
+    prevLODlen = 0
+    for (LODindex = 0; LODindex < LODcount; LODindex++) {
+	console.log ("    === LOD n." ,LODindex)
+
+	        LODoffset = prevLODoffset + prevLODlen
+	        LOD_Header_Contents = fileContentsUInt8.slice(LODoffset, LODoffset + LOD_HEADER_LEN);
+	console.log ("    LODoffset: " +LODoffset+ " ($" + LODoffset.toString(16) + ")")
+
+	        LODlen = getValFromString(fileContentsUInt8, LODoffset, 4)
+	        LODlenghts[LODindex] = LODlen;
+	console.log ("    LODlen: " + LODlen + " (0x" + LODlen.toString(16) + ")")
+
+	        LOD_end = LODoffset + LODlen - 1
+	console.log ("    LOD_end: " + LOD_end + "(0x" + LOD_end.toString(16) + ")")
+
+	        nextLODoffset = LODoffset + LODlen
+	console.log ("    Next LOD starts at: " + nextLODoffset + " (0x" + nextLODoffset.toString(16) + ")")
+
+
+	console.log ("      Header: " + stringToHex(LOD_Header_Contents)); // Whole header preview
+
+		fields = [4,8,4,4,4,4];
+		fieldNames =["Total Size","Reserved",  "N vertex" , "LOD threshold" ,"N patches"  , "Last vertex index" ];
+		showHeader(LOD_Header_Contents, 6, "       ") //Detailed header contents
+
+        LODvertexCount = getValFromString(fileContentsUInt8, LODoffset + LOD_VERTEX_COUNT_OFFSET, 4, "int")
+console.log ("        LODvertexCount: " + LODvertexCount + " (0x" + LODvertexCount.toString(16) + ")")
+
+        LODpatchesCount = getValFromString(fileContentsUInt8, LODoffset + LOD_PATCHES_COUNT_OFFSET, 4, "int")
+console.log ("         LODpatchesCount: " + LODpatchesCount + " (0x" + LODpatchesCount.toString(16) + ")")
+
+        LODmaxVert = getValFromString(fileContentsUInt8, LODoffset + LOD_LAST_VERTEX_POINTER_OFFSET, 4, "int")
+console.log ("         LODmaxVert: " + LODmaxVert + " (0x" + LODmaxVert.toString(16) + ")")
+
+        LOD_vertex_DB_start[LODindex] = LODoffset + LOD_HEADER_LEN + LODmaxVert - LODvertexCount + 1
+        LOD_vertex_DB_End[LODindex] = LODoffset + LOD_HEADER_LEN + LODmaxVert + 1
+console.log ("         Vertex database for this LOD: from 0x" + LOD_vertex_DB_start[LODindex].toString(16) + " to  0x " + LOD_vertex_DB_End[LODindex].toString(16))
+
+        prevLODoffset = LODoffset
+        prevLODlen = LODlen
+        prevPatchesBytes = 0
+
+       //////////////////  ================ PATCH ===========
+        for (patchIndex = 0;  patchIndex< LODpatchesCount; patchIndex++) {
+console.log ("                  === PATCH n." + patchIndex)
+           patchOffset = LODoffset + LOD_HEADER_LEN + BOUNDING_BOX_LEN + prevPatchesBytes
+console.log ("                  patchOffset: " + patchOffset + " ($" + patchOffset.toString(16) + ")")
+
+            fields= [8,4,4,4,4];
+			fieldNames = ["Reserved", "Triangles or PointClouds", "Pointer to texture", "N. of groups in patch", "Number of vertex pointers in patch"];
+			fieldsTypes = ["int","int","int","int","int"];
+            patchHeaderContents = fileContentsUInt8.slice(patchOffset, patchOffset + PATCH_HEADER_LEN);
+            showHeader(patchHeaderContents, 5, "                 "); // Detailed header contents
+            patchArraysCount = getValFromString(patchHeaderContents, 16, 4, "int"); // Number of index arrays in patch
+            patchIndexesCount = getValFromString(patchHeaderContents, 20, 4, "int"); // Number of indexes in the patch
+            patchLength = PATCH_HEADER_LEN + patchArraysCount*4 + patchIndexesCount*4;
+console.log ("                  patchLength: " + patchLength);
+            //patchesCount = patchesCount + 1
+            prevPatchesBytes = prevPatchesBytes + patchLength;// debug
+
+
+ ////           ============== INDEX ARRAY ==============
+            if ( LODindex === LODtoConvert ) {
+				arrayLenghtsDatabaseOffset = patchOffset + PATCH_HEADER_LEN;
+ 				arraysDatabaseOffset = arrayLenghtsDatabaseOffset + patchArraysCount;
+                lengthsDatabase = fileContentsUInt8.slice(arrayLenghtsDatabaseOffset, (arrayLenghtsDatabaseOffset + patchArraysCount) * 4);
+				arraysDatabase = fileContentsUInt8.slice(arraysDatabaseOffset, (arraysDatabaseOffset + patchIndexesCount) * 4);
+				totalIndexesCount = 0;
+                arrayLocalOffset=0;
+				arraysDatabaseInt = [];
+                for (arrayIndex = 0 ;  arrayIndex < patchArraysCount; arrayIndex++) { // parse all arrays
+                    arrayLength = getValFromString(lengthsDatabase, arrayIndex*4, 4, "int");
+                    	totalIndexesCount += arrayLength;  // for debugging
+					arrayRawContents = arraysDatabase.slice(arrayLocalOffset, arrayLocalOffset + arrayLength * 4);
+
+					/*console.log("                      Array n. " + arrayIndex +
+					"; length offset = " + (arrayLenghtsDatabaseOffset + arrayIndex*4).toString(16) +
+					", length = "  + arrayLength +
+					", contents offset = " +  (arraysDatabaseOffset + arrayLocalOffset).toString(16));*/
+
+                    //console.log("                      Raw contents = ",  stringToHex(arrayRawContents));
+
+					arrayIntContents = [];
+					for (byteIndex = 0; byteIndex < arrayLength; byteIndex++) {
+						rawVal = getValFromString(arrayRawContents, byteIndex * 4, 4, "int");
+						//console.log("                         rawVal=",rawVal);
+                        arrayIntContents.push(rawVal);
+					}
+					arrayLocalOffset += arrayLength * 4;
+                    arraysDatabaseInt.push(arrayIntContents);
+					//console.log("                      Int Contents = ", arrayIntContents);
+                     //console.log( createPLYline(vertexOffset));
+                }
+				console.log("                      Arrays database (=triangles strip): ", arraysDatabaseInt);
+console.log("                      PATCH CHECK:");
+console.log("                      patchArraysCount=",patchArraysCount);
+console.log("                      patchIndexesCount=",patchIndexesCount);
+console.log("                      patchArraysCount + patchIndexesCount =",(patchArraysCount + patchIndexesCount));
+console.log("                      patchLength = PATCH_HEADER_LEN + patchArraysCount*4 + patchIndexesCount*4 =",(PATCH_HEADER_LEN + patchArraysCount*4 + patchIndexesCount*4), patchLength);
+console.log("                      totalIndexesCount=",totalIndexesCount + " should be = patchIndexesCount = " + patchIndexesCount);
+console.log("                      Next patch offset (or next LOD offset if last patch) = 0x" + (patchOffset + patchLength).toString(16));
+            }
+
+        }
+
+        LODfaces[LODindex] = patchArraysCount;
+        LODvertex[LODindex] = patchIndexesCount;
+
+        console.log("================================");
+
+	}
+
+    console.log ("Final report:")
+    totalLODSlength = 0
+   console.log  ("Number of Levels Of Depth (LODs): " + LODcount)
+   console.log ("");
+   console.log  ("LOD,", "Faces,", "Vertex used")
+    for (LODindex = 0; LODindex < LODcount; LODindex++) {
+       console.log  (LODindex, LODfaces[LODindex], LODvertex[LODindex])
+        totalLODSlength = totalLODSlength + LODlenghts[LODindex]
+    }
+    fileHeaderLength = VST_HEADER_LEN + BOUNDING_BOX_LEN + texturesCount * TEXTURE_REF_LEN + COORD_SYS_LEN
+   console.log ("")
+   console.log  ("N. of vertex: " + vertexCount)
+   console.log ("")
+   console.log ( "CHECK:")
+   console.log ( "File header length = " + fileHeaderLength)
+   console.log ( "total vertex length = "+ vertexListLen)
+   console.log ( "total LODS length = " + totalLODSlength)
+   console.log ( "file length = " , fileContentsUInt8.length, fileHeaderLength + vertexListLen + totalLODSlength)
+}
+
+
+
+	</script>
+Load and Save text file locally.<br>
+<br>
+	<input type="file" id="inpFile" width="100" accept=".vst"><br>
+	Status: <span id="status" name="status">-</span>
+	<button id="btnSave" name="btnSave" onclick="saveFile(rawFileContents, myName)")>Save...</button><br>
+	<button id="btnProcess" name="btnProcess" onclick="processFile()">Process file</button><br>
+	<br>
+	See console for output.
+
+</body>
+<script>
+		const fileSelector = document.getElementById('inpFile');
+		fileSelector.addEventListener('change', (event) => loadFile(event.target.files[0]));
+		console.log("Ready.");
+		document.getElementById("status").innerHTML = "READY.";
+</script>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html> 
+   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/> 
+     <title>My X3DOM Page with Proper Rotation</title> 
+     <script type='text/javascript' src='https://www.x3dom.org/download/x3dom.js'></script> 
+     <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link>
+     <script type="text/javascript">
+// 003: Added multimodel support
+// Note: probably vertical axis is reversed
+// X3d files can be created by VST2X3D software
+	 navigationInfo = null;
+function loadX3DFile(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+
+        reader.onload = function(e) {
+            var content = e.target.result;
+            var parser = new DOMParser();
+            x3dDoc = parser.parseFromString(content, "text/xml");
+
+            // Corregge i percorsi delle texture
+            var imageTextures = x3dDoc.querySelectorAll("ImageTexture, TextureProperties");
+            imageTextures.forEach(function(texture) {
+                var url = texture.getAttribute("url");
+                if (!url || url === "") {
+                    texture.removeAttribute("url");
+                }
+            });
+
+            sourceScene = x3dDoc.querySelector("Scene") || x3dDoc.querySelector("scene");
+
+            if (sourceScene) {
+                // Configura NavigationInfo per la modalit� EXAMINE
+                navigationInfo = sourceScene.querySelector("NavigationInfo");
+                if (!navigationInfo) {
+                    navigationInfo = x3dDoc.createElement("NavigationInfo");
+                    sourceScene.appendChild(navigationInfo);
+                }
+                navigationInfo.setAttribute("type", '"EXAMINE" "ANY"');
+
+                // Ottieni il riferimento alla scena esistente
+                targetScene = document.getElementById("modelScene");
+                
+                // Mantieni il viewpoint esistente o creane uno nuovo se non esiste
+                viewpoint = targetScene.querySelector("Viewpoint");
+                if (!viewpoint) {
+                    viewpoint = x3dDoc.createElement("Viewpoint");
+                    targetScene.insertBefore(viewpoint, targetScene.firstChild);
+                    
+                    // Imposta posizione e zoom solo se � un nuovo viewpoint
+                    viewpoint.setAttribute("position", "20 20 0");
+                    viewpoint.setAttribute("orientation", "0 1 0 0");
+                    viewpoint.setAttribute("fieldOfView", "1.7");
+                }
+
+                // Crea un nuovo Transform per il nuovo modello
+                var newModelTransform = document.createElement("Transform");
+                
+                // Aggiungi tutti gli elementi del nuovo modello al Transform
+                Array.from(sourceScene.children).forEach(function(child) {
+                    // Salta NavigationInfo e Viewpoint quando aggiungi gli elementi
+                    if (child.nodeName !== "NavigationInfo" && child.nodeName !== "Viewpoint") {
+                        var importedNode = document.importNode(child, true);
+                        newModelTransform.appendChild(importedNode);
+                    }
+                });
+
+                // Aggiungi il nuovo Transform alla scena esistente
+                targetScene.appendChild(newModelTransform);
+
+                console.log("New model added to scene");
+                x3dom.reload(); // Ricarica x3dom per aggiornare la scena
+            } else {
+                console.error("Nessuna scena trovata nel file X3D");
+            }
+        };
+
+        reader.readAsText(input.files[0]);
+    }
+}
+
+     </script>
+   </head> 
+   <body> 
+
+     <p>Select an X3D file to load (.PNG textures will be automatically searched in its folder):</p>
+     <input type="file" accept=".x3d" onchange="loadX3DFile(this)">
+     <br><br>
+	 <table>
+	 <tr>
+	 <td>
+     <x3d width='800px' height='600px'> 
+       <scene> 
+         <!-- Definisce il punto di vista fisso con rotazione centrata all'origine -->
+         <Viewpoint 
+            position="0 0 10" 
+            centerOfRotation="0 0 0" 
+            orientation="0 1 0 0" 
+            fieldOfView="0.785" 
+            bind="true">
+         </Viewpoint>
+         
+         <!-- Assi persistenti -->
+         <Transform translation="0 0 0">
+            <!-- Asse X (Rosso) -->
+            <Shape>
+                <Appearance><Material diffuseColor="1 0 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 5 0 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Y (Verde) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 1 0" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 5 0" />
+                </LineSet>
+            </Shape>
+            <!-- Asse Z (Blu) -->
+            <Shape>
+                <Appearance><Material diffuseColor="0 0 1" /></Appearance>
+                <LineSet vertexCount="2">
+                    <Coordinate point="0 0 0 0 0 5" />
+                </LineSet>
+            </Shape>
+         </Transform>
+
+         <!-- Area per il modello caricato -->
+         <Transform id="modelScene">
+           <!-- Modello di default per quando nessun file � caricato -->
+           <Shape> 
+             <Appearance> 
+               <Material diffuseColor='1 0 0'></Material> 
+             </Appearance> 
+
+           </Shape>
+         </Transform>
+       </scene> 
+     </x3d> 
+	 </td>
+	 <td valign="top">
+	 <ul>
+	 	 <li>A = Full model view
+	 <li>W = Walk mode (with mouse)
+	 <li>E = Examine mode (rotate around origin)
+	 <li>I = "Look at" mode
+	 <li>R = Reset view
+	 <li>O = Strange view mode
+	 <li>D = Debug mode
+	 <li>G = Immediate pan mode
+	 <li>F = flight mode
+	 <li>U = Reset flight mode
+	 </ul>
+	 <a href="https://www.x3dom.org/documentation/interaction/">Official X3DOM help</a><br>
+	 </td>
+	 </tr>
+	 </table>
+   </body> 
+</html>
+

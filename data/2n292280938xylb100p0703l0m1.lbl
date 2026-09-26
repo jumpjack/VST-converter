@@ -1,0 +1,20 @@
+PDS_VERSION_ID                   = PDS3
+RECORD_TYPE                      = UNDEFINED
+DATA_SET_ID                      = "MER2-M-NAVCAM-5-MESH-OPS-V1.0"
+DATA_SET_NAME                    = "MER 2 MARS NAVIGATION CAMERA TERRAIN
+                                    MESH RDR OPS V1.0"
+INSTRUMENT_HOST_NAME             = "MARS EXPLORATION ROVER 2"
+INSTRUMENT_NAME                  = "NAVIGATION CAMERA LEFT"
+MISSION_PHASE_NAME               = "EXTENDED MISSION"
+PLANET_DAY_NUMBER                = 1869
+PRODUCT_ID                       = "2N292280938XYLB100P0703L0M1"
+RELEASE_ID                       = "0022"
+TARGET_NAME                      = MARS
+START_TIME                       = 2009-04-06T08:48:13.468
+STOP_TIME                        = 2009-04-06T08:48:13.788
+SPACECRAFT_CLOCK_START_COUNT     = "292280938.496"
+SPACECRAFT_CLOCK_STOP_COUNT      = "292280938.818"
+PRODUCT_CREATION_TIME            = 2009-09-11T04:00:51.000
+^FILE_NAME                       = "2N292280938XYLB100P0703L0M1.rgb"
+^DESCRIPTION                     = "CAM_EDR_RDR_SIS.TXT"
+END
