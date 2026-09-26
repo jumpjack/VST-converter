@@ -8,6 +8,7 @@ Created to reconstruct the 3d model of "Troy sandtrap", the final location of NA
 (Image credits: https://www.planetary.org/space-images/spirit-a-monument-to-exploration)
 
 ![troy2](https://user-images.githubusercontent.com/1620953/188097610-d8bc33ff-1ac1-4df1-9d7d-dd8cc55af650.png)
+(Image credits: https://www.universetoday.com/articles/hopes-dim-for-contacting-spirit-rover )
 
 ![troy](homeplate.png)
 
