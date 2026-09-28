@@ -1,0 +1,877 @@
+<!--
+	Scena 3D Babylon.js unica: carica e visualizza i modelli .vst/.pfb, mostra
+	i dischetti site/drive (drives.js) direttamente sul piano di ground al
+	posto della vecchia mappa 2D separata, e permette di sovrapporre una
+	texture del terreno (es. vista orbitale) posizionabile a mano con
+	l'aiuto di 4 marker d'angolo a distanza fissa.
+-->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>MER PFB 3D analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #eef0ea;
+    --panel: #ffffff;
+    --panel-2: #f2f3ee;
+    --line: #d8dad2;
+    --rust: #a8431f;
+    --rust-bright: #8a3818;
+    --amber: #7c4a12;
+    --text: #24241f;
+    --muted: #6c6a5e;
+    --ok: #3f6b32;
+    --warn: #9a5510;
+    --err: #a23223;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%; overscroll-behavior:none;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+
+  header.plate{
+    display:flex;
+    align-items:baseline;
+    gap:16px;
+    padding:22px 28px 18px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  header.plate h1{
+    margin:0;
+    font-size:1.5rem;
+    font-weight:700;
+    letter-spacing:0.01em;
+  }
+  header.plate h1 span{color:var(--rust-bright);}
+  header.plate .sub{
+    color:var(--muted);
+    font-size:0.85rem;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  /* Pannello di sinistra allargato rispetto alla versione originale (340px)
+     per far stare comodamente la tabella dei modelli PFB con le sue 4
+     colonne, incluse le checkbox "Pos. rover" e "Vis." */
+  .layout{
+    display:grid;
+    grid-template-columns: 480px 1fr;
+    min-height: calc(100vh - 78px);
+  }
+  @media (max-width: 980px){
+    .layout{grid-template-columns: 1fr;}
+    .sidebar{max-height:42vh;}
+    .main-panes{height:auto;}
+    .pane-3d{height:55vh;}
+  }
+
+  .sidebar{
+    border-right:1px solid var(--line);
+    padding:18px;
+    overflow-y:auto;
+    max-height: calc(100vh - 78px);
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 14px 16px;
+  }
+  .card h2{
+    margin:0 0 10px;
+    font-size:0.92rem;
+    font-weight:600;
+    color:var(--text);
+    padding-left:9px;
+    border-left:3px solid var(--rust);
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+  .card h2 .spacer{ flex:1; }
+
+  .info-btn, .collapse-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:17px;
+    height:17px;
+    flex:none;
+    border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:0.7rem;
+    font-family:Georgia, 'Times New Roman', serif;
+    font-style:italic;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    padding:0;
+  }
+  .info-btn:hover, .collapse-btn:hover{ border-color:var(--rust-bright); color:var(--rust-bright); }
+  .collapse-btn{ border-radius:4px; font-style:normal; font-family:'Space Grotesk',sans-serif; }
+  .info-text{ margin-top:2px; }
+  .info-text[hidden]{ display:none; }
+
+  .field{margin-bottom:10px;}
+  .field:last-child{margin-bottom:0;}
+  label.field-label{
+    display:block;
+    font-size:0.78rem;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+
+  input[type=text]{
+    width:100%;
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.82rem;
+    color:var(--text);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:6px 8px;
+  }
+
+  input[type=file]{
+    width:100%;
+    font-size:0.78rem;
+    color:var(--text);
+    font-family:'JetBrains Mono', monospace;
+  }
+  input[type=file]::file-selector-button{
+    background:var(--rust);
+    color:#fff;
+    border:none;
+    border-radius:var(--radius);
+    padding:6px 10px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:0.78rem;
+    cursor:pointer;
+    margin-right:10px;
+  }
+  input[type=file]::file-selector-button:hover{background:var(--rust-bright);}
+
+  select, button, input[type=range], input[type=color]{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:0.82rem;
+  }
+  select{
+    width:100%;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:7px 8px;
+  }
+  button.btn{
+    width:100%;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button.btn:hover{border-color:var(--rust-bright); color:var(--rust-bright);}
+  button.btn.primary{
+    background:var(--rust);
+    border-color:var(--rust);
+    color:#fff;
+  }
+  button.btn.primary:hover{background:var(--rust-bright); border-color:var(--rust-bright); color:#fff;}
+  button.btn:disabled{opacity:0.4; cursor:not-allowed;}
+
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .row + .row{margin-top:8px;}
+  .row label{font-size:0.82rem; color:var(--text); display:flex; align-items:center; gap:7px;}
+  .row select{width:auto; min-width:84px;}
+  .axis-dot{width:9px; height:9px; border-radius:50%; display:inline-block; flex:none;}
+
+  .kv{
+    display:grid;
+    grid-template-columns: auto 1fr;
+    gap:3px 10px;
+    font-size:0.76rem;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .kv dt{color:var(--muted);}
+  .kv dd{margin:0; color:var(--text); text-align:right; overflow-wrap:anywhere;}
+
+  .status{
+    font-size:0.78rem;
+    font-family:'JetBrains Mono', monospace;
+    padding:8px 10px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--muted);
+    white-space:pre-wrap;
+    max-height:120px;
+    overflow-y:auto;
+  }
+  .status.err{color:var(--err); border-color:var(--err);}
+  .status.ok{color:var(--ok);}
+
+  details summary{
+    cursor:pointer;
+    color:var(--muted);
+    font-size:0.76rem;
+    margin-top:4px;
+  }
+  details[open] summary{color:var(--amber);}
+  .lod-table{width:100%; border-collapse:collapse; font-size:0.72rem; font-family:'JetBrains Mono', monospace;}
+  .lod-table th, .lod-table td{text-align:right; padding:3px 4px; border-bottom:1px solid var(--line);}
+  .lod-table th:first-child, .lod-table td:first-child{text-align:left;}
+  .lod-table tr.active td{color:var(--rust-bright);}
+  #pfbModelsTable tbody tr{cursor:pointer;}
+  #pfbModelsTable tbody tr:hover{background:#cfe9fb;}
+  #pfbModelsTable tbody tr.active{background:#1449c4;}
+  #pfbModelsTable tbody tr.active td{color:#ffffff;}
+  #pfbModelsTable tbody tr.active:hover{background:#1449c4;}
+  #pfbModelsTable td, #pfbModelsTable th{text-align:left;}
+  #pfbModelsTable td:last-child, #pfbModelsTable th:last-child{text-align:center;}
+
+  /* Contenuto principale: scena 3D a piena larghezza + pannello info sotto */
+  .main-panes{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding:14px;
+    height: calc(100vh - 78px);
+  }
+  .pane{
+    min-width:0;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .pane h3{
+    margin:0;
+    padding:10px 14px;
+    font-size:0.85rem;
+    font-weight:600;
+    border-bottom:1px solid var(--line);
+    color:var(--text);
+  }
+  .pane-info{
+    flex:0 0 auto;
+    max-height:34vh;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+  }
+  .pane-info .pane-info-body{
+    padding:12px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .pane-3d{
+    flex:1 1 auto;
+    position:relative;
+    background:#d7d9d3;
+  }
+  #renderCanvas{
+    width:100%;
+    height:100%;
+    display:block;
+    outline:none;
+    touch-action:none;
+    overscroll-behavior:none;
+  }
+  .viewport-hint{
+    position:absolute;
+    left:16px;
+    bottom:14px;
+    color:rgba(36,36,31,0.5);
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.72rem;
+    pointer-events:none;
+  }
+  .viewport-hint.coords{
+    left:auto;
+    right:16px;
+    background:rgba(255,255,255,0.55);
+    padding:4px 8px;
+    border-radius:var(--radius);
+  }
+  #axisGizmoCanvas{
+    position:absolute;
+    top:14px;
+    right:14px;
+    width:96px;
+    height:96px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.6);
+    border:1px solid rgba(0,0,0,0.12);
+    pointer-events:none;
+  }
+  .viewport-empty{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:6px;
+    color:var(--muted);
+    text-align:center;
+    padding:20px;
+  }
+  .viewport-empty strong{color:var(--text); font-size:1.05rem; font-weight:600;}
+  .viewport-empty span{font-size:0.82rem; max-width:340px;}
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+<script src="drives.js"></script>
+<script src="IMGfiles.js"></script>
+<script src="3dfiles.js"></script>
+</head>
+<body>
+
+<header class="plate">
+  <h1><span>MER PFB</span> 3D analyzer</h1>
+  <div class="sub">terreno .vst/.pfb, dischetti site/drive e texture del terreno in un'unica scena 3D — Babylon.js</div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+
+    <div class="card" id="traverseCard">
+      <h2>Traverse (dischetti 3D) <button type="button" class="info-btn" data-info="traverseInfo" title="Informazioni">i</button></h2>
+      <div class="field">
+        <label class="field-label" for="startSite">Start site</label>
+        <input type="text" id="startSite" value="131">
+      </div>
+      <div class="field">
+        <label class="field-label" for="endSite">End site</label>
+        <input type="text" id="endSite" value="138">
+      </div>
+      <div class="row" style="gap:8px;">
+        <button class="btn primary" id="btnPlot" style="flex:1;">Plot</button>
+        <button class="btn" id="btnTable" style="flex:1;">Create table</button>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <label for="chkShowDriveMarkers">Mostra dischetti site/drive</label>
+        <input type="checkbox" id="chkShowDriveMarkers" checked>
+      </div>
+      <div class="row">
+        <label for="chkFullFrame">Solo prodotti FFL (tabella immagini)</label>
+        <input type="checkbox" id="chkFullFrame" checked>
+      </div>
+      <p id="traverseInfo" class="info-text" hidden style="font-size:0.72rem; color:var(--muted); line-height:1.5; margin:8px 0 0;">
+        "Plot" colloca i dischetti site/drive (da <span class="mono">drives.js</span>) sul
+        piano di ground della scena 3D, in pianta (quota fissa, come la vecchia mappa 2D).
+        Clic su un dischetto per vedere link e immagini qui sotto.
+      </p>
+      <div id="traverseStatus" class="status mono" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>File sorgente</h2>
+      <div class="field">
+        <label class="field-label" for="vstFile">Modello 3D (.vst o .pfb)</label>
+        <input type="file" id="vstFile" accept=".vst,.pfb,application/octet-stream">
+      </div>
+      <div class="field" id="texFileField">
+        <label class="field-label" for="texFile">Texture associata (opzionale — immagine della camera sinistra)</label>
+        <input type="file" id="texFile" accept="image/*" disabled>
+      </div>
+      <div id="status" class="status">In attesa di un file .vst o .pfb…</div>
+      <div class="field" id="loadChoiceField" style="display:none; margin-top:10px;">
+        <p style="font-size:0.78rem; color:var(--text); line-height:1.4; margin:0 0 8px;">
+          È già presente un modello nella scena. Cosa vuoi fare con
+          "<span id="loadChoiceFileName" class="mono"></span>"?
+        </p>
+        <div class="row" style="gap:8px;">
+          <button class="btn" id="loadChoiceReplaceBtn" style="flex:1;">Sostituisci tutto</button>
+          <button class="btn primary" id="loadChoiceAddBtn" style="flex:1;">Aggiungi alla scena</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="groundCard">
+      <h2>Piano di ground <button type="button" class="info-btn" data-info="groundInfo" title="Informazioni">i</button></h2>
+      <div class="row">
+        <label for="groundVisibleToggle">Visibile</label>
+        <input type="checkbox" id="groundVisibleToggle" checked>
+      </div>
+      <p id="groundInfo" class="info-text" hidden style="font-size:0.72rem; color:var(--muted); line-height:1.5; margin:8px 0;">
+        Posizione ricavata da <span class="mono">drives.js</span> (site/drive del rover,
+        <span class="mono">totalOffset</span>); lo slider aggiunge uno scostamento verticale manuale.
+      </p>
+      <div class="row">
+        <label for="groundSiteSelect">Site</label>
+        <select id="groundSiteSelect" style="width:auto; min-width:84px;"></select>
+      </div>
+      <div class="row">
+        <label for="groundDriveSelect">Drive</label>
+        <select id="groundDriveSelect" style="width:auto; min-width:84px;"></select>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label class="field-label" for="groundZSlider">Scostamento Z <span id="groundZValue" class="mono">0.0</span></label>
+        <input type="range" id="groundZSlider" min="-1000" max="1000" step="1" value="0" style="width:100%;">
+      </div>
+    </div>
+
+    <div class="card" id="groundTextureCard">
+      <h2>Texture del terreno <button type="button" class="info-btn" data-info="groundTextureInfo groundTextureInfo2" title="Informazioni">i</button></h2>
+      <p id="groundTextureInfo" class="info-text" hidden style="font-size:0.72rem; color:var(--muted); line-height:1.5; margin:8px 0;">
+        Sovrappone un'immagine (es. una vista orbitale) al piano orizzontale della scena,
+        per aiutarti a inquadrare i modelli caricati. Usa i 4 paletti arancioni a ±3000
+        unità dal centro come riferimento per posizionarla e scalarla a occhio.
+      </p>
+      <p id="groundTextureWarning" style="display:none; font-size:0.72rem; color:var(--warn); line-height:1.5; margin:0 0 10px; padding:8px 9px; background:#fbeedd; border-radius:var(--radius);">
+        ⚠ Caricamento automatico della texture locale non riuscito (probabile blocco del
+        browser sui file locali, tipico aprendo la pagina come <span class="mono">file://</span>
+        invece che tramite un server http). Caricala manualmente qui sotto.
+      </p>
+      <div class="field">
+        <label class="field-label" for="groundTextureFile">Carica immagine manualmente</label>
+        <input type="file" id="groundTextureFile" accept="image/*">
+      </div>
+      <div class="row">
+        <label for="groundTextureVisibleToggle">Visibile</label>
+        <input type="checkbox" id="groundTextureVisibleToggle" checked>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label class="field-label" for="groundTexturePosX">Posizione X <span id="groundTexturePosXValue" class="mono">0</span></label>
+        <input type="range" id="groundTexturePosX" min="-5000" max="5000" step="1" value="0" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="groundTexturePosZ">Posizione Z <span id="groundTexturePosZValue" class="mono">0</span></label>
+        <input type="range" id="groundTexturePosZ" min="-5000" max="5000" step="1" value="0" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="groundTextureSizeX">Larghezza (X) <span id="groundTextureSizeXValue" class="mono">6000</span></label>
+        <input type="range" id="groundTextureSizeX" min="10" max="12000" step="10" value="6000" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="groundTextureSizeZ">Profondità (Z) <span id="groundTextureSizeZValue" class="mono">6000</span></label>
+        <input type="range" id="groundTextureSizeZ" min="10" max="12000" step="10" value="6000" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="groundTextureRotation">Rotazione (°) <span id="groundTextureRotationValue" class="mono">0</span></label>
+        <input type="range" id="groundTextureRotation" min="-180" max="180" step="0.5" value="0" style="width:100%;">
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <button class="btn primary" id="groundTextureExportBtn">Esporta configurazione (.js)</button>
+      </div>
+      <div id="groundTextureInfo2" class="info-text" hidden style="font-size:0.7rem; color:var(--muted); line-height:1.5; margin:10px 0 0;">
+        Il file scaricato va incollato al posto del blocco <span class="mono">GROUND_TEXTURE_CONFIG</span>
+        in cima a <span class="mono">app.js</span>, così al prossimo avvio la texture viene
+        ricaricata già nella stessa posizione/dimensione/rotazione. Per il caricamento
+        automatico all'avvio, il file immagine va messo nella stessa cartella di
+        <span class="mono">index.html</span> con il nome indicato in
+        <span class="mono">GROUND_TEXTURE_CONFIG.fileName</span> (di default
+        <span class="mono">ground-texture.jpg</span>).
+      </div>
+    </div>
+
+    <div class="card" id="headerCard" style="display:none;">
+      <h2>Intestazione file</h2>
+      <dl class="kv" id="headerInfo"></dl>
+      <details>
+        <summary id="texRefsSummary">Riferimenti texture</summary>
+        <div class="kv mono" id="texRefsInfo" style="margin-top:8px;"></div>
+      </details>
+    </div>
+
+    <div class="card" id="lodCard" style="display:none;">
+      <h2>Livelli di dettaglio (LOD)</h2>
+      <div class="field">
+        <label class="field-label" for="lodSelect">LOD visualizzato</label>
+        <select id="lodSelect"></select>
+      </div>
+      <table class="lod-table" id="lodTable">
+        <thead><tr><th>#</th><th>vert.</th><th>patch</th><th>tri</th><th>punti</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="renderCard" style="display:none;">
+      <h2>Resa 3D</h2>
+      <div class="row">
+        <label for="wireframeToggle">Wireframe</label>
+        <input type="checkbox" id="wireframeToggle">
+      </div>
+      <div class="row">
+        <label for="cullingToggle">Backface culling</label>
+        <input type="checkbox" id="cullingToggle">
+      </div>
+      <div class="row">
+        <label for="normalsToggle">Ombreggiatura a facce piane</label>
+        <input type="checkbox" id="normalsToggle">
+      </div>
+      <div class="row">
+        <label for="textureToggle">Texture</label>
+        <input type="checkbox" id="textureToggle" checked disabled>
+      </div>
+      <div class="row">
+        <label for="pointSize">Dimensione punti (point cloud)</label>
+        <input type="range" id="pointSize" min="1" max="8" step="1" value="3" style="width:110px;">
+      </div>
+      <div class="row">
+        <label for="bgColor">Sfondo</label>
+        <input type="color" id="bgColor" value="#d8d8d5">
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <button class="btn" id="resetCameraBtn">Reimposta camera</button>
+      </div>
+      <div class="field" id="exportObjField">
+        <button class="btn" id="exportObjBtn">Esporta LOD corrente in .obj</button>
+      </div>
+    </div>
+
+    <div class="card" id="pfbModelsCard" style="display:none;">
+      <h2>Modelli PFB nella scena <button type="button" class="info-btn" data-info="pfbModelsInfo" title="Informazioni">i</button></h2>
+      <p id="pfbModelsInfo" class="info-text" hidden style="font-size:0.72rem; color:var(--muted); line-height:1.5; margin:8px 0;">
+        Clic su una riga per selezionare quel modello (abilita la card "Traslazione e
+        rotazione manuale" qui sotto e stampa in console i dati di
+        <span class="mono">drives.js</span> corrispondenti) — non centra la vista, usa il
+        pulsante "Centra vista sul modello" qui sotto per quello. La casella "Pos. rover"
+        posiziona il modello nel punto reale in cui si trovava il rover (site/drive ricavati
+        dal nome file, posizione da <span class="mono">drives.js</span>), invece che
+        nell'origine della scena.
+      </p>
+      <table class="lod-table" id="pfbModelsTable">
+        <thead><tr><th>File</th><th>Site/Drive</th><th>Pos. rover</th><th>Vis.</th></tr></thead>
+        <tbody id="pfbModelsBody"></tbody>
+      </table>
+      <div class="field" style="margin-top:10px;">
+        <button class="btn" id="pfbCenterViewBtn">Centra vista sul modello selezionato</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <label for="pfbIgnoreElevationToggle">
+          Ignora quota Z (solo diagnostica: confronto piano orizzontale con mappa 2D)
+        </label>
+        <input type="checkbox" id="pfbIgnoreElevationToggle">
+      </div>
+    </div>
+
+    <div class="card" id="pfbOffsetCard" style="display:none;">
+      <h2>Traslazione e rotazione manuale <button type="button" class="info-btn" data-info="pfbOffsetInfo" title="Informazioni">i</button></h2>
+      <p id="pfbOffsetInfo" class="info-text" hidden style="font-size:0.72rem; color:var(--muted); line-height:1.5; margin:8px 0;">
+        Sposta il modello PFB selezionato nella tabella qui sopra lungo i tre assi del
+        <strong>file</strong> (le stesse frecce colorate rosso/verde/blu = X/Y/Z disegnate
+        accanto al modello), in aggiunta alla sua posizione base (origine o rover); ruotalo
+        su sé stesso attorno alla verticale; oppure specchialo su uno o più dei suoi assi —
+        utile quando non sai ancora con che convenzione è orientato al proprio interno il
+        file .pfb. Ogni spostamento viene anche stampato in console con la posizione finale
+        x, y, z nella scena.
+      </p>
+      <div class="field">
+        <label class="field-label" for="pfbOffsetX">X <span id="pfbOffsetXValue" class="mono">0</span></label>
+        <input type="range" id="pfbOffsetX" min="-100" max="100" step="1" value="0" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="pfbOffsetY">Y <span id="pfbOffsetYValue" class="mono">0</span></label>
+        <input type="range" id="pfbOffsetY" min="-100" max="100" step="1" value="0" style="width:100%;">
+      </div>
+      <div class="field">
+        <label class="field-label" for="pfbOffsetZ">Z <span id="pfbOffsetZValue" class="mono">0</span></label>
+        <input type="range" id="pfbOffsetZ" min="-100" max="100" step="1" value="0" style="width:100%;">
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label class="field-label" for="pfbRotationY">Rotazione verticale (°) <span id="pfbRotationYValue" class="mono">0</span></label>
+        <input type="range" id="pfbRotationY" min="-180" max="180" step="0.5" value="0" style="width:100%;">
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <div class="row"><label for="pfbMirrorX"><span class="axis-dot" style="background:#d9291a;"></span>Specchia X (file)</label><input type="checkbox" id="pfbMirrorX"></div>
+        <div class="row"><label for="pfbMirrorY"><span class="axis-dot" style="background:#1f9c2e;"></span>Specchia Y (file)</label><input type="checkbox" id="pfbMirrorY"></div>
+        <div class="row"><label for="pfbMirrorZ"><span class="axis-dot" style="background:#2159d9;"></span>Specchia Z (file)</label><input type="checkbox" id="pfbMirrorZ"></div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <button class="btn" id="pfbOffsetResetBtn">Azzera traslazione e rotazione</button>
+      </div>
+    </div>
+
+    <div class="card" id="pfbLodCard" style="display:none;">
+      <h2>Livello di dettaglio (PFB) <button type="button" class="info-btn" data-info="pfbLodInfo" title="Informazioni">i</button></h2>
+      <p id="pfbLodInfo" class="info-text" hidden style="font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0 0 10px;">
+        Un file .pfb contiene molti nodi LOD indipendenti (uno per zona), ciascuno con più
+        rappresentazioni alternative dello stesso terreno a dettaglio diverso: vanno scelte,
+        mai unite. 0 = massimo dettaglio disponibile in ogni zona.
+      </p>
+      <div class="row">
+        <label for="pfbLodDepth">Profondità LOD</label>
+        <input type="range" id="pfbLodDepth" min="0" max="0" step="1" value="0" style="width:130px;">
+      </div>
+      <div class="kv mono" style="margin-top:10px;">
+        <dt>Geoset nel file</dt><dd id="pfbGeosetTotal">—</dd>
+        <dt>Geoset usati a questa profondità</dt><dd id="pfbGeosetUsed">—</dd>
+        <dt>Triangoli</dt><dd id="pfbTriCount">—</dd>
+      </div>
+    </div>
+
+    <div class="card" id="pfbTexturesCard" style="display:none;">
+      <h2>Texture del modello <button type="button" class="info-btn" data-info="pfbTexturesInfo" title="Informazioni">i</button><span class="spacer"></span><button type="button" class="collapse-btn" data-collapse="pfbTexturesBody" title="Comprimi/espandi">▾</button></h2>
+      <p id="pfbTexturesInfo" class="info-text" hidden style="font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0 0 10px;">
+        Le texture originali sono in formato SGI RGB (non leggibile dai browser). Carica
+        un'immagine equivalente già convertita (PNG/JPG) per ciascuna che vuoi applicare.
+      </p>
+
+<button id="btnTextureDownload" class="btn">🔍 Cerca e Applica Texture NASA</button>
+<button id="btnLocalTextures" class="btn">📁 Carica Texture Locali (multiple)</button>
+<input type="file" id="inpLocalTextures" multiple accept=".rgb,.sgi,.img,.png,.jpg,.jpeg,.webp" style="display: none;">
+<small style="color: var(--muted); display:block; margin-top:4px;">
+  Seleziona uno o più file. Solo quelli il cui nome corrisponde a una texture richiesta dal modello saranno applicati.
+</small>
+
+<div class="field" style="margin-top:12px;">
+  <label for="inpTexturePath" style="font-weight:bold; display:block; margin-bottom:4px;">Percorso HTTP diretto (opzionale):</label>
+  <input type="text" id="inpTexturePath" 
+         placeholder="es. https://planetarydata.jpl.nasa.gov/img/data/mer/mer2mw_0xxx/data/pancam/site0137/"
+         style="width:100%; padding:8px; font-family: monospace; font-size:0.85rem; border:1px solid #4a5060; border-radius:4px; background:#2b303a; color:#e0e0e0;">
+  <small style="color: var(--muted); display:block; margin-top:4px;">Se fornito, il sistema proverà a scaricare le texture direttamente da qui prima di interrogare l'API NASA.</small>
+</div>  
+      <div id="pfbTexturesBody">
+        <div id="pfbTexturesList"></div>
+      </div>
+    </div>
+
+    <div class="card" id="pfbExportCard" style="display:none;">
+      <h2>Esportazione</h2>
+      <div class="field">
+        <button class="btn primary" id="exportPfbZipBtn">Esporta ZIP (OBJ + MTL + texture)</button>
+      </div>
+    </div>
+
+    <div class="card" id="axesCard" style="display:none;">
+      <h2>Orientamento assi (.vst) <button type="button" class="info-btn" data-info="axesInfo" title="Informazioni">i</button></h2>
+      <p id="axesInfo" class="info-text" hidden style="font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0 0 10px;">
+        Nei file .vst l'asse Z è convenzionalmente rivolto verso il basso e la terna non è
+        destrorsa. Per ogni asse del file, scegli a quale asse della scena 3D corrisponde
+        (di default: Z del file → giù nella scena). Assegnare un asse già in uso lo scambia
+        automaticamente con quello liberato. Questa mappatura riguarda solo il terreno .vst,
+        non i modelli .pfb (vedi le card dedicate).
+      </p>
+      <div class="row">
+        <label for="axisMapX"><span class="axis-dot" style="background:#d9291a;"></span>X del file</label>
+        <select id="axisMapX">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapY"><span class="axis-dot" style="background:#1f9c2e;"></span>Y del file</label>
+        <select id="axisMapY">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapZ"><span class="axis-dot" style="background:#2159d9;"></span>Z del file</label>
+        <select id="axisMapZ">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card" id="pfbAxesCard" style="display:none;">
+      <h2>Orientamento assi — posizione (.pfb) <button type="button" class="info-btn" data-info="pfbAxesInfo" title="Informazioni">i</button></h2>
+      <p id="pfbAxesInfo" class="info-text" hidden style="font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0 0 10px;">
+        Governa SOLO dove viene collocato il modello: la trasformazione applicata a
+        <span class="mono">totalOffset</span> (site/drive, da <span class="mono">drives.js</span>)
+        per calcolare la posizione "Pos. rover" e la posizione dei dischetti/paletti in
+        scena. Non tocca la forma né l'orientamento della mesh caricata (per quello vedi la
+        card "Orientamento assi — vertici" qui sotto): le due mappature sono indipendenti,
+        perché la convenzione con cui è orientato il file .pfb al suo interno non è detto
+        coincida con quella del sistema di riferimento site/drive. Assegnare un asse già in
+        uso lo scambia automaticamente con quello liberato.
+      </p>
+      <div class="row">
+        <label for="axisMapPfbX"><span class="axis-dot" style="background:#d9291a;"></span>X del file</label>
+        <select id="axisMapPfbX">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapPfbY"><span class="axis-dot" style="background:#1f9c2e;"></span>Y del file</label>
+        <select id="axisMapPfbY">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapPfbZ"><span class="axis-dot" style="background:#2159d9;"></span>Z del file</label>
+        <select id="axisMapPfbZ">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <p id="pfbAxisZWarning" style="display:none; font-size:0.72rem; color:var(--warn); line-height:1.5; margin:10px 0 0; padding:8px 9px; background:#fbeedd; border-radius:var(--radius);">
+        ⚠ Con questa mappatura, Z del file NON è assegnato a Y (verticale) della scena: la
+        quota reale (elevazione) del rover finirebbe mescolata a una coordinata orizzontale.
+        Lascia sempre Z del file → Y+ oppure Y−; cambia solo l'assegnazione di X e Y.
+      </p>
+    </div>
+
+    <div class="card" id="pfbGeomAxesCard" style="display:none;">
+      <h2>Orientamento assi — vertici (.pfb) <button type="button" class="info-btn" data-info="pfbGeomAxesInfo" title="Informazioni">i</button></h2>
+      <p id="pfbGeomAxesInfo" class="info-text" hidden style="font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0 0 10px;">
+        Indipendente dalla mappatura "posizione" qui sopra: governa SOLO la forma/
+        orientamento della mesh caricata (i vertici del file, il winding delle facce e le
+        frecce colorate X/Y/Z disegnate accanto al modello), non dove il modello viene
+        collocato in scena. Nei tuoi file .pfb il modello è molto esteso sul piano X/Y del
+        file e poco esteso lungo Z: perché il terreno resti "sdraiato" in piano nella scena
+        (anziché diventare un muro verticale), Z del file va quasi sempre mappato su Y.
+        Assegnare un asse già in uso lo scambia automaticamente con quello liberato. Per
+        specchiare un asse SOLO di un modello specifico (senza toccare gli altri file
+        caricati) usa i toggle "Specchia X/Y/Z" nella card "Traslazione e rotazione
+        manuale", non questi menu (che valgono per tutti i .pfb caricati).
+      </p>
+      <div class="row">
+        <label for="axisMapPfbGeomX"><span class="axis-dot" style="background:#d9291a;"></span>X del file</label>
+        <select id="axisMapPfbGeomX">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapPfbGeomY"><span class="axis-dot" style="background:#1f9c2e;"></span>Y del file</label>
+        <select id="axisMapPfbGeomY">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="axisMapPfbGeomZ"><span class="axis-dot" style="background:#2159d9;"></span>Z del file</label>
+        <select id="axisMapPfbGeomZ">
+          <option value="x+">→ X+</option><option value="x-">→ X−</option>
+          <option value="y+">→ Y+</option><option value="y-">→ Y−</option>
+          <option value="z+">→ Z+</option><option value="z-">→ Z−</option>
+        </select>
+      </div>
+      <p id="pfbGeomAxisZWarning" style="display:none; font-size:0.72rem; color:var(--warn); line-height:1.5; margin:10px 0 0; padding:8px 9px; background:#fbeedd; border-radius:var(--radius);">
+        ⚠ Con questa mappatura, Z del file NON è assegnato a Y (verticale) della scena: il
+        modello, sottile lungo il proprio Z ed esteso su X/Y, smette di sdraiarsi in piano e
+        diventa un muro verticale. Lascia sempre Z del file → Y+ oppure Y−; cambia solo
+        l'assegnazione di X e Y.
+      </p>
+    </div>
+
+    <div class="card" id="vstInfoCard">
+      <h2>Sul formato .vst <button type="button" class="info-btn" data-info="vstInfoBody" title="Informazioni">i</button></h2>
+      <div id="vstInfoBody" class="info-text" hidden>
+        <p style="font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0 0 8px;">
+          ViSTa (Visible Scalable Terrain) è il formato binario sviluppato dal JPL per il
+          Science Activity Planner delle missioni Mars Exploration Rover (Spirit e Opportunity),
+          per rappresentare mesh di terreno ricostruite da coppie stereo con più livelli di dettaglio.
+        </p>
+        <details>
+          <summary>Struttura binaria letta da questo visualizzatore</summary>
+          <div class="mono" style="font-size:0.7rem; color:var(--muted); margin-top:8px; line-height:1.6;">
+            VSTHeader(40B) → BoundingBox(24B) → TextureRef[n×2048B] →
+            CoordinateSystem(4096B) → Vertex[vertexCount×20B] →
+            LOD[lodsCount] { LODHeader(28B), BoundingBox(24B),
+            Patch[patchesCount] { PatchHeader(24B), IndexArrayLength[], Index[] } }
+          </div>
+        </details>
+        <p style="font-size:0.7rem; color:var(--muted); margin:8px 0 0;">
+          Fonte: NASA Tech Brief NPO-30600 «Format for Interchange and Display of 3D Terrain Data»
+          (Backes, Powell, Vona, Norris, Morrison — JPL/Caltech); Vona et al.,
+          «Challenges in 3D Visualization for Mars Exploration Rover Mission Science Planning», IEEE Aerospace Conf. 2003.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" id="pfbInfoCard" style="display:none;">
+      <h2>Sul formato .pfb <button type="button" class="info-btn" data-info="pfbInfoBody" title="Informazioni">i</button></h2>
+      <div id="pfbInfoBody" class="info-text" hidden>
+        <p style="font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0 0 8px;">
+          Performer Fast Binary è il formato nativo di SGI IRIS/OpenGL Performer: una
+          serializzazione diretta dello scene graph (nodi, geoset, geostati, materiali,
+          texture). SGI non ha mai pubblicato una specifica byte-per-byte — il manuale
+          ufficiale lo dichiara esplicitamente "undocumented and subject to change".
+        </p>
+        <details>
+          <summary>Struttura letta da questo visualizzatore</summary>
+          <div class="mono" style="font-size:0.7rem; color:var(--muted); margin-top:8px; line-height:1.6;">
+            Header(16B) → blocchi taggati {LengthLists, VertexLists, ColorLists,
+            NormalLists, TexcoordLists, Materials, Textures, GeoStates, GeoSets, Nodes}
+            → gerarchia Group/SCS/DCS/LOD/Geode con trasformazioni 4×4 accumulate
+          </div>
+        </details>
+        <p style="font-size:0.7rem; color:var(--muted); margin:8px 0 0;">
+          Fonti: OpenGL Performer™ Programmer's Guide (SGI, doc. 007-1680-100) per la semantica
+          di nodi/pfLOD/pfGeoSet; OpenPFB (J.C. Hoelt, CNRS-IRIT, LGPLv2) per la struttura dei
+          blocchi, verificata e corretta byte per byte su file reali.
+        </p>
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="main-panes">
+    <section class="pane pane-3d">
+      <canvas id="renderCanvas"></canvas>
+      <canvas id="axisGizmoCanvas"></canvas>
+      <div class="viewport-empty" id="emptyHint">
+        <strong>Nessun modello caricato</strong>
+        <span>Carica un file .vst o .pfb dal pannello a sinistra per ricostruire e visualizzare il terreno in 3D.</span>
+      </div>
+      <div class="viewport-hint" id="viewportHint" style="display:none;">trascina per orbitare · rotellina per zoom · tasto destro per pan</div>
+      <div class="viewport-hint coords mono" id="groundCoordsHint">X: — · Y: —</div>
+    </section>
+
+    <section class="pane pane-info">
+      <h3>Info dischetto selezionato / tabella riepilogativa</h3>
+      <div class="pane-info-body">
+        <span id="spnLinks"></span>
+        <span id="spnLinksIMG">
+          <table border=1>
+            <tbody></tbody>
+          </table>
+        </span>
+        <div id="dataTableContainer"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="babylon.js"></script>
+<script src="jszip.min.js"></script>
+<script src="./vst-parser.js"></script>
+<script src="./pfb-parser.js"></script>
+<script src="./pfb-scene.js"></script>
+<script src="./app.js"></script>
+
+
+</body>
+</html>
