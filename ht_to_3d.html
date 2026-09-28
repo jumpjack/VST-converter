@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<!--
+
+ CONTROLLI WASD / QE / ZC - STANDARD FPS / SIM
+ Movimento Standard (Orizzontale)
+ W: Avanti
+ S: Indietro
+ A: Spostamento a sinistra (Strafe)
+ D: Spostamento a destra (Strafe)
+
+ Inclinazione / Funzioni Secondarie (Q / E)
+ Q: Girare a sinistra / Inclinarsi a sinistra (Lean left) / Rollio sx
+ E: Girare a destra / Inclinarsi a destra (Lean right) / Rollio dx
+    -> implementato come rotazione alpha ArcRotateCamera
+
+ Movimento Verticale / Postura (Z / C)
+ Z: Scendere di quota / Sdraiarsi (Prone)
+ C: Salire di quota / Accovacciarsi (Crouch)
+
+ Shift = velocità x2.5
+ Disattivato se sei dentro INPUT/SELECT/TEXTAREA
+
+-->
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>MER.HT Viewer - allineato</title>
+<style>
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#fefefe; color:#222; }
+  header { padding:16px 24px; background:#fff; border-bottom:1px solid #ddd; }
+  header h1 { margin:0; font-size:20px; }
+.container { display:flex; flex-wrap:wrap; gap:16px; padding:16px; align-items:flex-start; }
+.card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.controls { flex:1 1 380px; min-width:320px; max-height: calc(100vh - 32px); overflow-y:auto; }
+.viewer { flex:2 1 640px; min-width:520px; position:sticky; top:16px; }
+  label { display:block; margin-top:10px; font-weight:600; font-size:13px; }
+  select, input[type="text"] { width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; background:#fff; }
+  button { margin-top:8px; padding:10px 14px; border:none; border-radius:6px; background:#0b57d0; color:#fff; cursor:pointer; font-weight:600; margin-right:6px; }
+  button:disabled { background:#aaa; cursor:not-allowed; }
+  button.secondary { background:#e8e8e8; color:#222; }
+  button.green { background:#16a34a; }
+  #fileList { max-height:300px; overflow:auto; margin-top:10px; border:1px solid #ddd; border-radius:6px; }
+  #fileList div { padding:8px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  #fileList div.selected { background:#dbeafe; outline:2px solid #0b57d0; }
+  #fileList div.hasTexture { background:#e6f9e6; }
+  #renderCanvas { width:100%; height:650px; display:block; background:#f8fafc; border:1px solid #ddd; border-radius:8px; }
+  #logPanel { background:#f6f6f6; border:1px solid #ddd; border-radius:6px; padding:10px; height:220px; overflow:auto; font-family:ui-monospace, Menlo, monospace; font-size:11px; line-height:1.5; }
+  progress { width:100%; height:18px; }
+.row { display:flex; gap:10px; }.row > div { flex:1; }
+.manualBox { margin-top:14px; padding:10px; background:#fffbeb; border:1px solid #fcd34d; border-radius:6px; }
+.toggleBox { margin-top:12px; padding:10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; font-size:13px; }
+.toggleBox label { font-weight:400; margin-top:6px; display:flex; align-items:center; gap:8px; }
+.sliderRow { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.sliderRow span { font-size:11px; min-width:50px; }.sliderRow input[type="range"] { flex:1; }
+.modeBox { margin-top:12px; padding:10px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; font-size:13px; }
+.modeBox label { font-weight:400; margin-top:6px; display:flex; align-items:center; gap:8px; }
+.pointBox { margin-top:12px; padding:10px; background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; font-size:13px; }
+.pointBox label { font-weight:400; margin-top:6px; display:flex; align-items:center; gap:8px; }
+#pointContextMenu { position: fixed; display: none; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; font-size: 13px; min-width: 150px; }
+#pointContextMenu > div { padding: 8px 14px; cursor: pointer; } #pointContextMenu > div:hover { background: #eef2ff; }
+</style>
+<script src="babylon.js"></script>
+</head>
+<body>
+<header><h1>MER.HT Viewer v</h1></header>
+<div class="container">
+  <div class="card controls">
+    <h3>1. Sorgente</h3>
+    <div class="row">
+      <div><label>Rover</label><select id="roverSel"><option value="spirit" selected>Spirit</option><option value="opportunity">Opportunity</option></select></div>
+      <div><label>Camera</label><select id="cameraSel"><option value="hazcam" selected>hazcam</option><option value="navcam">navcam</option><option value="pancam">pancam</option></select></div>
+      <div><label>Site</label><input id="siteInput" type="text" value="0137" /></div>
+    </div>
+    <button id="btnCerca">Cerca file.HT</button>
+    <div style="margin-top:10px"><div id="progressLabel" style="font-size:12px; color:#555;">Nessun download</div><progress id="downloadProgress" value="0" max="100"></progress><div id="byteLabel" style="font-size:11px; color:#666;"></div></div>
+<h3 style="margin-top:16px;">2. File.HT</h3>
+<div id="cameraFilterBox" style="margin-top:8px; padding:8px 10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; font-size:12px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+  <b style="margin:0;">Filtra per camere:</b>
+  <label style="display:inline-flex; align-items:center; gap:4px; margin:0; font-weight:400;"><input type="checkbox" class="camFilter" value="f" checked> F</label>
+  <label style="display:inline-flex; align-items:center; gap:4px; margin:0; font-weight:400;"><input type="checkbox" class="camFilter" value="r" checked> R</label>
+  <label style="display:inline-flex; align-items:center; gap:4px; margin:0; font-weight:400;"><input type="checkbox" class="camFilter" value="n" checked> N</label>
+  <label style="display:inline-flex; align-items:center; gap:4px; margin:0; font-weight:400;"><input type="checkbox" class="camFilter" value="p" checked> P</label>
+</div>
+<div id="fileList"><div style="padding:10px; color:#888;">Premi Cerca</div></div>
+    <div class="manualBox">
+      <b>Download / Upload manuale</b><br>
+      <button id="btnDownloadDiretto" class="secondary" disabled>⬇ Scarica diretto PDS</button>
+      <button id="btnDownloadProxy" class="secondary" disabled>⬇ Scarica via proxy</button>
+      <div style="margin-top:8px"><input id="fileInputLocale" type="file" accept=".ht,.HT" /><button id="btnCaricaLocale" class="green">📂 Usa file locale</button></div>
+    </div>
+    <div class="modeBox">
+      <b>Modalità modello</b>
+      <label><input type="radio" name="modelMode" value="mesh"> Mesh watertight</label>
+      <label><input type="radio" name="modelMode" value="pointcloud" checked> Pointcloud (solo validi)</label>
+      <label><input type="radio" name="modelMode" value="voxel"> Voxel stampabile - solo validi, stessa posizione di mesh/pointcloud</label>
+    </div>
+<div class="pointBox">
+  <b>Opzioni</b>
+  <div class="sliderRow"><span>Dimensione</span><input id="pointSizeSlider" type="range" min="1" max="10" step="1" value="2"><span id="pointSizeVal">2</span></div>
+  <label style="margin-top:8px;">Colore OFF texture:<input type="color" id="pointColorPicker" value="#d0d0d0" style="width:52px; height:28px; padding:0; border:1px solid #ccc; border-radius:4px; cursor:pointer;"></label>
+  <div style="font-size:11px; color:#666; margin-top:6px;">Voxel: base = MAP_SCALE x MAP_SCALE (1 cella), h = Z, solo punti validi. Allineato a mesh. Grigio chiaro default.</div>
+</div>
+    <div class="toggleBox">
+      <b>Visualizzazione</b>
+      <label><input type="checkbox" id="toggleTexture"> Texture quota ON/OFF</label>
+      <label><input type="checkbox" id="toggleShadows" checked> Ombre ON/OFF</label>
+      <label><input type="checkbox" id="toggleGizmo" checked> Gizmo luci ON/OFF</label>
+      <hr style="margin:12px 0; border:none; border-top:1px solid #bae6fd;">
+      <label><input type="checkbox" id="toggleAmbient"> Luce ambientale ON/OFF</label>
+      <div class="sliderRow"><span>Int. amb.</span><input id="ambientSlider" type="range" min="0" max="2" step="0.05" value="0.6"><span id="ambientVal">0.6</span></div>
+      <label><input type="checkbox" id="togglePointLight" checked> Luce direzionale ON/OFF</label>
+      <div class="sliderRow"><span>Int. dir</span><input id="pointSlider" type="range" min="0" max="3" step="0.05" value="0.8"><span id="pointVal">0.8</span></div>
+    </div>
+    <div class="row"><div><label>Altezza pareti (fondo)</label><input id="wallSlider" type="range" min="1" max="100" value="20" style="width:100%"><span id="wallVal">20</span></div><div><label>Esagerazione Z</label><input id="exagSlider" type="range" min="0.1" max="5" step="0.1" value="1" style="width:100%"><span id="exagVal">1.0</span></div></div>
+    <button id="btnVai" disabled>Vai - Crea modello 3D</button><button id="btnCentra" class="secondary">🎯 Centra camera</button><button id="btnSTL" class="secondary" disabled>Esporta STL</button>
+    <div id="infoBox" style="margin-top:10px; font-size:12px; background:#fafafa; padding:8px; border-radius:6px; border:1px solid #eee;"></div>
+  </div>
+  <div class="card viewer"><h3>Scena 3D</h3><canvas id="renderCanvas"></canvas><h4>Log</h4><div id="logPanel"></div></div>
+</div>
+<div id="pointContextMenu"><div data-action="centra">🎯 Centra qui</div><div data-action="sposta">🚶 Sposta qui</div></div>
+<script>
+/*
+
+ CONTROLLI AGGIUNTI - WASD / QE / ZC STANDARD
+ W: Avanti
+ S: Indietro
+ A: Strafe sinistra
+ D: Strafe destra
+ Q: Girare a sinistra / Lean left / Roll sx (alpha -)
+ E: Girare a destra / Lean right / Roll dx (alpha +)
+ Z: Scendere di quota / Prone (Y -)
+ C: Salire di quota / Crouch (Y +)
+ Implementati nel secondo <script> a fine pagina
+
+*/
+const PDS_BASE_SPIRIT = "https://planetarydata.jpl.nasa.gov/img/data/mer/spirit/mer2mw_0xxx/data/";
+const PDS_BASE_OPPORTUNITY = "https://planetarydata.jpl.nasa.gov/img/data/mer/opportunity/mer1mw_0xxx/data/";
+const PROXY_BASE = "https://win98.altervista.org/space/exploration/myp.php?pass=miapass&mode=native&url=";
+let stato = { fileSelezionato:null, fileListData:[], pfbFilesInFolder:[], topMesh:null, bottomMesh:null, wallMesh:null, allMeshes:[], altezzeGrid:null, altezzeGridRaw:null, metaHT:null, localFileBuffer:null, hemiLight:null, pointLight:null, lightSphere:null, lightTarget:null, shadowGenerator:null, gizmoManager:null, textureTerreno:null, lastMeshInfo:null, invalidValue:null, puntiPointcloud:null };
+function log(msg){ const now=new Date().toLocaleTimeString(); const line=`[${now}] ${msg}`; console.log(line); const p=document.getElementById("logPanel"); if(p){ const d=document.createElement("div"); d.textContent=line; p.appendChild(d); p.scrollTop=p.scrollHeight; } }
+function formatBytes(b){ if(b<1024)return b+" B"; if(b<1024*1024)return (b/1024).toFixed(1)+" KB"; return (b/1024/1024).toFixed(2)+" MB"; }
+function hexToRgb01(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); if(!m)return{r:0.82,g:0.82,b:0.82}; return{r:parseInt(m[1],16)/255,g:parseInt(m[2],16)/255,b:parseInt(m[3],16)/255}; }
+async function fetchWithProgress(targetUrl, asArrayBuffer=false){
+  const proxyUrl=PROXY_BASE+encodeURIComponent(targetUrl); log(`[PROXY] Scarico: ${targetUrl}`); console.time("[DOWNLOAD]");
+  const progressEl=document.getElementById("downloadProgress"); const labelEl=document.getElementById("progressLabel"); const byteEl=document.getElementById("byteLabel");
+  labelEl.textContent=`Scarico ${targetUrl.split('/').pop()}...`; byteEl.textContent=""; progressEl.removeAttribute("value"); progressEl.max=100; progressEl.value=0;
+  try{
+    const response=await fetch(proxyUrl); if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const contentLength=response.headers.get("Content-Length"); const total=contentLength?parseInt(contentLength,10):null;
+    if(total){ progressEl.max=total; byteEl.textContent=`0 / ${formatBytes(total)}`; } else { progressEl.max=100; progressEl.value=0; byteEl.textContent=`Byte: 0`; }
+    const reader=response.body.getReader(); let received=0; const chunks=[]; let lastLog=0;
+    while(true){ const {done,value}=await reader.read(); if(done)break; chunks.push(value); received+=value.length;
+      if(total){ progressEl.value=received; const perc=((received/total)*100).toFixed(1); byteEl.textContent=`${formatBytes(received)} / ${formatBytes(total)} (${perc}%)`; } else { progressEl.value=0; byteEl.textContent=`${formatBytes(received)}`; }
+      if(received-lastLog>512*1024){ log(`[DOWNLOAD] ${formatBytes(received)}${total?` / ${formatBytes(total)}`:''}`); lastLog=received; }
+    }
+    console.timeEnd("[DOWNLOAD]"); log(`[DOWNLOAD] Completato ${formatBytes(received)}`); labelEl.textContent=`Completato ${formatBytes(received)}`; progressEl.max=100; progressEl.value=100;
+    const full=new Uint8Array(received); let off=0; for(const c of chunks){ full.set(c,off); off+=c.length; }
+    if(asArrayBuffer)return full.buffer; return new TextDecoder().decode(full);
+  }catch(err){ console.timeEnd("[DOWNLOAD]"); progressEl.max=100; progressEl.value=0; labelEl.textContent=`Errore: ${err.message}`; byteEl.textContent=""; log(`[DOWNLOAD] Errore: ${err.message}`); throw err; }
+}
+function costruisciUrlCartella(){ const rover=document.getElementById("roverSel").value; const camera=document.getElementById("cameraSel").value; const siteRaw=document.getElementById("siteInput").value.trim().replace(/\D/g,""); const sitePadded=siteRaw.padStart(4,"0"); const base=rover==="spirit"?PDS_BASE_SPIRIT:PDS_BASE_OPPORTUNITY; const url=`${base}${camera}/site${sitePadded}/`; log(`[URL] ${url}`); return url; }
+function parsaListingHTML(html){ const parser=new DOMParser(); const doc=parser.parseFromString(html,"text/html"); const links=Array.from(doc.querySelectorAll("a")); const htFiles=[]; const pfbFiles=[]; for(const a of links){ const href=a.getAttribute("href"); if(!href)continue; const low=href.toLowerCase(); if(low.endsWith(".ht"))htFiles.push(href); else if(low.endsWith(".pfb"))pfbFiles.push(href); } log(`[LISTING] ${htFiles.length}.ht, ${pfbFiles.length}.pfb`); return{htFiles,pfbFiles}; }
+function estraiCamere(name){ const base=name.replace(/\.ht$/i,"").toLowerCase(); const parti=base.split("_"); const set=new Set(); if(parti.length<3)return set; const blocco=parti[2]; for(const ch of blocco){ if(ch==="f"||ch==="r"||ch==="n"||ch==="p")set.add(ch); } return set; }
+function applicaFiltroCamere(){ const checked=new Set(Array.from(document.querySelectorAll(".camFilter")).filter(cb=>cb.checked).map(cb=>cb.value)); const showAll=checked.size===0; stato.fileListData.forEach(f=>{ if(!f.rowEl)return; if(showAll){ f.rowEl.style.display=""; return; } if(f.camere.size!==checked.size){ f.rowEl.style.display="none"; return; } let ok=true; for(const cam of f.camere){ if(!checked.has(cam)){ ok=false; break; } } f.rowEl.style.display=ok?"":"none"; }); }
+async function onCerca(){ const btn=document.getElementById("btnCerca"); btn.disabled=true; const listDiv=document.getElementById("fileList"); listDiv.innerHTML="<div style='padding:10px'>Scarico listing...</div>"; try{ const folderUrl=costruisciUrlCartella(); const html=await fetchWithProgress(folderUrl,false); const{htFiles,pfbFiles}=parsaListingHTML(html); stato.pfbFilesInFolder=pfbFiles; stato.fileListData=[]; listDiv.innerHTML=""; if(htFiles.length===0){ listDiv.innerHTML=`<div style='padding:10px;color:#b91c1c'>Nessun.ht in ${folderUrl}</div>`; return; } const pfbSet=new Set(pfbFiles.map(s=>s.toLowerCase())); const htFilesSorted=htFiles.slice().sort((a,b)=>{ const ca=estraiCamere(a).size; const cb=estraiCamere(b).size; if(cb!==ca)return cb-ca; return a.localeCompare(b); }); htFilesSorted.forEach(htName=>{ const base=htName.replace(/\.ht$/i,"").toLowerCase(); const pfbName=base+".pfb"; const hasPfb=pfbSet.has(pfbName); const fullUrl=folderUrl+htName; const pfbUrl=hasPfb?folderUrl+pfbName:null; const fileData={name:htName,url:fullUrl,hasTexture:hasPfb,pfbUrl,pfbName,camere:estraiCamere(htName),rowEl:null}; stato.fileListData.push(fileData); const row=document.createElement("div"); if(hasPfb)row.classList.add("hasTexture"); const left=document.createElement("span"); left.textContent=htName; row.appendChild(left); row.onclick=()=>selezionaFile(htName,row); listDiv.appendChild(row); fileData.rowEl=row; }); applicaFiltroCamere(); }catch(e){ log(`[ERRORE] ${e.message}`); document.getElementById("fileList").innerHTML=`<div style='padding:10px;color:red'>Errore: ${e.message}</div>`; }finally{ btn.disabled=false; } }
+function selezionaFile(name,rowEl){ document.querySelectorAll("#fileList div").forEach(d=>d.classList.remove("selected")); rowEl.classList.add("selected"); stato.fileSelezionato=stato.fileListData.find(f=>f.name===name); document.getElementById("btnVai").disabled=false; document.getElementById("btnDownloadDiretto").disabled=false; document.getElementById("btnDownloadProxy").disabled=false; log(`[SELEZIONE] ${name}`); }
+function scaricaManuale(direct){ if(!stato.fileSelezionato){ alert("Seleziona file"); return; } const targetUrl=stato.fileSelezionato.url; const url=direct?targetUrl:PROXY_BASE+encodeURIComponent(targetUrl); log(`[DOWNLOAD MANUALE] ${direct?"diretto":"proxy"}: ${url}`); const a=document.createElement("a"); a.href=url; a.download=stato.fileSelezionato.name; a.target="_blank"; a.click(); }
+function estraiGrigliaGrezza(meta){ const{NS,NL,NB,floats}=meta; const grid=[]; for(let r=0;r<NL;r++){ const row=[]; for(let c=0;c<NS;c++){ let v=floats[r*NS+c]; if(isInvalid(v)&&NB>1){ const v2=floats[NS*NL+r*NS+c]; if(!isInvalid(v2))v=v2; } row.push(v); } grid.push(row); } return grid; }
+function estraiGrigliaGrezzaBand1(meta){ const{NS,NL,floats}=meta; const grid=[]; for(let r=0;r<NL;r++){ const row=[]; for(let c=0;c<NS;c++){ row.push(floats[r*NS+c]); } grid.push(row); } return grid; }
+function gestisciFileLocale(){ const input=document.getElementById("fileInputLocale"); const file=input.files[0]; if(!file){ alert("Seleziona file.ht"); return; } log(`[LOCALE] ${file.name} ${formatBytes(file.size)}`); const reader=new FileReader(); reader.onload=(e)=>{ stato.localFileBuffer=e.target.result; stato.fileSelezionato={name:file.name,url:"locale://"+file.name,hasTexture:false,pfbUrl:null}; try{ const meta=parsaVicarHT(e.target.result); stato.metaHT=meta; const{NS,NL}=meta; stato.altezzeGridRaw=estraiGrigliaGrezzaBand1(meta); const rawPerMesh=estraiGrigliaGrezza(meta); const filled=riempiBuchi(rawPerMesh,NS,NL); stato.altezzeGrid=filled; document.getElementById("infoBox").innerHTML=`<b>${file.name} (locale)</b><br>NS=${NS} NL=${NL}`; costruisciMeshWatertight(meta,filled); document.getElementById("btnSTL").disabled=false; log(`[LOCALE] Modello creato`); }catch(err){ log(`[ERRORE LOCALE] ${err.message}`); alert(err.message); } }; reader.readAsArrayBuffer(file); }
+function parsaVicarHT(arrayBuffer){ console.time("[VICAR]"); log(`[VICAR] ${formatBytes(arrayBuffer.byteLength)}`); const preview=new TextDecoder().decode(new Uint8Array(arrayBuffer.slice(0,500))); const m=preview.match(/LBLSIZE\s*=\s*(\d+)/); if(!m)throw new Error("LBLSIZE non trovato"); const lblsize=parseInt(m[1],10); log(`[VICAR] LBLSIZE=${lblsize}`); const headerText=new TextDecoder().decode(new Uint8Array(arrayBuffer.slice(0,lblsize))); function estrai(k){ const re=new RegExp(k+"\\s*=\\s*('[^']*'|\"[^\"]*\"|[^\\s]+)","i"); const mm=headerText.match(re); if(!mm)return null; return mm[1].replace(/['"]/g,""); } const NS=parseInt(estrai("NS")||"0",10); const NL=parseInt(estrai("NL")||"0",10); const NB=parseInt(estrai("NB")||"1",10); const MAP_SCALE=parseFloat(estrai("MAP_SCALE")||"0.05"); const invalidStr=estrai("INVALID"); let invalidValue=null; if(invalidStr){ if(/nan/i.test(invalidStr))invalidValue=NaN; else if(/inf/i.test(invalidStr))invalidValue=/^-/.test(invalidStr)?-Infinity:Infinity; else{ const parsed=parseFloat(invalidStr); if(isFinite(parsed))invalidValue=parsed; } } stato.invalidValue=invalidValue; log(`[VICAR] NS=${NS} NL=${NL} NB=${NB} MAP_SCALE=${MAP_SCALE} INVALID=${invalidValue}`); const dataView=new DataView(arrayBuffer,lblsize); const totalFloats=Math.floor((arrayBuffer.byteLength-lblsize)/4); const floats=new Float32Array(totalFloats); for(let i=0;i<totalFloats;i++){ floats[i]=dataView.getFloat32(i*4,true); } console.timeEnd("[VICAR]"); return{NS,NL,NB,MAP_SCALE,floats,headerText,invalidValue}; }
+function isInvalid(v){ if(typeof v!=='number')return true; if(Number.isNaN(v))return true; if(!isFinite(v))return true; const inv=stato.invalidValue; if(inv!==null){ if(Number.isNaN(inv)&&Number.isNaN(v))return true; if(v===inv)return true; } const abs=Math.abs(v); if(abs>3.0e38)return true; if(abs>1e6)return true; if(abs>1e4)return true; return false; }
+function riempiBuchi(grid,NS,NL){ console.time("[FILL]"); let inv=0,sumValid=0,cntValid=0,minValid=Infinity,maxValid=-Infinity; for(let r=0;r<NL;r++){ for(let c=0;c<NS;c++){ const v=grid[r][c]; if(isInvalid(v))inv++; else{ sumValid+=v; cntValid++; if(v<minValid)minValid=v; if(v>maxValid)maxValid=v; } } } log(`[FILL] Invalidi ${inv}/${NS*NL} validi ${cntValid} min=${minValid.toFixed(3)} max=${maxValid.toFixed(3)}`); const media=cntValid>0?sumValid/cntValid:0; for(let pass=0;pass<8;pass++){ let filled=0; for(let r=0;r<NL;r++){ for(let c=0;c<NS;c++){ if(!isInvalid(grid[r][c]))continue; let sum=0,cnt=0; for(let dr=-1;dr<=1;dr++){ for(let dc=-1;dc<=1;dc++){ if(dr===0&&dc===0)continue; const rr=r+dr,cc=c+dc; if(rr<0||rr>=NL||cc<0||cc>=NS)continue; const vv=grid[rr][cc]; if(!isInvalid(vv)){ sum+=vv; cnt++; } } } if(cnt>0){ grid[r][c]=sum/cnt; filled++; } } } log(`[FILL] Pass ${pass+1}: ${filled}`); if(filled===0)break; } let residui=0; for(let r=0;r<NL;r++){ for(let c=0;c<NS;c++){ if(isInvalid(grid[r][c])){ grid[r][c]=media; residui++; } } } if(residui>0)log(`[FILL] Residui con media: ${residui}`); console.timeEnd("[FILL]"); return grid; }
+let engine,scene,camera;
+function initBabylonSubito(){
+  log("[BABYLON] Init scena"); const canvas=document.getElementById("renderCanvas"); engine=new BABYLON.Engine(canvas,true); scene=new BABYLON.Scene(engine); scene.clearColor=new BABYLON.Color4(0.92,0.94,0.97,1); scene.useRightHandedSystem=true;
+  camera=new BABYLON.ArcRotateCamera("cam",-Math.PI/2,Math.PI/3,30,new BABYLON.Vector3(0,0,0),scene); camera.attachControl(canvas,true,true); camera.wheelPrecision=10; camera.panningSensibility=1000; camera.pinchPrecision=50;
+  canvas.addEventListener('wheel',(e)=>{ e.preventDefault(); },{passive:false}); canvas.style.touchAction='none'; document.body.style.overscrollBehavior='none';
+  const hemiLight=new BABYLON.HemisphericLight("hemi",new BABYLON.Vector3(0,1,0),scene); hemiLight.intensity=0.6; hemiLight.specular=new BABYLON.Color3(0,0,0); stato.hemiLight=hemiLight;
+  const dirLight=new BABYLON.DirectionalLight("dirLight",new BABYLON.Vector3(-0.5,-1,-0.3),scene); dirLight.position=new BABYLON.Vector3(10,20,10); dirLight.intensity=0.8; stato.pointLight=dirLight;
+  const lightSphere=BABYLON.MeshBuilder.CreateSphere("lightSphere",{diameter:25},scene); const lightMat=new BABYLON.StandardMaterial("lightMat",scene); lightMat.emissiveColor=new BABYLON.Color3(1,1,0); lightMat.diffuseColor=new BABYLON.Color3(1,1,0); lightMat.specularColor=new BABYLON.Color3(0,0,0); lightSphere.material=lightMat; lightSphere.position=dirLight.position.clone(); lightSphere.isPickable=true; stato.lightSphere=lightSphere;
+  const lightTarget=BABYLON.MeshBuilder.CreateSphere("lightTarget",{diameter:15},scene); const targetMat=new BABYLON.StandardMaterial("targetMat",scene); targetMat.emissiveColor=new BABYLON.Color3(1,0.2,0.2); targetMat.diffuseColor=new BABYLON.Color3(1,0.2,0.2); lightTarget.material=targetMat; lightTarget.position=new BABYLON.Vector3(0,0,0); stato.lightTarget=lightTarget;
+  const shadowGen=new BABYLON.ShadowGenerator(2048,dirLight); shadowGen.useBlurExponentialShadowMap=true; shadowGen.blurKernel=8; shadowGen.setDarkness(0.35); dirLight.autoCalcShadowZBounds=true; dirLight.shadowOrthoScale=0.1; stato.shadowGenerator=shadowGen;
+  const gizmoManager=new BABYLON.GizmoManager(scene); gizmoManager.positionGizmoEnabled=true; gizmoManager.attachableMeshes=[lightSphere,lightTarget]; gizmoManager.attachToMesh(lightSphere); stato.gizmoManager=gizmoManager;
+  scene.onBeforeRenderObservable.add(()=>{ if(stato.lightSphere&&stato.pointLight&&stato.lightTarget){ if(!stato.lightSphere.position.equals(stato.pointLight.position)){ stato.pointLight.position.copyFrom(stato.lightSphere.position); } const dir=stato.lightTarget.position.subtract(stato.pointLight.position).normalize(); stato.pointLight.direction=dir; } const r=camera.radius; camera.wheelPrecision=Math.max(1,1000/r); camera.panningSensibility=Math.max(10,5000/r); });
+  const axisSize=5; BABYLON.MeshBuilder.CreateLines("x",{points:[new BABYLON.Vector3(0,0,0),new BABYLON.Vector3(axisSize,0,0)]},scene).color=new BABYLON.Color3(1,0,0); BABYLON.MeshBuilder.CreateLines("y",{points:[new BABYLON.Vector3(0,0,0),new BABYLON.Vector3(0,0,axisSize)]},scene).color=new BABYLON.Color3(0,1,0); BABYLON.MeshBuilder.CreateLines("z",{points:[new BABYLON.Vector3(0,0,0),new BABYLON.Vector3(0,-axisSize,0)]},scene).color=new BABYLON.Color3(0,0,1);
+  const ground=BABYLON.MeshBuilder.CreateGround("grid",{width:40,height:40,subdivisions:20},scene); const gmat=new BABYLON.StandardMaterial("gmat",scene); gmat.wireframe=true; gmat.alpha=0.15; ground.material=gmat; ground.isPickable=false;
+  hemiLight.setEnabled(document.getElementById("toggleAmbient").checked); hemiLight.intensity=document.getElementById("toggleAmbient").checked?parseFloat(document.getElementById("ambientSlider").value):0;
+  const pLightOn=document.getElementById("togglePointLight").checked; dirLight.setEnabled(pLightOn); lightSphere.setEnabled(pLightOn); lightTarget.setEnabled(pLightOn); dirLight.intensity=parseFloat(document.getElementById("pointSlider").value);
+  const ctxMenu=document.getElementById("pointContextMenu"); let ctxPoint=null; function hideCtxMenu(){ ctxMenu.style.display="none"; ctxPoint=null; } function showCtxMenu(x,y,point){ ctxPoint=point; ctxMenu.style.left=x+"px"; ctxMenu.style.top=y+"px"; ctxMenu.style.display="block"; }
+  canvas.addEventListener("contextmenu",(evt)=>{ evt.preventDefault(); hideCtxMenu(); const rect=canvas.getBoundingClientRect(); const px=evt.clientX-rect.left; const py=evt.clientY-rect.top; const point=pickPointUnderCursor(px,py); if(!point){ log("[RCLICK] Nessun punto"); return; } showCtxMenu(evt.clientX,evt.clientY,point); });
+  document.addEventListener("pointerdown",(evt)=>{ if(ctxMenu.style.display==="block"&&!ctxMenu.contains(evt.target))hideCtxMenu(); });
+  ctxMenu.addEventListener("click",(evt)=>{ const action=evt.target.dataset.action; if(!action||!ctxPoint){ hideCtxMenu(); return; } if(action==="centra")centraQui(ctxPoint); else if(action==="sposta")spostaQui(ctxPoint); hideCtxMenu(); });
+  engine.runRenderLoop(()=>scene.render()); window.addEventListener("resize",()=>engine.resize()); log("[BABYLON] Scena pronta");
+}
+function applyShadowState(){ if(!stato.shadowGenerator)return; const on=document.getElementById("toggleShadows").checked; const modeEl=document.querySelector('input[name="modelMode"]:checked'); const mode=modeEl?modeEl.value:'mesh'; const sm=stato.shadowGenerator.getShadowMap(); sm.renderList=[]; const active=on&&(mode==='mesh'||mode==='voxel'); (stato.allMeshes||[]).forEach(m=>{ if(active){ sm.renderList.push(m); m.receiveShadows=true; } else { m.receiveShadows=false; } }); stato.shadowGenerator.setDarkness(on?0.35:0); }
+function costruisciPointCloud(meta,rawGrid,preserveCamera){
+  console.time("[POINTCLOUD]"); const{NS,NL,MAP_SCALE}=meta; const exag=parseFloat(document.getElementById("exagSlider").value); const pointSize=parseInt(document.getElementById("pointSizeSlider").value,10); const pointColorHex=document.getElementById("pointColorPicker").value; const pointColor=hexToRgb01(pointColorHex);
+  const punti=[]; let minZ=Infinity,maxZ=-Infinity; let tot=0,invC=0;
+  for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ tot++; const v=rawGrid[r][c]; if(isInvalid(v)){ invC++; continue; } punti.push({r,c,v}); if(v<minZ)minZ=v; if(v>maxZ)maxZ=v; }
+  log(`[POINTCLOUD] validi ${punti.length}/${tot}`); if(punti.length===0){ console.timeEnd("[POINTCLOUD]"); return; } if(!isFinite(minZ)){ minZ=0; maxZ=1; } if(minZ===maxZ)maxZ=minZ+1;
+  const posPC=new Array(punti.length); for(let i=0;i<punti.length;i++){ const{r,c,v}=punti[i]; posPC[i]=new BABYLON.Vector3(c*MAP_SCALE,-v*exag,r*MAP_SCALE); } stato.puntiPointcloud=posPC;
+  if(stato.allMeshes)stato.allMeshes.forEach(m=>{try{m.dispose();}catch(e){}}); stato.allMeshes=[]; stato.topMesh=null; stato.bottomMesh=null; stato.wallMesh=null; ["topTerrain","bottom","walls","pointcloud","voxelTerrain"].forEach(n=>{ const m=scene.getMeshByName(n); if(m)m.dispose(); });
+  const texOn=document.getElementById("toggleTexture").checked;
+  const pcs=new BABYLON.PointsCloudSystem("pcs",1,scene); pcs.addPoints(punti.length,(particle,i)=>{ const{r,c,v}=punti[i]; particle.position=new BABYLON.Vector3(c*MAP_SCALE,-v*exag,r*MAP_SCALE); if(texOn){ const t=(v-minZ)/(maxZ-minZ); let rc,gc,bc; if(t<0.3){ rc=0; gc=t/0.3*120; bc=200; } else if(t<0.6){ rc=(t-0.3)/0.3*100; gc=120+(t-0.3)/0.3*80; bc=0; } else { rc=139+t*100; gc=69+t*50; bc=19; } particle.color=new BABYLON.Color4(rc/255,gc/255,bc/255,1); } else { particle.color=new BABYLON.Color4(pointColor.r,pointColor.g,pointColor.b,1); } });
+  pcs.buildMeshAsync().then((mesh)=>{ mesh.name="pointcloud"; if(mesh.material)mesh.material.pointSize=pointSize; mesh.isPickable=false; stato.topMesh=mesh; stato.allMeshes=[mesh]; applyShadowState(); if(!preserveCamera)centraCameraSulModello(); console.timeEnd("[POINTCLOUD]"); });
+  stato.lastMeshInfo={centerX:(NS*MAP_SCALE)/2,centerZ:(NL*MAP_SCALE)/2,centerY:-(minZ+maxZ)/2*exag,size:Math.max(NS*MAP_SCALE,NL*MAP_SCALE),minZ,maxZ,bottomY:minZ,NS,NL,MAP_SCALE};
+}
+function costruisciModelloVoxel(meta, gridFilled, rawGrid, preserveCamera){
+  console.time("[VOXEL]");
+  const{NS,NL,MAP_SCALE}=meta;
+  const exag=parseFloat(document.getElementById("exagSlider").value);
+  const wallH=parseFloat(document.getElementById("wallSlider").value);
+  const texOn=document.getElementById("toggleTexture").checked;
+  const DEFAULT_GRAY={r:0.82,g:0.82,b:0.82};
+  const validityGrid=rawGrid||gridFilled;
+  let minZ=Infinity,maxZ=-Infinity,validCount=0;
+  for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const v=validityGrid[r][c]; if(isInvalid(v))continue; validCount++; if(v<minZ)minZ=v; if(v>maxZ)maxZ=v; }
+  if(validCount===0){ log("[VOXEL] nessun punto valido"); console.timeEnd("[VOXEL]"); return; } if(minZ===maxZ)maxZ=minZ+1;
+  const bottomY = minZ - wallH;
+  const yBottom = bottomY * exag;
+  const yTops=[]; for(let r=0;r<NL;r++){ yTops[r]=[]; for(let c=0;c<NS;c++){ const v=validityGrid[r][c]; if(isInvalid(v))yTops[r][c]=null; else yTops[r][c]= -v * exag; } }
+  if(stato.allMeshes)stato.allMeshes.forEach(m=>{try{m.dispose();}catch(e){}}); stato.allMeshes=[]; stato.topMesh=null; stato.bottomMesh=null; stato.wallMesh=null; ["topTerrain","bottom","walls","pointcloud","voxelTerrain"].forEach(n=>{ const m=scene.getMeshByName(n); if(m)m.dispose(); }); stato.puntiPointcloud=null;
+  const positions=[],indices=[],normals=[],uvs=[],colors=[];
+  function addQuad(p0,p1,p2,p3,normal,color){ const base=positions.length/3; positions.push(p0.x,p0.y,p0.z,p1.x,p1.y,p1.z,p2.x,p2.y,p2.z,p3.x,p3.y,p3.z); normals.push(normal.x,normal.y,normal.z,normal.x,normal.y,normal.z,normal.x,normal.y,normal.z,normal.x,normal.y,normal.z); uvs.push(0,0,1,0,1,1,0,1); for(let i=0;i<4;i++)colors.push(color.r,color.g,color.b,1); indices.push(base,base+1,base+2,base,base+2,base+3); }
+  function colorForZ(v){ if(!texOn)return DEFAULT_GRAY; const t=(v-minZ)/(maxZ-minZ||1); let rc,gc,bc; if(t<0.3){ rc=0; gc=t/0.3*120; bc=200; } else if(t<0.6){ rc=(t-0.3)/0.3*100; gc=120+(t-0.3)/0.3*80; bc=0; } else { rc=139+t*100; gc=69+t*50; bc=19; } return{r:rc/255,g:gc/255,b:bc/255}; }
+  const maxX=NS*MAP_SCALE, maxZdim=NL*MAP_SCALE;
+  addQuad(new BABYLON.Vector3(0,yBottom,0),new BABYLON.Vector3(0,yBottom,maxZdim),new BABYLON.Vector3(maxX,yBottom,maxZdim),new BABYLON.Vector3(maxX,yBottom,0),new BABYLON.Vector3(0,-1,0),DEFAULT_GRAY);
+  for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const yTop=yTops[r][c]; if(yTop===null)continue; const v=validityGrid[r][c]; const x0=c*MAP_SCALE,x1=(c+1)*MAP_SCALE,z0=r*MAP_SCALE,z1=(r+1)*MAP_SCALE; const col=colorForZ(v);
+    addQuad(new BABYLON.Vector3(x0,yTop,z0),new BABYLON.Vector3(x1,yTop,z0),new BABYLON.Vector3(x1,yTop,z1),new BABYLON.Vector3(x0,yTop,z1),new BABYLON.Vector3(0,1,0),col);
+    const yE=c+1<NS?yTops[r][c+1]:null, yW=c-1>=0?yTops[r][c-1]:null, yS=r+1<NL?yTops[r+1][c]:null, yN=r-1>=0?yTops[r-1][c]:null;
+    if(yE===null||yE<yTop){ const low=yE===null?yBottom:yE; if(low<yTop){ addQuad(new BABYLON.Vector3(x1,low,z0),new BABYLON.Vector3(x1,low,z1),new BABYLON.Vector3(x1,yTop,z1),new BABYLON.Vector3(x1,yTop,z0),new BABYLON.Vector3(1,0,0),col); } }
+    if(yW===null||yW<yTop){ const low=yW===null?yBottom:yW; if(low<yTop){ addQuad(new BABYLON.Vector3(x0,low,z1),new BABYLON.Vector3(x0,low,z0),new BABYLON.Vector3(x0,yTop,z0),new BABYLON.Vector3(x0,yTop,z1),new BABYLON.Vector3(-1,0,0),col); } }
+    if(yS===null||yS<yTop){ const low=yS===null?yBottom:yS; if(low<yTop){ addQuad(new BABYLON.Vector3(x1,low,z1),new BABYLON.Vector3(x0,low,z1),new BABYLON.Vector3(x0,yTop,z1),new BABYLON.Vector3(x1,yTop,z1),new BABYLON.Vector3(0,0,1),col); } }
+    if(yN===null||yN<yTop){ const low=yN===null?yBottom:yN; if(low<yTop){ addQuad(new BABYLON.Vector3(x0,low,z0),new BABYLON.Vector3(x1,low,z0),new BABYLON.Vector3(x1,yTop,z0),new BABYLON.Vector3(x0,yTop,z0),new BABYLON.Vector3(0,0,-1),col); } }
+  }
+  const voxelMesh=new BABYLON.Mesh("voxelTerrain",scene); const vd=new BABYLON.VertexData(); vd.positions=new Float32Array(positions); vd.indices=indices; vd.normals=new Float32Array(normals); vd.uvs=new Float32Array(uvs); vd.colors=new Float32Array(colors); vd.applyToMesh(voxelMesh);
+  const mat=new BABYLON.StandardMaterial("voxelMat",scene); mat.specularColor=new BABYLON.Color3(0,0,0); mat.emissiveColor=new BABYLON.Color3(0.25,0.25,0.25); mat.diffuseColor=new BABYLON.Color3(1,1,1); mat.useVertexColors=true; mat.backFaceCulling=false; voxelMesh.material=mat;
+  stato.topMesh=voxelMesh; stato.allMeshes=[voxelMesh];
+  stato.lastMeshInfo={centerX:maxX/2,centerZ:maxZdim/2,centerY:-(minZ+maxZ)/2*exag,size:Math.max(maxX,maxZdim),minZ,maxZ,bottomY,NS,NL,MAP_SCALE};
+  applyShadowState(); if(!preserveCamera)centraCameraSulModello(); log(`[VOXEL] validi ${validCount}/${NS*NL} allineato a mesh, base ${MAP_SCALE} x ${MAP_SCALE}`); console.timeEnd("[VOXEL]");
+}
+function costruisciMeshWatertight(meta,gridFilled,preserveCamera){
+  const modeEl=document.querySelector('input[name="modelMode"]:checked'); const mode=modeEl?modeEl.value:'mesh';
+  if(mode==='pointcloud'){ costruisciPointCloud(meta,stato.altezzeGridRaw||gridFilled,preserveCamera); return; }
+  if(mode==='voxel'){ costruisciModelloVoxel(meta,gridFilled,stato.altezzeGridRaw,preserveCamera); return; }
+  console.time("[MESH]"); stato.puntiPointcloud=null; const{NS,NL,MAP_SCALE}=meta; const wallH=parseFloat(document.getElementById("wallSlider").value); const exag=parseFloat(document.getElementById("exagSlider").value);
+  let minZ=Infinity,maxZ=-Infinity; for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const v=gridFilled[r][c]; if(isInvalid(v))continue; if(v<minZ)minZ=v; if(v>maxZ)maxZ=v; } if(!isFinite(minZ)){ minZ=0; maxZ=1; } if(minZ===maxZ)maxZ=minZ+1; const bottomY=minZ-wallH;
+  const vCount=NS*NL; const topPos=new Float32Array(vCount*3); const topUV=new Float32Array(vCount*2); let idx=0; for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const x=c*MAP_SCALE; const z=r*MAP_SCALE; const y=-gridFilled[r][c]*exag; topPos[idx*3]=x; topPos[idx*3+1]=y; topPos[idx*3+2]=z; topUV[idx*2]=c/(NS-1); topUV[idx*2+1]=1-r/(NL-1); idx++; }
+  const topIndices=[]; for(let r=0;r<NL-1;r++) for(let c=0;c<NS-1;c++){ const i0=r*NS+c,i1=r*NS+c+1,i2=(r+1)*NS+c,i3=(r+1)*NS+c+1; topIndices.push(i0,i1,i2,i1,i3,i2); }
+  const botPos=new Float32Array(vCount*3); const botUV=new Float32Array(vCount*2); for(let i=0;i<vCount;i++){ botPos[i*3]=topPos[i*3]; botPos[i*3+1]=bottomY*exag; botPos[i*3+2]=topPos[i*3+2]; botUV[i*2]=topUV[i*2]; botUV[i*2+1]=topUV[i*2+1]; }
+  const botIndices=[]; for(let r=0;r<NL-1;r++) for(let c=0;c<NS-1;c++){ const i0=r*NS+c,i1=r*NS+c+1,i2=(r+1)*NS+c,i3=(r+1)*NS+c+1; botIndices.push(i0,i2,i1,i1,i2,i3); }
+  const wallPos=[],wallUV=[],wallIdx=[]; function addWall(topA,topB,botA,botB){ const base=wallPos.length/3; wallPos.push(topPos[topA*3],topPos[topA*3+1],topPos[topA*3+2],topPos[topB*3],topPos[topB*3+1],topPos[topB*3+2],botPos[botB*3],botPos[botB*3+1],botPos[botB*3+2],botPos[botA*3],botPos[botA*3+1],botPos[botA*3+2]); wallUV.push(0,0,1,0,1,1,0,1); wallIdx.push(base,base+1,base+2,base,base+2,base+3); }
+  for(let c=0;c<NS-1;c++)addWall(c,c+1,c,c+1); for(let c=0;c<NS-1;c++){ const r=NL-1; addWall(r*NS+c+1,r*NS+c,r*NS+c+1,r*NS+c); } for(let r=0;r<NL-1;r++)addWall((r+1)*NS,r*NS,(r+1)*NS,r*NS); for(let r=0;r<NL-1;r++)addWall(r*NS+NS-1,(r+1)*NS+NS-1,r*NS+NS-1,(r+1)*NS+NS-1);
+  if(stato.allMeshes)stato.allMeshes.forEach(m=>{try{m.dispose();}catch(e){}}); stato.allMeshes=[]; stato.bottomMesh=null; stato.wallMesh=null;
+  const topMesh=new BABYLON.Mesh("topTerrain",scene); const topVD=new BABYLON.VertexData(); topVD.positions=topPos; topVD.indices=topIndices; topVD.uvs=topUV; const topNormals=[]; BABYLON.VertexData.ComputeNormals(topPos,topIndices,topNormals); topVD.normals=topNormals; topVD.applyToMesh(topMesh);
+  const terrainMat=new BABYLON.StandardMaterial("terrainMat",scene); terrainMat.specularColor=new BABYLON.Color3(0,0,0); terrainMat.specularPower=1; terrainMat.diffuseColor=new BABYLON.Color3(1,1,1); terrainMat.emissiveColor=new BABYLON.Color3(0.35,0.35,0.35); terrainMat.backFaceCulling=false;
+  const cvs=document.createElement("canvas"); cvs.width=NS; cvs.height=NL; const ctx=cvs.getContext("2d"); const img=ctx.createImageData(NS,NL); for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const v=gridFilled[r][c]; const t=(v-minZ)/(maxZ-minZ||1); let rc,gc,bc; if(t<0.3){ rc=0; gc=t/0.3*120; bc=200; } else if(t<0.6){ rc=(t-0.3)/0.3*100; gc=120+(t-0.3)/0.3*80; bc=0; } else { rc=139+t*100; gc=69+t*50; bc=19; } const p=(r*NS+c)*4; img.data[p]=rc; img.data[p+1]=gc; img.data[p+2]=bc; img.data[p+3]=255; } ctx.putImageData(img,0,0); const terrainTex=new BABYLON.Texture(cvs.toDataURL(),scene); terrainTex.hasAlpha=false; stato.textureTerreno=terrainTex;
+  if(document.getElementById("toggleTexture").checked){ terrainMat.diffuseTexture=terrainTex; terrainMat.emissiveTexture=terrainTex; terrainMat.emissiveColor=new BABYLON.Color3(0.35,0.35,0.35); terrainMat.diffuseColor=new BABYLON.Color3(1,1,1); } else { terrainMat.diffuseTexture=null; terrainMat.emissiveTexture=null; terrainMat.diffuseColor=new BABYLON.Color3(0.82,0.82,0.82); terrainMat.emissiveColor=new BABYLON.Color3(0.4,0.4,0.4); }
+  topMesh.material=terrainMat; stato.topMesh=topMesh;
+  const bottomMesh=new BABYLON.Mesh("bottom",scene); const botVD=new BABYLON.VertexData(); botVD.positions=botPos; botVD.indices=botIndices; botVD.uvs=botUV; const botNormals=[]; BABYLON.VertexData.ComputeNormals(botPos,botIndices,botNormals); botVD.normals=botNormals; botVD.applyToMesh(bottomMesh); const bottomMat=new BABYLON.StandardMaterial("bottomMat",scene); bottomMat.diffuseColor=new BABYLON.Color3(0.8,0.8,0.8); bottomMat.emissiveColor=new BABYLON.Color3(0.25,0.25,0.25); bottomMat.specularColor=new BABYLON.Color3(0,0,0); bottomMesh.material=bottomMat; stato.bottomMesh=bottomMesh;
+  const wallMesh=new BABYLON.Mesh("walls",scene); const wallVD=new BABYLON.VertexData(); wallVD.positions=new Float32Array(wallPos); wallVD.indices=wallIdx; wallVD.uvs=new Float32Array(wallUV); const wallNormals=[]; BABYLON.VertexData.ComputeNormals(new Float32Array(wallPos),wallIdx,wallNormals); wallVD.normals=wallNormals; wallVD.applyToMesh(wallMesh); const wallMat=new BABYLON.StandardMaterial("wallMat",scene); wallMat.diffuseColor=new BABYLON.Color3(0.7,0.7,0.7); wallMat.emissiveColor=new BABYLON.Color3(0.2,0.2,0.2); wallMat.specularColor=new BABYLON.Color3(0,0,0); wallMesh.material=wallMat; stato.wallMesh=wallMesh;
+  stato.allMeshes=[topMesh,bottomMesh,wallMesh]; applyShadowState();
+  stato.lastMeshInfo={centerX:(NS*MAP_SCALE)/2,centerZ:(NL*MAP_SCALE)/2,centerY:-(minZ+maxZ)/2*exag,size:Math.max(NS*MAP_SCALE,NL*MAP_SCALE),minZ,maxZ,bottomY,NS,NL,MAP_SCALE}; if(!preserveCamera)centraCameraSulModello(); console.timeEnd("[MESH]");
+}
+function centraCameraSulModello(){
+  if(!stato.lastMeshInfo){ log("[CAMERA] Nessun modello"); return; }
+  const info=stato.lastMeshInfo;
+  const target=new BABYLON.Vector3(info.centerX,info.centerY,info.centerZ); camera.setTarget(target);
+  const diag=Math.sqrt(info.NS*info.NS+info.NL*info.NL)*(info.MAP_SCALE||0.05); camera.radius=Math.max(diag*0.8,30); camera.alpha=-Math.PI/2; camera.beta=Math.PI/3;
+  let vCenter=null;
+  if(stato.altezzeGrid){ const rMid=Math.floor(info.NL/2), cMid=Math.floor(info.NS/2); vCenter=stato.altezzeGrid[rMid]?.[cMid]; if(isInvalid(vCenter)) vCenter=(info.minZ+info.maxZ)/2; } else vCenter=(info.minZ+info.maxZ)/2;
+  const exag=parseFloat(document.getElementById("exagSlider").value);
+  const terrainY = -vCenter*exag;
+  if(stato.lightTarget){ stato.lightTarget.position=new BABYLON.Vector3(info.centerX,terrainY+10,info.centerZ); }
+  if(stato.lightSphere){ stato.lightSphere.position=new BABYLON.Vector3(info.centerX+info.size*0.6,terrainY+25,info.centerZ+info.size*0.6); stato.pointLight.position.copyFrom(stato.lightSphere.position); }
+  if(stato.pointLight&&stato.lightTarget){ const dir=stato.lightTarget.position.subtract(stato.pointLight.position).normalize(); stato.pointLight.direction=dir; }
+  log(`[CAMERA] Target luce a ${info.centerX.toFixed(2)}, ${(terrainY+10).toFixed(2)}, ${info.centerZ.toFixed(2)} (+10m sopra centro)`);
+}
+function pickNearestPointcloudPoint(){ const punti=stato.puntiPointcloud; if(!punti||punti.length===0)return null; const viewport=camera.viewport.toGlobal(engine.getRenderWidth(),engine.getRenderHeight()); const transform=scene.getTransformMatrix(); const camPos=camera.position; const camDir=camera.getForwardRay().direction; let bestD2=Infinity,bestPoint=null; const R=25,R2=R*R; for(let i=0;i<punti.length;i++){ const p=punti[i]; const dxc=p.x-camPos.x,dyc=p.y-camPos.y,dzc=p.z-camPos.z; if(dxc*camDir.x+dyc*camDir.y+dzc*camDir.z<=0)continue; const proj=BABYLON.Vector3.Project(p,BABYLON.Matrix.Identity(),transform,viewport); if(proj.z<0||proj.z>1)continue; const dx=proj.x-p.x,dy=proj.y-p.y,d2=dx*dx+dy*dy; if(d2<bestD2){ bestD2=d2; bestPoint=p; } } if(bestD2>R2||!bestPoint)return null; return bestPoint.clone(); }
+const PICK_TOLERANCE_PX=20;
+function pickPointUnderCursor(px,py){ const modeEl=document.querySelector('input[name="modelMode"]:checked'); const mode=modeEl?modeEl.value:'mesh'; if(mode==='mesh'||mode==='voxel'){ const predicate=m=>stato.allMeshes&&stato.allMeshes.includes(m); const exact=scene.pick(px,py,predicate); if(exact&&exact.hit&&exact.pickedPoint)return exact.pickedPoint.clone(); const R=PICK_TOLERANCE_PX; for(let radius=1;radius<=R;radius++){ for(let a=0;a<360;a+=15){ const rad=a*Math.PI/180; const sx=Math.round(px+radius*Math.cos(rad)), sy=Math.round(py+radius*Math.sin(rad)); const p=scene.pick(sx,sy,predicate); if(p&&p.hit&&p.pickedPoint)return p.pickedPoint.clone(); } } return null; } return pickNearestPointcloudPoint(px,py); }
+function centraQui(point){ camera.setTarget(point.clone()); log(`[CTX] Centra`); }
+function spostaQui(point){ const oldAlpha=camera.alpha; const eyeHeight=10,lookDist=20; const eye=new BABYLON.Vector3(point.x,point.y+eyeHeight,point.z); const target=new BABYLON.Vector3(eye.x-lookDist*Math.cos(oldAlpha),eye.y,eye.z-lookDist*Math.sin(oldAlpha)); camera.setTarget(target); camera.alpha=oldAlpha; camera.beta=Math.PI/2; camera.radius=lookDist; }
+async function onVai(){ if(!stato.fileSelezionato&&!stato.localFileBuffer){ alert("Seleziona file"); return; } const btn=document.getElementById("btnVai"); btn.disabled=true; try{ let buf; if(stato.localFileBuffer&&stato.fileSelezionato&&stato.fileSelezionato.url.startsWith("locale://")){ buf=stato.localFileBuffer; } else { const url=stato.fileSelezionato.url; log(`[VAI] Scarico ${url}`); buf=await fetchWithProgress(url,true); } const meta=parsaVicarHT(buf); stato.metaHT=meta; const{NS,NL,NB}=meta; stato.altezzeGridRaw=estraiGrigliaGrezzaBand1(meta); const rawPerMesh=estraiGrigliaGrezza(meta); const filled=riempiBuchi(rawPerMesh,NS,NL); stato.altezzeGrid=filled; let minSafe=Infinity,maxSafe=-Infinity; for(let r=0;r<NL;r++) for(let c=0;c<NS;c++){ const v=filled[r][c]; if(!isInvalid(v)){ if(v<minSafe)minSafe=v; if(v>maxSafe)maxSafe=v; } } document.getElementById("infoBox").innerHTML=`<b>${stato.fileSelezionato.name}</b><br>NS=${NS} NL=${NL} NB=${NB}<br>Z min=${minSafe.toFixed(3)} max=${maxSafe.toFixed(3)}`; costruisciMeshWatertight(meta,filled); document.getElementById("btnSTL").disabled=false; }catch(e){ console.error(e); log(`[ERRORE] ${e.message}`); alert(e.message); }finally{ btn.disabled=false; } }
+function exportSTL(){ const modeEl=document.querySelector('input[name="modelMode"]:checked'); const mode=modeEl?modeEl.value:'mesh'; if(mode==='pointcloud'){ alert("STL non disponibile in pointcloud."); return; } if(!stato.topMesh&&stato.allMeshes.length===0)return; const allPos=[],allInd=[]; let offset=0; stato.allMeshes.forEach(mesh=>{ const pos=mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind); const ind=mesh.getIndices(); if(!pos||!ind)return; for(let i=0;i<pos.length;i++)allPos.push(pos[i]); for(let i=0;i<ind.length;i++)allInd.push(ind[i]+offset); offset+=pos.length/3; }); let stl="solid mer_ht\n"; for(let i=0;i<allInd.length;i+=3){ const i0=allInd[i]*3,i1=allInd[i+1]*3,i2=allInd[i+2]*3; const ax=allPos,ay=allPos[i0+1],az=allPos[i0+2]; const bx=allPos,by=allPos[i1+1],bz=allPos[i1+2]; const cx=allPos,cy=allPos[i2+1],cz=allPos[i2+2]; const ux=bx-ax,uy=by-ay,uz=bz-az; const vx=cx-ax,vy=cy-ay,vz=cz-az; const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx; const len=Math.sqrt(nx*nx+ny*ny+nz*nz)||1; stl+=` facet normal ${nx/len} ${ny/len} ${nz/len}\n outer loop\n vertex ${ax} ${ay} ${az}\n vertex ${bx} ${by} ${bz}\n vertex ${cx} ${cy} ${cz}\n endloop\n endfacet\n`; } stl+="endsolid\n"; const blob=new Blob([stl],{type:"application/sla"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(stato.fileSelezionato?.name.replace(".ht","_voxel.stl")||"model.stl"); a.click(); log("[STL] Esportato"); }
+window.addEventListener("DOMContentLoaded",()=>{ initBabylonSubito(); document.getElementById("btnCerca").onclick=onCerca; document.getElementById("btnVai").onclick=onVai; document.getElementById("btnSTL").onclick=exportSTL; document.getElementById("btnCentra").onclick=centraCameraSulModello; document.getElementById("btnDownloadDiretto").onclick=()=>scaricaManuale(true); document.getElementById("btnDownloadProxy").onclick=()=>scaricaManuale(false); document.getElementById("btnCaricaLocale").onclick=gestisciFileLocale; document.querySelectorAll(".camFilter").forEach(cb=>{ cb.addEventListener("change",applicaFiltroCamere); }); document.getElementById("wallSlider").oninput=(e)=>{ document.getElementById("wallVal").textContent=e.target.value; const modeEl=document.querySelector('input[name="modelMode"]:checked'); if(modeEl&&modeEl.value!=='pointcloud'&&stato.metaHT&&stato.altezzeGrid)costruisciMeshWatertight(stato.metaHT,stato.altezzeGrid,true); }; document.getElementById("exagSlider").oninput=(e)=>{ document.getElementById("exagVal").textContent=e.target.value; if(stato.metaHT&&stato.altezzeGrid)costruisciMeshWatertight(stato.metaHT,stato.altezzeGrid,true); }; document.querySelectorAll('input[name="modelMode"]').forEach(r=>{ r.onchange=()=>{ if(stato.metaHT&&stato.altezzeGrid){ log(`[MODE] Passo a ${r.value}`); costruisciMeshWatertight(stato.metaHT,stato.altezzeGrid,true); } }; }); document.getElementById("pointSizeSlider").oninput=(e)=>{ const v=parseInt(e.target.value,10); document.getElementById("pointSizeVal").textContent=v; const m=stato.topMesh; if(m&&m.name==="pointcloud"&&m.material)m.material.pointSize=v; }; document.getElementById("pointColorPicker").onchange=()=>{ const modeEl=document.querySelector('input[name="modelMode"]:checked'); if(modeEl&&(modeEl.value==='pointcloud'||modeEl.value==='voxel')&&!document.getElementById("toggleTexture").checked){ if(stato.metaHT&&stato.altezzeGrid)costruisciMeshWatertight(stato.metaHT,stato.altezzeGrid,true); } }; document.getElementById("toggleShadows").onchange=(e)=>{ applyShadowState(); }; document.getElementById("toggleTexture").onchange=(e)=>{ const on=e.target.checked; const modeEl=document.querySelector('input[name="modelMode"]:checked'); if(modeEl&&(modeEl.value==='pointcloud'||modeEl.value==='voxel')){ if(stato.metaHT&&stato.altezzeGrid)costruisciMeshWatertight(stato.metaHT,stato.altezzeGrid,true); return; } if(stato.topMesh&&stato.topMesh.material){ if(on&&stato.textureTerreno){ stato.topMesh.material.diffuseTexture=stato.textureTerreno; stato.topMesh.material.emissiveTexture=stato.textureTerreno; } else { stato.topMesh.material.diffuseTexture=null; stato.topMesh.material.emissiveTexture=null; stato.topMesh.material.diffuseColor=new BABYLON.Color3(0.82,0.82,0.82); stato.topMesh.material.emissiveColor=new BABYLON.Color3(0.4,0.4,0.4); } } }; document.getElementById("toggleGizmo").onchange=(e)=>{ const on=e.target.checked; if(stato.gizmoManager){ stato.gizmoManager.positionGizmoEnabled=on; if(on)stato.gizmoManager.attachToMesh(stato.lightSphere); else stato.gizmoManager.attachToMesh(null); } }; document.getElementById("toggleAmbient").onchange=(e)=>{ const on=e.target.checked; if(stato.hemiLight){ stato.hemiLight.setEnabled(on); if(on)stato.hemiLight.intensity=parseFloat(document.getElementById("ambientSlider").value); } }; document.getElementById("ambientSlider").oninput=(e)=>{ const v=parseFloat(e.target.value); document.getElementById("ambientVal").textContent=v.toFixed(2); if(stato.hemiLight&&document.getElementById("toggleAmbient").checked)stato.hemiLight.intensity=v; }; document.getElementById("togglePointLight").onchange=(e)=>{ const on=e.target.checked; if(stato.pointLight)stato.pointLight.setEnabled(on); if(stato.lightSphere)stato.lightSphere.setEnabled(on); if(stato.lightTarget)stato.lightTarget.setEnabled(on); if(stato.shadowGenerator)stato.shadowGenerator.setDarkness(on?0.35:0); }; document.getElementById("pointSlider").oninput=(e)=>{ const v=parseFloat(e.target.value); document.getElementById("pointVal").textContent=v.toFixed(2); if(stato.pointLight)stato.pointLight.intensity=v; }; log("[INIT] Pronto"); applicaFiltroCamere(); });
+</script>
+
+<!-- WASD/QE/ZC STANDARD - NON MODIFICA IL CODICE SOPRA -->
+<script>
+(function(){
+  const keys = {};
+  const isTyping = () => {
+    const el = document.activeElement;
+    return el && (el.tagName==='INPUT'||el.tagName==='SELECT'||el.tagName==='TEXTAREA');
+  };
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    if(['w','a','s','d','q','e','z','c','shift'].includes(k)){
+      if(!isTyping()){ keys[k]=true; if(['w','a','s','d','q','e','z','c'].includes(k)) e.preventDefault(); }
+    }
+  });
+  window.addEventListener('keyup', (e)=>{ keys[e.key.toLowerCase()]=false; });
+
+  function initWASD(){
+    if(typeof scene==='undefined' || typeof camera==='undefined' || typeof BABYLON==='undefined'){ setTimeout(initWASD,100); return; }
+    scene.onBeforeRenderObservable.add(()=>{
+      if(isTyping()) return;
+      if(!keys['w']&&!keys['a']&&!keys['s']&&!keys['d']&&!keys['q']&&!keys['e']&&!keys['z']&&!keys['c']) return;
+
+      const baseScale = (typeof stato!=='undefined' && stato.lastMeshInfo && stato.lastMeshInfo.MAP_SCALE)? stato.lastMeshInfo.MAP_SCALE : 0.05;
+      const adaptive = Math.max(camera.radius * 0.02, baseScale * 1.5);
+      const fast = keys['shift']? 2.5 : 1;
+      const speed = adaptive * fast;
+      const rotSpeed = 0.025 * fast;
+
+      // forward su piano XZ
+      const dir = camera.target.subtract(camera.position);
+      let forward = new BABYLON.Vector3(dir.x, 0, dir.z);
+      if(forward.length() < 0.0001) forward = new BABYLON.Vector3(0,0,1);
+      forward.normalize();
+      const right = new BABYLON.Vector3(-forward.z, 0, forward.x);
+
+      const move = new BABYLON.Vector3(0,0,0);
+      if(keys['w']) move.addInPlace(forward.scale(speed)); // Avanti
+      if(keys['s']) move.addInPlace(forward.scale(-speed)); // Indietro
+      if(keys['a']) move.addInPlace(right.scale(-speed)); // Strafe sx
+      if(keys['d']) move.addInPlace(right.scale(speed)); // Strafe dx
+
+      if(move.length() > 0){
+        camera.target.addInPlace(move);
+        camera.position.addInPlace(move);
+        if(typeof stato!=='undefined' && stato.lightTarget) stato.lightTarget.position.addInPlace(move);
+      }
+      // Q/E = gira a sinistra/destra (roll/lean)
+      if(keys['q']) camera.alpha -= rotSpeed;
+      if(keys['e']) camera.alpha += rotSpeed;
+
+      // Z/C = verticale - Z scende, C sale
+      if(keys['z']){
+        const down = new BABYLON.Vector3(0, -speed, 0);
+        camera.target.addInPlace(down);
+        camera.position.addInPlace(down);
+      }
+      if(keys['c']){
+        const up = new BABYLON.Vector3(0, speed, 0);
+        camera.target.addInPlace(up);
+        camera.position.addInPlace(up);
+      }
+    });
+  }
+  initWASD();
+})();
+</script>
+</body>
+</html>
